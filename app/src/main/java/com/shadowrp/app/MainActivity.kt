@@ -33,7 +33,7 @@ class MainActivity : Activity() {
  }
  private fun section(title:String)=text(title,22f,Color.WHITE,true)
  private fun init(title:String) {
-  root=LinearLayout(this).apply { orientation=1;setBackgroundColor(bg);setPadding(8,0,8,0) }
+  root=LinearLayout(this).apply { orientation=1;setBackgroundColor(bg);setPadding(8,0,8,0); fitsSystemWindows=true }
   val header=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
   header.addView(section(title),LinearLayout.LayoutParams(0,-2,1f))
   header.addView(button("⚙") { settings() })
