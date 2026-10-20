@@ -69,7 +69,7 @@ class MainActivity : Activity() {
   load();home()
  }
  private fun load() {
-  val a=JSONArray(prefs.getString("characters","[\\"Алиса\\",\\"Кай\\",\\"Лира\\"]"))
+  val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Алиса","Кай","Лира")).toString()))
   for(i in 0 until a.length())characters.add(a.getString(i))
   active=prefs.getString("active",characters.firstOrNull()?:"Алиса")!!
   characters.forEach { name ->
