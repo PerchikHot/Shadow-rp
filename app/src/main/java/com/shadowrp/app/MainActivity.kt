@@ -15,8 +15,8 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
  private val bg=Color.rgb(4,9,18)
- private val panel=Color.rgb(12,25,43)
- private val blue=Color.rgb(34,132,255)
+ private val panel=Color.rgb(15,22,34)
+ private val blue=Color.rgb(53,117,255)
  private val muted=Color.rgb(160,183,211)
  private val prefs by lazy { getSharedPreferences("shadowrp", MODE_PRIVATE) }
  private val characters=mutableListOf<String>()
@@ -55,10 +55,10 @@ class MainActivity : Activity() {
  }
  private fun nav(selected:Int) {
   val row=LinearLayout(this).apply { setPadding(0,8,0,10) }
-  val names=listOf("⌂ Главная","◈ Каталог","＋ Создать","☏ Чаты","♙ Профиль")
+  val names=listOf("⌂\nГлавная","◈\nКаталог","＋\nСоздать","☏\nЧаты","♙\nПрофиль")
   names.forEachIndexed { i,name ->
    val view=button(name) { when(i){0->home();1->catalog();2->studio();3->chatList();else->profile()} }
-   view.textSize=11f;view.setTextColor(if(i==selected)blue else muted)
+   view.textSize=12f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(2,10,2,10);view.gravity=Gravity.CENTER
    row.addView(view,LinearLayout.LayoutParams(0,-2,1f))
   }
   root.addView(row)
@@ -89,8 +89,8 @@ class MainActivity : Activity() {
  private fun home() {
   init("Shadow RP");val b=body()
   b.addView(section("Твои истории"))
-  item(b,"Продолжить: $active","Вернуться к последней переписке") { chat(active) }
-  b.addView(section("Персонажи"))
+  item(b,"▶ Продолжить: $active","Вернуться к последней переписке") { chat(active) }
+  b.addView(section("✦ Персонажи"))
   characters.forEach { name->item(b,"✦ $name","Открыть ролевой чат") { chat(name) } }
   item(b,"＋ Создать персонажа","Добавить собственную героиню или героя") { createCharacter() }
   nav(0)
@@ -129,9 +129,9 @@ class MainActivity : Activity() {
   nav(3)
  }
  private fun chat(name:String) {
-  active=name;save();init("‹ $name")
+  active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
-  if(messages.isEmpty())b.addView(text("Начни историю с $name",16f,muted))
+  if(messages.isEmpty())b.addView(text("✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение.",16f,muted))
   messages.forEach { (role,value)->
    val bubble=text(value,16f)
    bubble.background=shape(if(role=="user")Color.rgb(13,75,148) else panel)
@@ -182,6 +182,7 @@ class MainActivity : Activity() {
   val scene=chats[active]?.takeLast(6)?.joinToString("\n"){ "${it.first}: ${it.second}" }?:""
   AlertDialog.Builder(this).setTitle("Контекст для изображения").setMessage(scene.ifBlank { "Сначала начни переписку." }+"\n\nГенератор изображений пока не подключён.").setPositiveButton("OK",null).show()
  }
+ override fun onBackPressed() { home() }
  private fun profile() {
   init("Профиль");val b=body()
   item(b,"Мои персонажи","Всего: ${characters.size}") { catalog() }
@@ -195,7 +196,7 @@ class MainActivity : Activity() {
   fun field(hint:String,value:String)=EditText(this).apply { this.hint=hint;setText(value);l.addView(this) }
   val url=field("HTTPS API URL до /v1",prefs.getString("url","")!!)
   val model=field("ID модели",prefs.getString("model","")!!)
-  val key=field("API ключ (при необходимости)",prefs.getString("key","")!!)
+  val key=field("API ключ (при необходимости)",prefs.getString("key","")!!);key.inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
   AlertDialog.Builder(this).setTitle("Настройки ИИ").setView(l).setPositiveButton("Сохранить"){_,_->
    prefs.edit().putString("url",url.text.toString().trim()).putString("model",model.text.toString().trim()).putString("key",key.text.toString().trim()).apply()
   }.setNegativeButton("Отмена",null).show()
