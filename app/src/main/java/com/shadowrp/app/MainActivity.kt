@@ -25,6 +25,8 @@ class MainActivity : Activity() {
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
  private var active="Цунаде"
  private lateinit var root:LinearLayout
+ private var avatarTarget:String?=null
+ private val avatarPicker=7311
  private fun shape(color:Int,r:Float=18f):GradientDrawable=GradientDrawable().apply { setColor(color);cornerRadius=r*resources.displayMetrics.density }
  private fun text(s:String,size:Float=16f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply {
   text=s;textSize=size;setTextColor(color);setPadding(14,12,14,12);if(bold)setTypeface(null,Typeface.BOLD)
@@ -39,7 +41,7 @@ class MainActivity : Activity() {
   root=LinearLayout(this).apply { orientation=1;setBackgroundColor(bg);setPadding(8,0,8,0); fitsSystemWindows=true }
   val header=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
   header.addView(section(title),LinearLayout.LayoutParams(0,-2,1f))
-  header.addView(button("⚙") { settings() })
+  header.addView(button("⚙") { settings() }.apply {textSize=25f;setPadding(dp(17),dp(12),dp(17),dp(12))})
   root.addView(header)
   val accent=android.view.View(this).apply { setBackgroundColor(blue) }
   root.addView(accent,LinearLayout.LayoutParams(-1,dp(2)))
@@ -59,11 +61,11 @@ class MainActivity : Activity() {
   parent.addView(card,lp);card.setOnClickListener { onClick() }
  }
  private fun nav(selected:Int) {
-  val row=LinearLayout(this).apply { setPadding(0,8,0,10) }
+  val row=LinearLayout(this).apply { setPadding(0,dp(8),0,dp(10)) }
   val names=listOf("⌂\nГлавная","◈\nКаталог","＋\nСоздать","☏\nЧаты","♙\nПрофиль")
   names.forEachIndexed { i,name ->
    val view=button(name) { when(i){0->home();1->catalog();2->studio();3->chatList();else->profile()} }
-   view.textSize=12f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(2,10,2,10);view.gravity=Gravity.CENTER
+   view.textSize=14f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(dp(2),dp(16),dp(2),dp(16));view.gravity=Gravity.CENTER
    row.addView(view,LinearLayout.LayoutParams(0,-2,1f))
   }
   root.addView(row)
@@ -71,6 +73,7 @@ class MainActivity : Activity() {
  override fun onCreate(savedInstanceState:Bundle?) {
   super.onCreate(savedInstanceState)
   window.statusBarColor=bg;window.navigationBarColor=bg
+  window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
   load();seedCatalog();migrateDefaults();home()
  }
  private fun load() {
@@ -144,10 +147,46 @@ class MainActivity : Activity() {
   tile.setOnClickListener { characterDetail(name) }
   parent.addView(tile,LinearLayout.LayoutParams(0,-2,1f).apply {setMargins(dp(4),dp(4),dp(4),dp(4))})
  }
+ private fun chooseAvatar(name:String) {
+  avatarTarget=name
+  val intent=android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+   type="image/*";addCategory(android.content.Intent.CATEGORY_OPENABLE)
+   addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+  }
+  startActivityForResult(intent,avatarPicker)
+ }
+ override fun onActivityResult(requestCode:Int,resultCode:Int,data:android.content.Intent?) {
+  super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode==avatarPicker && resultCode==Activity.RESULT_OK && data?.data!=null){
+   val uri=data.data!!
+   try { contentResolver.takePersistableUriPermission(uri,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }catch(_:Exception){}
+   avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();catalog() }
+  }
+ }
+ private fun avatar(name:String,height:Int):android.view.View {
+  val saved=prefs.getString("avatar_$name",null)
+  if(saved!=null){
+   try {
+    return ImageView(this).apply {
+     setImageURI(android.net.Uri.parse(saved))
+     scaleType=ImageView.ScaleType.CENTER_CROP
+     background=shape(panel)
+     clipToOutline=true
+    }
+   }catch(_:Exception){}
+  }
+  val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
+  return text(name.take(1),36f,Color.WHITE,true).apply {
+   gravity=Gravity.CENTER
+   background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
+  }
+ }
  private fun characterDetail(name:String) {
   AlertDialog.Builder(this).setTitle(name)
    .setMessage(prefs.getString("persona_$name","Персонаж для ролевой истории."))
-   .setPositiveButton("Открыть чат"){_,_->chat(name)}.setNegativeButton("Закрыть",null).show()
+   .setPositiveButton("Открыть чат"){_,_->chat(name)}
+   .setNeutralButton("Фото лица"){_,_->chooseAvatar(name)}
+   .setNegativeButton("Закрыть",null).show()
  }
  private fun hero(parent:LinearLayout) {
   val h=LinearLayout(this).apply { orientation=1;background=shape(Color.rgb(19,39,77),24f);setPadding(16,18,16,18) }
@@ -164,8 +203,7 @@ class MainActivity : Activity() {
   val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
   names.forEach { name ->
    val card=LinearLayout(this).apply { orientation=1;background=shape(panel,18f);setPadding(dp(5),dp(5),dp(5),dp(7)) }
-   val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
-   val face=text(name.take(1),36f,Color.WHITE,true).apply { gravity=Gravity.CENTER;background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f) }
+   val face=avatar(name,140)
    card.addView(face,LinearLayout.LayoutParams(-1,dp(140)))
    card.addView(text(name,14f,Color.WHITE,true))
    card.setOnClickListener { characterDetail(name) }
@@ -253,14 +291,14 @@ class MainActivity : Activity() {
    }
    b.addView(bubble,lp)
   }
-  val input=EditText(this).apply { hint="Сообщение…";setTextColor(Color.WHITE);setHintTextColor(muted);minLines=1;maxLines=4 }
-  val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
-  bar.addView(button("▧") { imagePrompt() })
+  val input=EditText(this).apply { hint="Напиши сообщение…";setTextColor(Color.WHITE);setHintTextColor(muted);minLines=2;maxLines=6;setTextSize(17f);setPadding(dp(12),dp(12),dp(12),dp(12));background=shape(panel,16f) }
+  val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(7),dp(4),dp(9)) }
+  bar.addView(button("▧") { imagePrompt() }.apply {textSize=21f;setPadding(dp(12),dp(18),dp(12),dp(18))})
   bar.addView(input,LinearLayout.LayoutParams(0,-2,1f))
   bar.addView(button("➤") {
    val msg=input.text.toString().trim()
    if(msg.isNotBlank()){messages.add("user" to msg);save();chat(name);request(name)}
-  })
+  }.apply {textSize=23f;setPadding(dp(14),dp(18),dp(14),dp(18))})
   root.addView(bar)
  }
  private fun request(name:String) {
@@ -304,13 +342,34 @@ class MainActivity : Activity() {
  }
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show()}
  private fun settings() {
-  val l=LinearLayout(this).apply { orientation=1;setPadding(20,8,20,8) }
-  fun field(hint:String,value:String)=EditText(this).apply { this.hint=hint;setText(value);l.addView(this) }
-  val url=field("HTTPS API URL до /v1",prefs.getString("url","")!!)
-  val model=field("ID модели",prefs.getString("model","")!!)
-  val key=field("API ключ (при необходимости)",prefs.getString("key","")!!);key.inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-  AlertDialog.Builder(this).setTitle("Настройки ИИ").setView(l).setPositiveButton("Сохранить"){_,_->
-   prefs.edit().putString("url",url.text.toString().trim()).putString("model",model.text.toString().trim()).putString("key",key.text.toString().trim()).apply()
-  }.setNegativeButton("Отмена",null).show()
+  init("Настройки ИИ");val b=body()
+  b.addView(section("Подключение модели"))
+  b.addView(text("Выбери тип подключения. Для облачной модели нужен API, для локальной — запущенный совместимый сервер.",14f,muted))
+  val providers=listOf("OpenAI-совместимый API","OpenRouter","Локальный сервер (LM Studio / Ollama)")
+  providers.forEachIndexed { index,label ->
+   item(b,label,when(index){0->"Свой URL, ID модели и ключ";1->"Выбор моделей через OpenRouter API";else->"Адрес сервера в локальной сети"}) {
+    editModel(index)
+   }
+  }
+  val model=prefs.getString("model","").orEmpty()
+  item(b,"Текущая модель",if(model.isBlank())"Не настроена" else model){editModel(0)}
+  nav(4)
+ }
+ private fun editModel(provider:Int) {
+  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(18),dp(8),dp(18),dp(8))}
+  fun field(label:String,value:String):EditText {
+   l.addView(text(label,14f,muted))
+   return EditText(this).apply {setText(value);setTextColor(Color.WHITE);setSingleLine(true);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12));l.addView(this,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(12)})}
+  }
+  val defaultUrl=when(provider){1->"https://openrouter.ai/api/v1";2->"http://127.0.0.1:11434/v1";else->""}
+  val url=field("API URL (включая /v1)",if(provider==0)prefs.getString("url","").orEmpty() else defaultUrl)
+  val model=field("ID модели",prefs.getString("model","").orEmpty())
+  val key=field("API ключ",prefs.getString("key","").orEmpty())
+  key.inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+  AlertDialog.Builder(this).setTitle("Подключить ИИ").setView(l)
+   .setPositiveButton("Сохранить"){_,_->
+    prefs.edit().putString("url",url.text.toString().trim()).putString("model",model.text.toString().trim()).putString("key",key.text.toString().trim()).apply()
+    settings()
+   }.setNegativeButton("Отмена",null).show()
  }
 }
