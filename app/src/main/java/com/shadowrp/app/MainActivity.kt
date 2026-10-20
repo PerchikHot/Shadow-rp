@@ -35,6 +35,15 @@ class MainActivity : Activity() {
   text=s;textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(12,16,12,16)
   background=shape(panel);setOnClickListener { click() }
  }
+ private fun styleDialog(dialog:AlertDialog) {
+  dialog.window?.setBackgroundDrawable(shape(panel,22f))
+  dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.91).toInt(),WindowManager.LayoutParams.WRAP_CONTENT)
+  dialog.findViewById<TextView>(android.R.id.message)?.setTextColor(Color.WHITE)
+  dialog.findViewById<TextView>(resources.getIdentifier("alertTitle","id","android"))?.setTextColor(Color.WHITE)
+  listOf(AlertDialog.BUTTON_POSITIVE,AlertDialog.BUTTON_NEGATIVE,AlertDialog.BUTTON_NEUTRAL).forEach { id ->
+   dialog.getButton(id)?.apply {setTextColor(Color.rgb(124,175,255));isAllCaps=false;textSize=15f}
+  }
+ }
  private fun section(title:String)=text(title,22f,Color.WHITE,true)
  private fun space(h:Int)=android.view.View(this).apply { layoutParams=LinearLayout.LayoutParams(1,dp(h)) }
  private fun init(title:String) {
@@ -144,7 +153,7 @@ class MainActivity : Activity() {
   tile.addView(portrait,LinearLayout.LayoutParams(-1,dp(116)))
   tile.addView(text(name,14f,Color.WHITE,true))
   tile.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?: "Мой персонаж",12f,muted))
-  tile.setOnClickListener { characterDetail(name) }
+  tile.setOnClickListener { characterDetail(name) };tile.setOnLongClickListener { chooseAvatar(name);true }
   parent.addView(tile,LinearLayout.LayoutParams(0,-2,1f).apply {setMargins(dp(4),dp(4),dp(4),dp(4))})
  }
  private fun chooseAvatar(name:String) {
@@ -182,11 +191,36 @@ class MainActivity : Activity() {
   }
  }
  private fun characterDetail(name:String) {
-  AlertDialog.Builder(this).setTitle(name)
-   .setMessage(prefs.getString("persona_$name","Персонаж для ролевой истории."))
-   .setPositiveButton("Открыть чат"){_,_->chat(name)}
-   .setNeutralButton("Фото лица"){_,_->chooseAvatar(name)}
-   .setNegativeButton("Закрыть",null).show()
+  val universe=animeRoster.firstOrNull {it[0]==name}?.get(1) ?: "Авторский персонаж"
+  val intro=prefs.getString("persona_$name","Персонаж для ролевой истории.").orEmpty()
+  val panelView=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(6),dp(16),dp(8))}
+  val face=avatar(name,110)
+  panelView.addView(face,LinearLayout.LayoutParams(-1,dp(110)))
+  panelView.addView(text(universe,14f,Color.rgb(124,175,255),true))
+  panelView.addView(text(intro,15f,Color.WHITE))
+  panelView.addView(text("Сценарий и история общения сохраняются отдельно для этого персонажа. Другие варианты истории можно будет добавить позже.",13f,muted))
+  AlertDialog.Builder(this).setTitle(name).setView(panelView)
+   .setPositiveButton("Начать RP"){_,_->chat(name)}
+   .setNeutralButton("Отзывы"){_,_->comments(name)}
+   .setNegativeButton("Закрыть",null).show().also {styleDialog(it)}
+ }
+ private fun comments(name:String) {
+  val key="comments_$name"
+  val list=JSONArray(prefs.getString(key,"[]"))
+  val box=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
+  val scroll=ScrollView(this)
+  val contents=LinearLayout(this).apply {orientation=1}
+  for(i in 0 until list.length())contents.addView(text("✦ "+list.optString(i),14f,Color.WHITE))
+  if(list.length()==0)contents.addView(text("Пока нет отзывов. Оставь первый!",14f,muted))
+  scroll.addView(contents)
+  box.addView(scroll,LinearLayout.LayoutParams(-1,dp(170)))
+  val entry=EditText(this).apply {hint="Твой отзыв о персонаже";setHintTextColor(muted);setTextColor(Color.WHITE);background=shape(bg);setPadding(dp(12),dp(12),dp(12),dp(12))}
+  box.addView(entry)
+  AlertDialog.Builder(this).setTitle("Отзывы • $name").setView(box)
+   .setPositiveButton("Добавить"){_,_->
+    val value=entry.text.toString().trim()
+    if(value.isNotEmpty()){list.put(value);prefs.edit().putString(key,list.toString()).apply()}
+   }.setNegativeButton("Закрыть",null).show().also {styleDialog(it)}
  }
  private fun hero(parent:LinearLayout) {
   val h=LinearLayout(this).apply { orientation=1;background=shape(Color.rgb(19,39,77),24f);setPadding(16,18,16,18) }
@@ -206,7 +240,7 @@ class MainActivity : Activity() {
    val face=avatar(name,140)
    card.addView(face,LinearLayout.LayoutParams(-1,dp(140)))
    card.addView(text(name,14f,Color.WHITE,true))
-   card.setOnClickListener { characterDetail(name) }
+   card.setOnClickListener { characterDetail(name) };card.setOnLongClickListener { chooseAvatar(name);true }
    row.addView(card,LinearLayout.LayoutParams(dp(152),-2).apply {setMargins(dp(4),dp(5),dp(4),dp(8))})
   }
   scroller.addView(row);parent.addView(scroller)
@@ -251,7 +285,7 @@ class MainActivity : Activity() {
   init("Творческий центр");val b=body()
   item(b,"＋ Создать персонажа","Имя и характер персонажа") { createCharacter() }
   item(b,"▣ Создать изображение","Пока доступен просмотр промпта по истории") { imagePrompt() }
-  item(b,"▤ Лорбук","Планируется в следующих обновлениях") { AlertDialog.Builder(this).setMessage("Редактор лорбука ещё не реализован.").setPositiveButton("OK",null).show() }
+  item(b,"▤ Лорбук","Планируется в следующих обновлениях") { AlertDialog.Builder(this).setMessage("Редактор лорбука ещё не реализован.").setPositiveButton("OK",null).show().also {styleDialog(it)} }
   nav(2)
  }
  private fun createCharacter() {
@@ -266,7 +300,7 @@ class MainActivity : Activity() {
     characters.add(n);chats[n]=mutableListOf()
     prefs.edit().putString("persona_$n",listOf(persona.text.toString(), "Внешность: "+appearance.text.toString(), "Сценарий: "+scenario.text.toString()).joinToString("\n")).apply();save();chat(n)
    }
-  }.setNegativeButton("Отмена",null).show()
+  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
  }
  private fun chatList() {
   init("Чаты");val b=body()
@@ -283,11 +317,11 @@ class MainActivity : Activity() {
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
   if(messages.isEmpty())b.addView(text("✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение.",16f,muted))
   messages.forEach { (role,value)->
-   val bubble=text(value,16f)
+   val bubble=text(value,15f).apply {setPadding(dp(10),dp(8),dp(10),dp(8))}
    bubble.background=shape(if(role=="user")Color.rgb(13,75,148) else panel)
    val lp=LinearLayout.LayoutParams(-2,-2).apply {
     gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT
-    setMargins(if(role=="user")55 else 6,7,if(role=="user")6 else 55,7)
+    setMargins(if(role=="user")dp(55) else dp(6),dp(4),if(role=="user")dp(6) else dp(55),dp(4))
    }
    b.addView(bubble,lp)
   }
@@ -330,7 +364,7 @@ class MainActivity : Activity() {
  }
  private fun imagePrompt() {
   val scene=chats[active]?.takeLast(6)?.joinToString("\n"){ "${it.first}: ${it.second}" }?:""
-  AlertDialog.Builder(this).setTitle("Контекст для изображения").setMessage(scene.ifBlank { "Сначала начни переписку." }+"\n\nГенератор изображений пока не подключён.").setPositiveButton("OK",null).show()
+  AlertDialog.Builder(this).setTitle("Контекст для изображения").setMessage(scene.ifBlank { "Сначала начни переписку." }+"\n\nГенератор изображений пока не подключён.").setPositiveButton("OK",null).show().also {styleDialog(it)}
  }
  override fun onBackPressed() { home() }
  private fun profile() {
@@ -340,7 +374,7 @@ class MainActivity : Activity() {
   item(b,"Настройки ИИ","Подключить API") { settings() }
   nav(4)
  }
- private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show()}
+ private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
  private fun settings() {
   init("Настройки ИИ");val b=body()
   b.addView(section("Подключение модели"))
@@ -370,6 +404,6 @@ class MainActivity : Activity() {
    .setPositiveButton("Сохранить"){_,_->
     prefs.edit().putString("url",url.text.toString().trim()).putString("model",model.text.toString().trim()).putString("key",key.text.toString().trim()).apply()
     settings()
-   }.setNegativeButton("Отмена",null).show()
+   }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
  }
 }
