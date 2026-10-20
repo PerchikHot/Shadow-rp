@@ -26,6 +26,7 @@ class MainActivity : Activity() {
  private var active="Цунаде"
  private lateinit var root:LinearLayout
  private var avatarTarget:String?=null
+ private val groups=mutableListOf<String>()
  private val avatarPicker=7311
  private fun shape(color:Int,r:Float=18f):GradientDrawable=GradientDrawable().apply { setColor(color);cornerRadius=r*resources.displayMetrics.density }
  private fun text(s:String,size:Float=16f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply {
@@ -150,7 +151,7 @@ class MainActivity : Activity() {
    gravity=Gravity.CENTER
    background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
   }
-  tile.addView(portrait,LinearLayout.LayoutParams(-1,dp(116)))
+  tile.addView(avatar(name,116),LinearLayout.LayoutParams(-1,dp(116)))
   tile.addView(text(name,14f,Color.WHITE,true))
   tile.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?: "Мой персонаж",12f,muted))
   tile.setOnClickListener { characterDetail(name) };tile.setOnLongClickListener { chooseAvatar(name);true }
@@ -198,6 +199,8 @@ class MainActivity : Activity() {
   panelView.addView(face,LinearLayout.LayoutParams(-1,dp(110)))
   panelView.addView(text(universe,14f,Color.rgb(124,175,255),true))
   panelView.addView(text(intro,15f,Color.WHITE))
+  panelView.addView(button("🖼 Изменить изображение") {chooseAvatar(name)})
+  panelView.addView(button("✎ Редактировать описание") {editPersona(name)})
   panelView.addView(text("Сценарий и история общения сохраняются отдельно для этого персонажа. Другие варианты истории можно будет добавить позже.",13f,muted))
   AlertDialog.Builder(this).setTitle(name).setView(panelView)
    .setPositiveButton("Начать RP"){_,_->chat(name)}
@@ -283,7 +286,9 @@ class MainActivity : Activity() {
  }
  private fun studio() {
   init("Творческий центр");val b=body()
-  item(b,"＋ Создать персонажа","Имя и характер персонажа") { createCharacter() }
+  item(b,"＋ Создать персонажа","Аватар, приветствие, характер, сценарий, память") { createCharacter() }
+  item(b,"♧ Создать комнату","Групповой RP с несколькими персонажами") { createRoom() }
+  item(b,"♙ Моя личность","Имя, биография и роль игрока") { editIdentity() }
   item(b,"▣ Создать изображение","Пока доступен просмотр промпта по истории") { imagePrompt() }
   item(b,"▤ Лорбук","Планируется в следующих обновлениях") { AlertDialog.Builder(this).setMessage("Редактор лорбука ещё не реализован.").setPositiveButton("OK",null).show().also {styleDialog(it)} }
   nav(2)
@@ -294,11 +299,14 @@ class MainActivity : Activity() {
   val persona=EditText(this).apply { hint="Характер, роль, предыстория";minLines=3;layout.addView(this) }
   val appearance=EditText(this).apply { hint="Внешность и стиль";minLines=2;layout.addView(this) }
   val scenario=EditText(this).apply { hint="Сценарий и начало истории";minLines=2;layout.addView(this) }
+  val greeting=EditText(this).apply {hint="Приветствие персонажа";minLines=2;layout.addView(this)}
+  val protocol=EditText(this).apply {hint="Протокол: правила поведения ИИ";minLines=2;layout.addView(this)}
+  val memory=EditText(this).apply {hint="Карточка памяти: важные факты";minLines=2;layout.addView(this)}
   AlertDialog.Builder(this).setTitle("Новый персонаж").setView(layout).setPositiveButton("Создать") { _,_->
    val n=name.text.toString().trim()
    if(n.isNotBlank()&&!characters.contains(n)) {
     characters.add(n);chats[n]=mutableListOf()
-    prefs.edit().putString("persona_$n",listOf(persona.text.toString(), "Внешность: "+appearance.text.toString(), "Сценарий: "+scenario.text.toString()).joinToString("\n")).apply();save();chat(n)
+    prefs.edit().putString("persona_$n",listOf(persona.text.toString(), "Внешность: "+appearance.text.toString(), "Сценарий: "+scenario.text.toString(), "Протокол: "+protocol.text.toString(), "Память: "+memory.text.toString()).joinToString("\n")).putString("greeting_$n",greeting.text.toString()).apply();save();chooseAvatar(n);characterDetail(n)
    }
   }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
  }
@@ -315,7 +323,7 @@ class MainActivity : Activity() {
  private fun chat(name:String) {
   active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
-  if(messages.isEmpty())b.addView(text("✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение.",16f,muted))
+  if(messages.isEmpty())b.addView(text(prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение." },16f,muted))
   messages.forEach { (role,value)->
    val bubble=text(value,15f).apply {setPadding(dp(10),dp(8),dp(10),dp(8))}
    bubble.background=shape(if(role=="user")Color.rgb(13,75,148) else panel)
@@ -344,7 +352,7 @@ class MainActivity : Activity() {
   thread {
    try {
     val arr=JSONArray()
-    val persona=prefs.getString("persona_$name","")!!
+    val persona=prefs.getString("persona_$name","")!! + "\nИгрок: " + prefs.getString("identity_name","Игрок").orEmpty() + ". " + prefs.getString("identity_bio","").orEmpty()
     arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
     snapshot.forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second)) }
     val data=JSONObject().put("model",model).put("messages",arr).put("stream",false).toString()
@@ -370,9 +378,90 @@ class MainActivity : Activity() {
  private fun profile() {
   init("Профиль");val b=body()
   item(b,"Мои персонажи","Всего: ${characters.size}") { catalog() }
+  item(b,"Моя личность",prefs.getString("identity_name","Не настроена").orEmpty()) { editIdentity() }
+  item(b,"Групповые комнаты","Создавать и открывать групповые истории") { roomList() }
   item(b,"Мои чаты","Сохранены локально") { chatList() }
   item(b,"Настройки ИИ","Подключить API") { settings() }
   nav(4)
+ }
+
+ private fun editPersona(name:String) {
+  val field=EditText(this).apply {setText(prefs.getString("persona_$name",""));minLines=6;setTextColor(Color.WHITE);setPadding(dp(16),dp(12),dp(16),dp(12))}
+  AlertDialog.Builder(this).setTitle("Описание • $name").setView(field).setPositiveButton("Сохранить"){_,_->
+   prefs.edit().putString("persona_$name",field.text.toString()).apply();characterDetail(name)
+  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+ }
+ private fun editIdentity() {
+  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
+  val name=EditText(this).apply {hint="Имя игрока";setText(prefs.getString("identity_name",""));l.addView(this)}
+  val bio=EditText(this).apply {hint="Биография и RP-личность";minLines=4;setText(prefs.getString("identity_bio",""));l.addView(this)}
+  AlertDialog.Builder(this).setTitle("Моя личность").setView(l).setPositiveButton("Сохранить"){_,_->
+   prefs.edit().putString("identity_name",name.text.toString()).putString("identity_bio",bio.text.toString()).apply();profile()
+  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+ }
+ private fun roomList() {
+  init("Групповые комнаты");val b=body()
+  item(b,"＋ Создать комнату","Укажи участников и сюжет") {createRoom()}
+  val a=JSONArray(prefs.getString("rooms","[]"))
+  for(i in 0 until a.length()) {
+   val room=a.optJSONObject(i)?:continue
+   val title=room.optString("title")
+   item(b,title,room.optString("members")){roomChat(room)}
+  }
+  nav(3)
+ }
+ private fun createRoom() {
+  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
+  fun field(h:String):EditText=EditText(this).apply {hint=h;setTextColor(Color.WHITE);setHintTextColor(muted);l.addView(this)}
+  val title=field("Название комнаты")
+  val members=field("Участники через запятую (имена из каталога)")
+  val story=field("Тема и отношения между персонажами")
+  AlertDialog.Builder(this).setTitle("Создать комнату").setView(l).setPositiveButton("Создать"){_,_->
+   if(title.text.isNotBlank() && members.text.isNotBlank()) {
+    val a=JSONArray(prefs.getString("rooms","[]"))
+    val room=JSONObject().put("title",title.text.toString()).put("members",members.text.toString()).put("story",story.text.toString())
+    a.put(room);prefs.edit().putString("rooms",a.toString()).apply();roomChat(room)
+   }
+  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+ }
+ private fun roomChat(room:JSONObject) {
+  val title=room.optString("title")
+  val members=room.optString("members").split(",").map{it.trim()}.filter{it.isNotBlank()}
+  init(title);val b=body()
+  b.addView(text("Участники: "+members.joinToString(", "),14f,muted))
+  val key="room_chat_$title"
+  val history=JSONArray(prefs.getString(key,"[]"))
+  for(i in 0 until history.length()) {
+   val o=history.optJSONObject(i)?:continue
+   b.addView(text(o.optString("role")+": "+o.optString("text"),15f))
+  }
+  val input=EditText(this).apply {hint="Твоё действие или реплика";setTextColor(Color.WHITE);setHintTextColor(muted)}
+  root.addView(input)
+  root.addView(button("➤ Отправить") {
+   val msg=input.text.toString().trim()
+   if(msg.isNotBlank()) {
+    history.put(JSONObject().put("role","Игрок").put("text",msg))
+    prefs.edit().putString(key,history.toString()).apply()
+    val base=prefs.getString("url","").orEmpty().trimEnd('/')
+    val model=prefs.getString("model","").orEmpty()
+    val apiKey=prefs.getString("key","").orEmpty()
+    if(base.isBlank()||model.isBlank()){roomChat(room);alert("Для ответов участников настрой ИИ в параметрах ⚙")}
+    else thread {
+     try {
+      val arr=JSONArray()
+      val personas=members.joinToString("\n"){ it+": "+prefs.getString("persona_$it","").orEmpty() }
+      arr.put(JSONObject().put("role","system").put("content","Ты ведущий групповой ролевой игры. Участники: "+members.joinToString(", ")+". Сюжет: "+room.optString("story")+"\n"+personas+"\nОтвечай по-русски, от лица нескольких персонажей, не управляй действиями игрока."))
+      for(i in 0 until history.length()){val o=history.getJSONObject(i);arr.put(JSONObject().put("role",if(o.optString("role")=="Игрок")"user" else "assistant").put("content",o.optString("text")))}
+      val conn=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000;setRequestProperty("Content-Type","application/json");if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")}
+      conn.outputStream.use{it.write(JSONObject().put("model",model).put("messages",arr).put("stream",false).toString().toByteArray())}
+      val response=(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream).bufferedReader().use{it.readText()}
+      if(conn.responseCode !in 200..299)error("HTTP "+conn.responseCode+": "+response.take(200))
+      val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
+      runOnUiThread {history.put(JSONObject().put("role","Персонажи").put("text",reply));prefs.edit().putString(key,history.toString()).apply();roomChat(room)}
+     }catch(e:Exception){runOnUiThread{alert("Ошибка модели: "+e.message)}}
+    }
+   }
+  })
  }
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
  private fun settings() {
