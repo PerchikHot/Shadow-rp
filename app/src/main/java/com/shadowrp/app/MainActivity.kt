@@ -71,7 +71,7 @@ class MainActivity : Activity() {
  override fun onCreate(savedInstanceState:Bundle?) {
   super.onCreate(savedInstanceState)
   window.statusBarColor=bg;window.navigationBarColor=bg
-  load();seedCatalog();home()
+  load();seedCatalog();migrateDefaults();home()
  }
  private fun load() {
   val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")).toString()))
@@ -113,6 +113,14 @@ class MainActivity : Activity() {
   "Макима|Chainsaw Man",
   "Йор Форджер|Spy x Family"
  ).map { it.split("|") }
+ private fun migrateDefaults() {
+  if(prefs.getBoolean("removed_old_defaults",false))return
+  listOf("Алиса","Кай","Лира").forEach { name ->
+   if(chats[name].isNullOrEmpty()){characters.remove(name);chats.remove(name)}
+  }
+  if(!characters.contains(active))active=characters.firstOrNull()?:"Цунаде"
+  prefs.edit().putBoolean("removed_old_defaults",true).apply();save()
+ }
  private fun seedCatalog() {
   if(prefs.getBoolean("catalog_seed_05",false))return
   animeRoster.forEach { parts ->
