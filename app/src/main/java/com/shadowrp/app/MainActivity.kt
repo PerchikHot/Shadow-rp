@@ -23,7 +23,7 @@ class MainActivity : Activity() {
  private val prefs by lazy { getSharedPreferences("shadowrp", MODE_PRIVATE) }
  private val characters=mutableListOf<String>()
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
- private var active="Алиса"
+ private var active="Цунаде"
  private lateinit var root:LinearLayout
  private fun shape(color:Int,r:Float=18f):GradientDrawable=GradientDrawable().apply { setColor(color);cornerRadius=r*resources.displayMetrics.density }
  private fun text(s:String,size:Float=16f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply {
@@ -74,9 +74,9 @@ class MainActivity : Activity() {
   load();seedCatalog();home()
  }
  private fun load() {
-  val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Алиса","Кай","Лира")).toString()))
+  val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")).toString()))
   for(i in 0 until a.length())characters.add(a.getString(i))
-  active=prefs.getString("active",characters.firstOrNull()?:"Алиса")!!
+  active=prefs.getString("active",characters.firstOrNull()?:"Цунаде")!!
   characters.forEach { name ->
    val messages=mutableListOf<Pair<String,String>>()
    val arr=JSONArray(prefs.getString("chat_$name","[]"))
@@ -149,32 +149,48 @@ class MainActivity : Activity() {
   h.addView(button("▶  Продолжить с $active") { chat(active) })
   parent.addView(h,LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(4),dp(8),dp(4),dp(10)) })
  }
+ private fun shelf(parent:LinearLayout,title:String,names:List<String>) {
+  if(names.isEmpty())return
+  parent.addView(section(title))
+  val scroller=HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled=false }
+  val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
+  names.forEach { name ->
+   val card=LinearLayout(this).apply { orientation=1;background=shape(panel,18f);setPadding(dp(5),dp(5),dp(5),dp(7)) }
+   val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
+   val face=text(name.take(1),36f,Color.WHITE,true).apply { gravity=Gravity.CENTER;background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f) }
+   card.addView(face,LinearLayout.LayoutParams(-1,dp(140)))
+   card.addView(text(name,14f,Color.WHITE,true))
+   card.setOnClickListener { characterDetail(name) }
+   row.addView(card,LinearLayout.LayoutParams(dp(152),-2).apply {setMargins(dp(4),dp(5),dp(4),dp(8))})
+  }
+  scroller.addView(row);parent.addView(scroller)
+ }
  private fun home() {
   init("Shadow RP");val b=body()
-  hero(b)
-  b.addView(section("Твои истории"))
-  item(b,"◉ Последняя история: $active","Открыть переписку и продолжить сюжет") { chat(active) }
-  b.addView(section("✦ Персонажи"))
-  characters.take(5).forEach { name->item(b,"✦ $name","Открыть ролевой чат") { chat(name) } }
-  item(b,"◈ Все персонажи","Открыть каталог с поиском") { catalog() }
-  item(b,"＋ Создать персонажа","Добавить собственную героиню или героя") { createCharacter() }
+  b.addView(text("Открой новую историю",24f,Color.WHITE,true))
+  val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { chats[it]?.size?:0 }
+  shelf(b,"Продолжить общение",recent.take(8))
+  shelf(b,"✦ Популярные героини",animeRoster.take(10).map{it[0]})
+  animeRoster.map{it[1]}.distinct().take(5).forEach { title ->
+   shelf(b,title,animeRoster.filter{it[1]==title}.map{it[0]})
+  }
   nav(0)
  }
  private fun catalog() {
-  init("Каталог");val body=body()
-  body.addView(section("✦ Аниме и твои персонажи"))
-  val search=EditText(this).apply { hint="Поиск по имени или аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12)) }
-  body.addView(search)
-  item(body,"＋ Создать персонажа","Добавить собственную историю") { createCharacter() }
-  val grid=LinearLayout(this).apply {orientation=1};body.addView(grid)
+  init("Каталог");val b=body()
+  val search=EditText(this).apply { hint="Поиск по персонажам и аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12)) }
+  b.addView(search)
+  val result=LinearLayout(this).apply { orientation=1 };b.addView(result)
   fun render(q:String) {
-   grid.removeAllViews()
-   val filtered=characters.filter { name -> name.contains(q,true) || (animeRoster.firstOrNull{it[0]==name}?.get(1)?.contains(q,true)==true) }
-   filtered.chunked(2).forEach { pair ->
-    val row=LinearLayout(this)
-    pair.forEach { characterCard(row,it) }
-    if(pair.size==1)row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
-    grid.addView(row)
+   result.removeAllViews()
+   val names=characters.filter { it.contains(q,true) || animeRoster.firstOrNull{r->r[0]==it}?.get(1)?.contains(q,true)==true }
+   if(q.isNotBlank()) {
+    shelf(result,"Результаты поиска",names)
+   } else {
+    shelf(result,"Все персонажи",names.take(15))
+    animeRoster.map{it[1]}.distinct().forEach { title ->
+     shelf(result,title,animeRoster.filter{it[1]==title}.map{it[0]})
+    }
    }
   }
   render("")
@@ -208,8 +224,10 @@ class MainActivity : Activity() {
  }
  private fun chatList() {
   init("Чаты");val b=body()
-  characters.forEach { name->
-   val last=chats[name]?.lastOrNull()?.second?:"Нет сообщений"
+  val started=characters.filter { chats[it]?.isNotEmpty()==true }
+  if(started.isEmpty())b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
+  started.forEach { name ->
+   val last=chats[name]?.lastOrNull()?.second?:""
    item(b,name,last.take(90)) { chat(name) }
   }
   nav(3)
