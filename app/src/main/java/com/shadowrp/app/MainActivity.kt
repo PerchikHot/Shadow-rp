@@ -18,6 +18,8 @@ class MainActivity : Activity() {
  private val panel=Color.rgb(15,22,34)
  private val blue=Color.rgb(53,117,255)
  private val muted=Color.rgb(160,183,211)
+ private val violet=Color.rgb(109,93,242)
+ private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private val prefs by lazy { getSharedPreferences("shadowrp", MODE_PRIVATE) }
  private val characters=mutableListOf<String>()
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
@@ -32,12 +34,15 @@ class MainActivity : Activity() {
   background=shape(panel);setOnClickListener { click() }
  }
  private fun section(title:String)=text(title,22f,Color.WHITE,true)
+ private fun space(h:Int)=android.view.View(this).apply { layoutParams=LinearLayout.LayoutParams(1,dp(h)) }
  private fun init(title:String) {
   root=LinearLayout(this).apply { orientation=1;setBackgroundColor(bg);setPadding(8,0,8,0); fitsSystemWindows=true }
   val header=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
   header.addView(section(title),LinearLayout.LayoutParams(0,-2,1f))
   header.addView(button("⚙") { settings() })
   root.addView(header)
+  val accent=android.view.View(this).apply { setBackgroundColor(blue) }
+  root.addView(accent,LinearLayout.LayoutParams(-1,dp(2)))
   setContentView(root)
  }
  private fun body():LinearLayout {
@@ -47,7 +52,7 @@ class MainActivity : Activity() {
   return content
  }
  private fun item(parent:LinearLayout,title:String,subtitle:String="",onClick:()->Unit) {
-  val card=LinearLayout(this).apply { orientation=1; background=shape(panel);setPadding(8,7,8,7) }
+  val card=LinearLayout(this).apply { orientation=1; background=shape(panel,22f);setPadding(10,10,10,10);elevation=dp(2).toFloat() }
   card.addView(text(title,17f,Color.WHITE,true))
   if(subtitle.isNotBlank())card.addView(text(subtitle,13f,muted))
   val lp=LinearLayout.LayoutParams(-1,-2).apply { setMargins(4,5,4,5) }
@@ -86,10 +91,19 @@ class MainActivity : Activity() {
    prefs.edit().putString("chat_$name",a.toString()).apply()
   }
  }
+ private fun hero(parent:LinearLayout) {
+  val h=LinearLayout(this).apply { orientation=1;background=shape(Color.rgb(19,39,77),24f);setPadding(16,18,16,18) }
+  h.addView(text("SHADOW RP  •  ТВОЯ ИСТОРИЯ",12f,Color.rgb(134,185,255),true))
+  h.addView(text("Создавай миры.\nИграй свои роли.",26f,Color.WHITE,true))
+  h.addView(text("Персонажи, диалоги и собственные сценарии",14f,muted))
+  h.addView(button("▶  Продолжить с $active") { chat(active) })
+  parent.addView(h,LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(4),dp(8),dp(4),dp(10)) })
+ }
  private fun home() {
   init("Shadow RP");val b=body()
+  hero(b)
   b.addView(section("Твои истории"))
-  item(b,"▶ Продолжить: $active","Вернуться к последней переписке") { chat(active) }
+  item(b,"◉ Последняя история: $active","Открыть переписку и продолжить сюжет") { chat(active) }
   b.addView(section("✦ Персонажи"))
   characters.forEach { name->item(b,"✦ $name","Открыть ролевой чат") { chat(name) } }
   item(b,"＋ Создать персонажа","Добавить собственную героиню или героя") { createCharacter() }
@@ -97,7 +111,9 @@ class MainActivity : Activity() {
  }
  private fun catalog() {
   init("Каталог");val b=body()
+  b.addView(text("✦ Открой свою историю",20f,Color.WHITE,true))
   b.addView(text("Личные персонажи • хранятся на устройстве",14f,muted))
+  item(b,"＋ Новый персонаж","Создай персонажа с собственным характером") { createCharacter() }
   characters.forEach { name->item(b,"✦ $name","Начать или продолжить RP") { chat(name) } }
   nav(1)
  }
@@ -112,11 +128,13 @@ class MainActivity : Activity() {
   val layout=LinearLayout(this).apply { orientation=1;setPadding(20,8,20,8) }
   val name=EditText(this).apply { hint="Имя персонажа";layout.addView(this) }
   val persona=EditText(this).apply { hint="Характер, роль, предыстория";minLines=3;layout.addView(this) }
+  val appearance=EditText(this).apply { hint="Внешность и стиль";minLines=2;layout.addView(this) }
+  val scenario=EditText(this).apply { hint="Сценарий и начало истории";minLines=2;layout.addView(this) }
   AlertDialog.Builder(this).setTitle("Новый персонаж").setView(layout).setPositiveButton("Создать") { _,_->
    val n=name.text.toString().trim()
    if(n.isNotBlank()&&!characters.contains(n)) {
     characters.add(n);chats[n]=mutableListOf()
-    prefs.edit().putString("persona_$n",persona.text.toString()).apply();save();chat(n)
+    prefs.edit().putString("persona_$n",listOf(persona.text.toString(), "Внешность: "+appearance.text.toString(), "Сценарий: "+scenario.text.toString()).joinToString("\n")).apply();save();chat(n)
    }
   }.setNegativeButton("Отмена",null).show()
  }
