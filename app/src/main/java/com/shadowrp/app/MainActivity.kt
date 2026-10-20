@@ -71,7 +71,7 @@ class MainActivity : Activity() {
  override fun onCreate(savedInstanceState:Bundle?) {
   super.onCreate(savedInstanceState)
   window.statusBarColor=bg;window.navigationBarColor=bg
-  load();home()
+  load();seedCatalog();home()
  }
  private fun load() {
   val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Алиса","Кай","Лира")).toString()))
@@ -91,6 +91,56 @@ class MainActivity : Activity() {
    prefs.edit().putString("chat_$name",a.toString()).apply()
   }
  }
+ private val animeRoster=listOf(
+  "Цунаде|Naruto",
+  "Мэй Теруми|Naruto",
+  "Конан|Naruto",
+  "Йоруичи Сихоин|Bleach",
+  "Рангику Мацумото|Bleach",
+  "Рецу Унохана|Bleach",
+  "Нико Робин|One Piece",
+  "Боа Хэнкок|One Piece",
+  "Нами|One Piece",
+  "Эрза Скарлет|Fairy Tail",
+  "Мираджейн Штраус|Fairy Tail",
+  "Люси Хартфилия|Fairy Tail",
+  "Аква|Konosuba",
+  "Даркнесс|Konosuba",
+  "Круш Карстен|Re:Zero",
+  "Эльза Гранхирт|Re:Zero",
+  "Эсдес|Akame ga Kill",
+  "Оливье Армстронг|Fullmetal Alchemist",
+  "Макима|Chainsaw Man",
+  "Йор Форджер|Spy x Family"
+ ).map { it.split("|") }
+ private fun seedCatalog() {
+  if(prefs.getBoolean("catalog_seed_05",false))return
+  animeRoster.forEach { parts ->
+   val name=parts[0]
+   if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
+   if(!prefs.contains("persona_$name"))prefs.edit().putString("persona_$name","Вселенная: ${parts[1]}. Альтернативная взрослая версия персонажа.").apply()
+  }
+  prefs.edit().putBoolean("catalog_seed_05",true).apply()
+  save()
+ }
+ private fun characterCard(parent:LinearLayout,name:String) {
+  val tile=LinearLayout(this).apply { orientation=1;background=shape(panel,20f);setPadding(dp(6),dp(6),dp(6),dp(8)) }
+  val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
+  val portrait=text(name.take(1),36f,Color.WHITE,true).apply {
+   gravity=Gravity.CENTER
+   background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
+  }
+  tile.addView(portrait,LinearLayout.LayoutParams(-1,dp(116)))
+  tile.addView(text(name,14f,Color.WHITE,true))
+  tile.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?: "Мой персонаж",12f,muted))
+  tile.setOnClickListener { characterDetail(name) }
+  parent.addView(tile,LinearLayout.LayoutParams(0,-2,1f).apply {setMargins(dp(4),dp(4),dp(4),dp(4))})
+ }
+ private fun characterDetail(name:String) {
+  AlertDialog.Builder(this).setTitle(name)
+   .setMessage(prefs.getString("persona_$name","Персонаж для ролевой истории."))
+   .setPositiveButton("Открыть чат"){_,_->chat(name)}.setNegativeButton("Закрыть",null).show()
+ }
  private fun hero(parent:LinearLayout) {
   val h=LinearLayout(this).apply { orientation=1;background=shape(Color.rgb(19,39,77),24f);setPadding(16,18,16,18) }
   h.addView(text("SHADOW RP  •  ТВОЯ ИСТОРИЯ",12f,Color.rgb(134,185,255),true))
@@ -105,16 +155,34 @@ class MainActivity : Activity() {
   b.addView(section("Твои истории"))
   item(b,"◉ Последняя история: $active","Открыть переписку и продолжить сюжет") { chat(active) }
   b.addView(section("✦ Персонажи"))
-  characters.forEach { name->item(b,"✦ $name","Открыть ролевой чат") { chat(name) } }
+  characters.take(5).forEach { name->item(b,"✦ $name","Открыть ролевой чат") { chat(name) } }
+  item(b,"◈ Все персонажи","Открыть каталог с поиском") { catalog() }
   item(b,"＋ Создать персонажа","Добавить собственную героиню или героя") { createCharacter() }
   nav(0)
  }
  private fun catalog() {
-  init("Каталог");val b=body()
-  b.addView(text("✦ Открой свою историю",20f,Color.WHITE,true))
-  b.addView(text("Личные персонажи • хранятся на устройстве",14f,muted))
-  item(b,"＋ Новый персонаж","Создай персонажа с собственным характером") { createCharacter() }
-  characters.forEach { name->item(b,"✦ $name","Начать или продолжить RP") { chat(name) } }
+  init("Каталог");val body=body()
+  body.addView(section("✦ Аниме и твои персонажи"))
+  val search=EditText(this).apply { hint="Поиск по имени или аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12)) }
+  body.addView(search)
+  item(body,"＋ Создать персонажа","Добавить собственную историю") { createCharacter() }
+  val grid=LinearLayout(this).apply {orientation=1};body.addView(grid)
+  fun render(q:String) {
+   grid.removeAllViews()
+   val filtered=characters.filter { name -> name.contains(q,true) || (animeRoster.firstOrNull{it[0]==name}?.get(1)?.contains(q,true)==true) }
+   filtered.chunked(2).forEach { pair ->
+    val row=LinearLayout(this)
+    pair.forEach { characterCard(row,it) }
+    if(pair.size==1)row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
+    grid.addView(row)
+   }
+  }
+  render("")
+  search.addTextChangedListener(object:android.text.TextWatcher {
+   override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int) {}
+   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s?.toString()?:"")}
+   override fun afterTextChanged(s:android.text.Editable?) {}
+  })
   nav(1)
  }
  private fun studio() {
