@@ -41,7 +41,7 @@ class MainActivity : Activity() {
   setContentView(root)
  }
  private fun body():LinearLayout {
-  val scroll=ScrollView(this).apply { fillViewport=true }
+  val scroll=ScrollView(this).apply { isFillViewport=true }
   val content=LinearLayout(this).apply { orientation=1 }
   scroll.addView(content);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
   return content
