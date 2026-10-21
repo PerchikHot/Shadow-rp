@@ -893,8 +893,11 @@ class MainActivity : Activity() {
   val identity=prefs.getString("identity_name","Игрок").orEmpty()
   val persona=prefs.getString("persona_$name","").orEmpty().take(250)
   val memory=prefs.getString("memory_$name","").orEmpty().take(140)
-  val transcript=history.takeLast(3).joinToString("\n"){(role,value)->(if(role=="user")identity else name)+": "+value.take(220)}
-  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай сцену от лица персонажа по-русски. Реагируй именно на последнее сообщение игрока, его вопрос и действия. Не перечисляй свою внешность без причины, не называй собеседника «игрок», не повторяй инструкции. Не управляй действиями собеседника. Ответь 1-3 предложениями.<|im_end|>\n<|im_start|>user\n$transcript\n/no_think<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n"
+  val recent=history.takeLast(4).joinToString(""){(role,value)->
+   val tag=if(role=="user")"user" else "assistant"
+   "<|im_start|>$tag\n"+value.take(300)+"<|im_end|>\n"
+  }
+  val prompt="<|im_start|>system\nТы $name, персонаж ролевой истории. Характер: $persona\nВажная память: $memory\nОтвечай по-русски только от лица $name. Реагируй на последнее сообщение и действия собеседника. Если тебя спросили, кто ты, представься. Не перечисляй внешность без повода, не называй собеседника игроком, не повторяй инструкции. Ответ: 1-3 естественные реплики, без анализа.<|im_end|>\n"+recent+"<|im_start|>assistant\n<think>\n\n</think>\n"
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,96)
