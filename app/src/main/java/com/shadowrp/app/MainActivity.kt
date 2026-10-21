@@ -309,7 +309,7 @@ class MainActivity : Activity() {
    if(n.isBlank()){alert("Укажи имя персонажа");return@button}
    if(characters.contains(n)){alert("Персонаж с таким именем уже существует");return@button}
    characters.add(n);chats[n]=mutableListOf()
-   prefs.edit().putString("persona_$n",listOf(persona.text.toString(),"Внешность: "+appearance.text.toString(),"Сценарий: "+scenario.text.toString(),"Протокол: "+protocol.text.toString(),"Память: "+memory.text.toString()).joinToString("\\n")).putString("greeting_$n",greeting.text.toString()).apply()
+   prefs.edit().putString("persona_$n",listOf(persona.text.toString(),"Внешность: "+appearance.text.toString(),"Сценарий: "+scenario.text.toString(),"Протокол: "+protocol.text.toString(),"Память: "+memory.text.toString()).joinToString("\n")).putString("greeting_$n",greeting.text.toString()).apply()
    save();chooseAvatar(n)
   }.apply {textSize=19f;setBackgroundColor(Color.rgb(39,84,165))})
  }
@@ -389,7 +389,8 @@ class MainActivity : Activity() {
  }
 
  private fun editPersona(name:String) {
-  val holder=LinearLayout(this).apply {orientation=1;setPadding(dp(14),dp(8),dp(14),dp(8))}\n  val field=visibleField("Описание персонажа",prefs.getString("persona_$name","").orEmpty(),holder)
+  val holder=LinearLayout(this).apply {orientation=1;setPadding(dp(14),dp(8),dp(14),dp(8))}
+  val field=visibleField("Описание персонажа",prefs.getString("persona_$name","").orEmpty(),holder)
   AlertDialog.Builder(this).setTitle("Описание • $name").setView(holder).setPositiveButton("Сохранить"){_,_->
    prefs.edit().putString("persona_$name",field.text.toString()).apply();characterDetail(name)
   }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
