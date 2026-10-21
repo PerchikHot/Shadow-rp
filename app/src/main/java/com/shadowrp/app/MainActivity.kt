@@ -1112,6 +1112,26 @@ class MainActivity : Activity() {
      }catch(e:Exception){alert("Не удалось начать загрузку: "+e.message)}
     }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
   }.apply{background=shape(Color.rgb(61,51,146),16f)})
+  parent.addView(button("↻ Проверить загрузку модели") {
+   val id=prefs.getLong("download_qwen3",-1L)
+   if(id<0L){alert("Загрузка ещё не запускалась.");return@button}
+   val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+   val cursor=manager.query(android.app.DownloadManager.Query().setFilterById(id))
+   cursor.use {
+    if(!it.moveToFirst()){alert("Задача загрузки не найдена.");return@button}
+    val state=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS))
+    val received=it.getLong(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+    val total=it.getLong(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+    val detail=when(state){
+     android.app.DownloadManager.STATUS_SUCCESSFUL->"Загрузка завершена"
+     android.app.DownloadManager.STATUS_FAILED->"Ошибка загрузки (код "+it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON))+")"
+     android.app.DownloadManager.STATUS_RUNNING->"Скачивается"
+     android.app.DownloadManager.STATUS_PAUSED->"Приостановлено"
+     else->"В очереди"
+    }
+    status.text="$detail • "+received/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ"
+   }
+  })
   parent.addView(text("Генерация изображений • img2img",19f,Color.WHITE,true))
   parent.addView(text("Для image-to-image нужна отдельная модель диффузии и Android-движок. Пока не установлены: кнопка загрузки будет добавлена после проверки совместимости, иначе скачанный файл не сможет генерировать изображения.",14f,muted))
  }
