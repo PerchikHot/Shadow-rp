@@ -45,7 +45,7 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     int count = -llama_tokenize(vocab, input.c_str(), (int)input.size(), nullptr, 0, true, true);
     std::vector<llama_token> tokens(count);
     int actual = llama_tokenize(vocab, input.c_str(), (int)input.size(), tokens.data(), count, true, true);
-    if (actual <= 0 || actual >= 1300) {
+    if (actual <= 0 || actual >= 650) {
         llama_free(ctx);
         return env->NewStringUTF("ERROR: Prompt too long");
     }
@@ -79,6 +79,6 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     llama_free(ctx);
     const auto finished = clock::now();
     const auto ms = [](clock::time_point a, clock::time_point b) { return std::chrono::duration_cast<std::chrono::milliseconds>(b-a).count(); };
-    output += "\\n[[SHADOW_STATS:" + std::to_string(ms(started,loaded)) + "," + std::to_string(ms(loaded,prefillingDone)) + "," + std::to_string(ms(prefillingDone,finished)) + "," + std::to_string(produced) + "]]";
+    output += "\n[[SHADOW_STATS:" + std::to_string(ms(started,loaded)) + "," + std::to_string(ms(loaded,prefillingDone)) + "," + std::to_string(ms(prefillingDone,finished)) + "," + std::to_string(produced) + "]]";
     return env->NewStringUTF(output.c_str());
 }
