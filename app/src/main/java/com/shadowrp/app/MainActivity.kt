@@ -884,7 +884,7 @@ class MainActivity : Activity() {
   }
  }
  private fun requestLocal(name:String) {
-  val file=File(File(getExternalFilesDir(null),"models/text"),"qwen3-0.6b-q4_k_m.gguf")
+  val file=File(File(getExternalFilesDir(null),"models/text"),prefs.getString("local_model","qwen3-0.6b-q4_k_m.gguf").orEmpty())
   if(!file.exists()||!LocalLlm.available){alert("Локальная модель или движок недоступны. Проверь настройки.");return}
   if(!localPending.add(name)){alert("Qwen уже генерирует ответ. Дождись завершения.");return}
   localStarted[name]=System.currentTimeMillis()
@@ -1190,6 +1190,69 @@ class MainActivity : Activity() {
     status.text="$detail • "+received/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ"
    }
   })
+  val bigName="Qwen3-1.7B-Q4_K_M.gguf"
+  val bigFile=File(folder,bigName)
+  val bigMin=1000000000L
+  val bigUrl="https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true"
+  parent.addView(text("Qwen3 1.7B Q4_K_M • экспериментальный RP • около 1,11 ГБ",16f,Color.WHITE,true))
+  parent.addView(text(if(bigFile.length()>bigMin)"✓ Модель скачана" else "На 4 ГБ физической ОЗУ может работать медленно или не запуститься.",13f,muted))
+  parent.addView(button(if(bigFile.length()>bigMin)"✓ Выбрать Qwen3 1.7B" else "↓ Скачать Qwen3 1.7B"){
+   if(bigFile.length()>bigMin){
+    prefs.edit().putString("local_model",bigName).apply()
+    alert("Выбрана Qwen3 1.7B. Перезапусти приложение, чтобы освободить память прежней модели.")
+   }else{
+    AlertDialog.Builder(this).setTitle("Скачать Qwen3 1.7B?")
+     .setMessage("Около 1,11 ГБ. Модель требует больше оперативной памяти, чем 0.6B. На твоём Xiaomi 4+4 ГБ запуск не гарантирован.")
+     .setPositiveButton("Скачать"){_,_->
+      try{
+       val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+       val previous=prefs.getLong("download_qwen17",-1L)
+       if(previous>=0){
+        val cursor=manager.query(android.app.DownloadManager.Query().setFilterById(previous))
+        var running=false
+        cursor.use{if(it.moveToFirst()){val state=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS));running=state==android.app.DownloadManager.STATUS_PENDING||state==android.app.DownloadManager.STATUS_RUNNING||state==android.app.DownloadManager.STATUS_PAUSED}}
+        if(running){alert("Qwen3 1.7B уже скачивается.");return@setPositiveButton}
+        manager.remove(previous)
+       }
+       if(bigFile.exists())bigFile.delete()
+       val request=android.app.DownloadManager.Request(android.net.Uri.parse(bigUrl))
+        .setTitle("Shadow RP • Qwen3 1.7B")
+        .setDescription("Локальная модель RP")
+        .setAllowedOverMetered(true)
+        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationUri(android.net.Uri.fromFile(bigFile))
+       prefs.edit().putLong("download_qwen17",manager.enqueue(request)).apply()
+       alert("Загрузка запущена. Проверь уведомления.")
+      }catch(e:Exception){alert("Ошибка загрузки: "+e.message)}
+     }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+   }
+  })
+  parent.addView(button("↻ Проверить загрузку Qwen3 1.7B"){
+   val id=prefs.getLong("download_qwen17",-1L)
+   if(id<0){alert("Загрузка 1.7B ещё не запускалась.");return@button}
+   val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+   val cursor=manager.query(android.app.DownloadManager.Query().setFilterById(id))
+   cursor.use{
+    if(!it.moveToFirst()){alert("Задача загрузки не найдена.");return@button}
+    val state=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS))
+    val bytes=it.getLong(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+    val total=it.getLong(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+    val reason=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON))
+    val label=when(state){
+     android.app.DownloadManager.STATUS_SUCCESSFUL->"Загрузка завершена"
+     android.app.DownloadManager.STATUS_FAILED->"Ошибка загрузки (код "+reason+")"
+     android.app.DownloadManager.STATUS_PAUSED->"Загрузка приостановлена (код "+reason+")"
+     android.app.DownloadManager.STATUS_RUNNING->"Загрузка идёт"
+     else->"Ожидание загрузки"
+    }
+    alert(label+"\n"+bytes/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ")
+   }
+  })
+  parent.addView(button("↩ Выбрать Qwen3 0.6B • экономный"){
+   if(destination.length()<450000000L){alert("Сначала скачай Qwen3 0.6B.");return@button}
+   prefs.edit().putString("local_model",modelName).apply()
+   alert("Выбрана Qwen3 0.6B. Перезапусти приложение для освобождения памяти.")
+  })
   val local=CheckBox(this).apply {
    text="Использовать Qwen локально для RP"
    setTextColor(Color.WHITE)
@@ -1197,7 +1260,7 @@ class MainActivity : Activity() {
    buttonTintList=android.content.res.ColorStateList.valueOf(violet)
    setOnCheckedChangeListener {_,checked->
     if(checked && !LocalLlm.available){isChecked=false;alert("Нативный движок недоступен в этой сборке.");return@setOnCheckedChangeListener}
-    if(checked && destination.length()<450000000L){isChecked=false;alert("Сначала скачай модель GGUF.");return@setOnCheckedChangeListener}
+    if(checked && File(folder,prefs.getString("local_model",modelName).orEmpty()).length()<(if(prefs.getString("local_model",modelName)==bigName)bigMin else 450000000L)){isChecked=false;alert("Сначала скачай выбранную модель GGUF.");return@setOnCheckedChangeListener}
     prefs.edit().putBoolean("local_llm",checked).apply()
    }
   }
