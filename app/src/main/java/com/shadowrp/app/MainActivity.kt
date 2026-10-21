@@ -26,6 +26,7 @@ class MainActivity : Activity() {
  private var active="Цунаде"
  private lateinit var root:LinearLayout
  private var avatarTarget:String?=null
+ private var avatarReturn:String?=null
  private val groups=mutableListOf<String>()
  private val avatarPicker=7311
  private fun shape(color:Int,r:Float=18f):GradientDrawable=GradientDrawable().apply { setColor(color);cornerRadius=r*resources.displayMetrics.density }
@@ -170,6 +171,7 @@ class MainActivity : Activity() {
  }
  private fun chooseAvatar(name:String) {
   avatarTarget=name
+  avatarReturn=name
   val intent=android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
    type="image/*";addCategory(android.content.Intent.CATEGORY_OPENABLE)
    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
@@ -181,7 +183,7 @@ class MainActivity : Activity() {
   if(requestCode==avatarPicker && resultCode==Activity.RESULT_OK && data?.data!=null){
    val uri=data.data!!
    try { contentResolver.takePersistableUriPermission(uri,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }catch(_:Exception){}
-   avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();catalog() }
+   avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();characterDetail(it) }
   }
  }
  private fun avatar(name:String,height:Int):android.view.View {
@@ -197,9 +199,10 @@ class MainActivity : Activity() {
    }catch(_:Exception){}
   }
   val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
-  return text(name.take(1),36f,Color.WHITE,true).apply {
+  return text("✦\\n"+name.take(1)+"\\n＋ Фото",24f,Color.WHITE,true).apply {
    gravity=Gravity.CENTER
    background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
+   setOnClickListener { chooseAvatar(name) }
   }
  }
  private fun characterDetail(name:String) {
@@ -208,6 +211,7 @@ class MainActivity : Activity() {
   val b=body()
   b.addView(avatar(name,300),LinearLayout.LayoutParams(-1,dp(300)).apply {setMargins(dp(8),dp(12),dp(8),dp(8))})
   b.addView(text(name,30f,Color.WHITE,true))
+  if(prefs.getString("avatar_$name",null)==null)b.addView(button("＋ Добавить портрет персонажа") {chooseAvatar(name)}.apply {setTextColor(Color.rgb(149,190,255))})
   val universe=animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский персонаж"
   b.addView(text("✦ $universe",16f,Color.rgb(133,179,255),true))
   val fields=listOf(
@@ -375,7 +379,11 @@ class MainActivity : Activity() {
  private fun chat(name:String) {
   active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
-  if(messages.isEmpty())b.addView(text(prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение." },16f,muted))
+  if(messages.isEmpty()) {
+   val greeting=prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\\n\\nСоздай собственный сюжет и отправь первое сообщение." }
+   val bubble=text(greeting,19f,Color.WHITE).apply {background=shape(panel);setPadding(dp(18),dp(18),dp(18),dp(18))}
+   b.addView(bubble,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(8),dp(12),dp(32),dp(8))})
+  }
   messages.forEach { (role,value)->
    val bubble=text(value,20f).apply {setPadding(dp(17),dp(16),dp(17),dp(16));minHeight=dp(70);maxWidth=(resources.displayMetrics.widthPixels*0.87).toInt()}
    bubble.background=shape(if(role=="user")Color.rgb(34,76,150) else Color.rgb(27,39,61))
