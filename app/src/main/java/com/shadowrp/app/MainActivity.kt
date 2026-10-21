@@ -30,6 +30,8 @@ class MainActivity : Activity() {
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
  private var active="Цунаде"
  private val localPending=mutableSetOf<String>()
+ private val localStarted=mutableMapOf<String,Long>()
+ private val timerHandler=Handler(Looper.getMainLooper())
  private lateinit var root:LinearLayout
  private var avatarTarget:String?=null
  private var avatarReturn:String?=null
@@ -824,7 +826,7 @@ class MainActivity : Activity() {
  private fun chat(name:String) {
   active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
-  if(localPending.contains(name))b.addView(text("⏳ Локальная Qwen обрабатывает сообщение… Первый ответ может занять несколько минут.",14f,Color.rgb(196,172,255)))
+
   val profileRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;background=shape(Color.rgb(13,23,42),16f)}
   profileRow.addView(avatar(name,54),LinearLayout.LayoutParams(dp(54),dp(54)))
   val info=LinearLayout(this).apply{orientation=1}
@@ -852,6 +854,20 @@ class MainActivity : Activity() {
    column.addView(text(timeLabel,11f,muted).apply{setPadding(dp(10),dp(3),dp(10),0)})
    b.addView(column,lp)
   }
+  if(localPending.contains(name)){
+   val typing=text("● $name печатает… 00:00",15f,Color.rgb(194,178,255)).apply{background=shape(Color.rgb(27,39,61),18f)}
+   b.addView(typing,LinearLayout.LayoutParams(-2,-2).apply{setMargins(dp(8),dp(10),dp(90),dp(10))})
+   val started=localStarted[name]?:System.currentTimeMillis()
+   val updater=object:Runnable{
+    override fun run(){
+     if(!localPending.contains(name) || active!=name || typing.parent==null)return
+     val elapsed=((System.currentTimeMillis()-started)/1000).coerceAtLeast(0)
+     typing.text="● $name печатает… %02d:%02d".format(elapsed/60,elapsed%60)
+     timerHandler.postDelayed(this,1000)
+    }
+   }
+   timerHandler.post(updater)
+  }
   val input=EditText(this).apply { hint="Напиши сообщение…";setTextColor(Color.WHITE);setHintTextColor(muted);minLines=2;maxLines=6;setTextSize(17f);setPadding(dp(12),dp(12),dp(12),dp(12));background=shape(panel,16f) }
   val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(7),dp(4),dp(9));background=shape(Color.rgb(10,17,32),18f) }
   bar.addView(button("▧") { imagePrompt() }.apply {textSize=21f;setPadding(dp(12),dp(18),dp(12),dp(18))})
@@ -871,21 +887,22 @@ class MainActivity : Activity() {
   val file=File(File(getExternalFilesDir(null),"models/text"),"qwen3-0.6b-q4_k_m.gguf")
   if(!file.exists()||!LocalLlm.available){alert("Локальная модель или движок недоступны. Проверь настройки.");return}
   if(!localPending.add(name)){alert("Qwen уже генерирует ответ. Дождись завершения.");return}
+  localStarted[name]=System.currentTimeMillis()
   if(active==name)chat(name)
-  val history=chats[name]?.takeLast(5)?.toList()?:return
+  val history=chats[name]?.takeLast(5)?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
   val identity=prefs.getString("identity_name","Игрок").orEmpty()
-  val persona=prefs.getString("persona_$name","").orEmpty().take(350)
-  val memory=prefs.getString("memory_$name","").orEmpty().take(220)
-  val transcript=history.takeLast(3).joinToString("\n"){(role,value)->(if(role=="user")identity else name)+": "+value.take(180)}
-  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай RP по-русски. Ответь кратко, 1-3 предложения. Не описывай действия игрока.<|im_end|>\n<|im_start|>user\n$transcript\n/no_think<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n"
+  val persona=prefs.getString("persona_$name","").orEmpty().take(250)
+  val memory=prefs.getString("memory_$name","").orEmpty().take(140)
+  val transcript=history.takeLast(3).joinToString("\n"){(role,value)->(if(role=="user")identity else name)+": "+value.take(220)}
+  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай сцену от лица персонажа по-русски. Реагируй именно на последнее сообщение игрока, его вопрос и действия. Не перечисляй свою внешность без причины, не называй собеседника «игрок», не повторяй инструкции. Не управляй действиями собеседника. Ответь 1-3 предложениями.<|im_end|>\n<|im_start|>user\n$transcript\n/no_think<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n"
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,96)
     if(response.startsWith("ERROR:"))error(response)
     val cleaned=response.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").trim()
     if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
-    runOnUiThread{localPending.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to cleaned)};save();if(active==name)chat(name)}
-   }catch(e:Throwable){runOnUiThread{localPending.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
+    runOnUiThread{localPending.remove(name);localStarted.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to cleaned)};save();if(active==name)chat(name)}
+   }catch(e:Throwable){runOnUiThread{localPending.remove(name);localStarted.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
   }
  }
  private fun request(name:String) {
