@@ -726,11 +726,15 @@ class MainActivity : Activity() {
  }
  private fun home() {
   init("Shadow RP");val b=body()
-  hero(b)
-  b.addView(text("Открой новую историю",24f,Color.WHITE,true))
+  val tabs=LinearLayout(this)
+  listOf("Для вас","Аниме","Игры","ОС","Популярные").forEach{title->tabs.addView(button(title){catalog()}.apply{textSize=12f;setPadding(dp(6),dp(10),dp(6),dp(10))},LinearLayout.LayoutParams(0,-2,1f))}
+  b.addView(tabs)
+  val searchButton=button("⌕  Поиск по персонажам и аниме"){catalog()}.apply{gravity=Gravity.LEFT;background=shape(Color.rgb(18,35,62),14f)}
+  b.addView(searchButton)
+  b.addView(text("Для вас",22f,Color.WHITE,true))
   val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { chats[it]?.size?:0 }
   shelf(b,"Продолжить общение",recent.take(8))
-  shelf(b,"✦ Популярные героини",animeRoster.take(10).map{it[0]})
+  shelf(b,"✦ Популярные героини",listOf("Цунаде","Йоруичи Сихоин","Сакура Харуно","Хината Хьюга","Альфа","Дельта"))
   animeRoster.map{it[1]}.distinct().take(5).forEach { title ->
    shelf(b,title,animeRoster.filter{it[1]==title}.map{it[0]})
   }
@@ -738,26 +742,36 @@ class MainActivity : Activity() {
  }
  private fun catalog() {
   init("Каталог");val b=body()
-  val search=EditText(this).apply { hint="Поиск по персонажам и аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12)) }
+  val search=EditText(this).apply{hint="⌕  Поиск по персонажам и аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(15),dp(14),dp(15),dp(14))}
   b.addView(search)
-  val result=LinearLayout(this).apply { orientation=1 };b.addView(result)
+  val result=LinearLayout(this).apply{orientation=1};b.addView(result)
   fun render(q:String) {
    result.removeAllViews()
-   val names=characters.filter { it.contains(q,true) || animeRoster.firstOrNull{r->r[0]==it}?.get(1)?.contains(q,true)==true }
-   if(q.isNotBlank()) {
-    shelf(result,"Результаты поиска",names)
-   } else {
-    shelf(result,"Все персонажи",names.take(15))
-    animeRoster.map{it[1]}.distinct().forEach { title ->
-     shelf(result,title,animeRoster.filter{it[1]==title}.map{it[0]})
+   val filtered=characters.filter{it.contains(q,true)||animeRoster.firstOrNull{r->r[0]==it}?.get(1)?.contains(q,true)==true}
+   val sets=if(q.isNotBlank())listOf("Результаты поиска" to filtered) else listOf("Все героини" to filtered)
+   sets.forEach{(heading,names)->
+    result.addView(section(heading))
+    names.chunked(2).forEach{pair->
+     val row=LinearLayout(this).apply{orientation=0}
+     pair.forEach{name->
+      val card=LinearLayout(this).apply{orientation=1;background=shape(panel,17f);setPadding(dp(5),dp(5),dp(5),dp(8))}
+      card.addView(avatar(name,190),LinearLayout.LayoutParams(-1,dp(190)))
+      card.addView(text(name,15f,Color.WHITE,true))
+      card.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский",11f,muted))
+      card.setOnClickListener{characterDetail(name)}
+      card.setOnLongClickListener{chooseAvatar(name);true}
+      row.addView(card,LinearLayout.LayoutParams(0,-2,1f).apply{setMargins(dp(4),dp(4),dp(4),dp(4))})
+     }
+     if(pair.size==1)row.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
+     result.addView(row)
     }
    }
   }
   render("")
-  search.addTextChangedListener(object:android.text.TextWatcher {
-   override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int) {}
+  search.addTextChangedListener(object:android.text.TextWatcher{
+   override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
    override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s?.toString()?:"")}
-   override fun afterTextChanged(s:android.text.Editable?) {}
+   override fun afterTextChanged(s:android.text.Editable?){}
   })
   nav(1)
  }
