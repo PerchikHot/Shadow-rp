@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
  namespace = "com.shadowrp.app"
  compileSdk = 35
- defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 29; versionName = "0.15.1" }
+ defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 30; versionName = "0.16.0"\n  ndk { abiFilters += listOf("arm64-v8a") }\n  externalNativeBuild { cmake { cppFlags += listOf("-std=c++17", "-O2") } }\n }\n externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt") } }
  val keystorePath = System.getenv("SHADOWRP_KEYSTORE_PATH")
  signingConfigs {
   create("permanentRelease") {
