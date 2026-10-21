@@ -638,6 +638,8 @@ class MainActivity : Activity() {
   if(prefs.getString("avatar_$name",null)==null)b.addView(button("＋ Добавить портрет персонажа") {chooseAvatar(name)}.apply {setTextColor(Color.rgb(149,190,255))})
   val universe=animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский персонаж"
   b.addView(text("✦ $universe",16f,Color.rgb(133,179,255),true))
+  b.addView(button("▶  Начать RP с $name"){chat(name)}.apply{background=shape(Color.rgb(78,62,189),16f);textSize=19f})
+  b.addView(text("О персонаже   ·   История   ·   Комментарии",14f,muted,true))
   val fields=listOf(
    "Характер и предыстория" to "persona",
    "Внешность" to "appearance",
