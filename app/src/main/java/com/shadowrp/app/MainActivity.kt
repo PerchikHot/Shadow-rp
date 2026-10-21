@@ -481,6 +481,7 @@ class MainActivity : Activity() {
    val name=parts[0]
    if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
    fillStoryDefaults(name,parts[1])
+   if(prefs.getString("memory_$name","").isNullOrBlank())prefs.edit().putString("memory_$name","Постоянные сведения: $name — персонаж мира ${parts[1]}. "+(curatedAppearance[name]?: "Внешность уточняется.")+"\n\nИстория отношений с игроком: пока нет подтверждённых событий. Не выдумывай прошлые встречи, обещания или воспоминания. Сохраняй важные факты из текущей переписки.").apply()
    if(prefs.getString("appearance_$name","").isNullOrBlank())prefs.edit().putString("appearance_$name",curatedAppearance[name].orEmpty()).apply()
   }
   prefs.edit().putBoolean("catalog_seed_05",true).putBoolean("story_defaults_094",true).apply()
@@ -527,44 +528,61 @@ class MainActivity : Activity() {
    avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();characterDetail(it) }
   }
  }
- private val portraitPending=mutableSetOf<String>()
+ private val portraitPending=mutableMapOf<String,MutableList<ImageView>>()
+ private val portraitExecutor=java.util.concurrent.Executors.newSingleThreadExecutor()
+ private val portraitRetry=mutableMapOf<String,Long>()
  private fun requestVerifiedPortrait(name:String,view:ImageView) {
   val query=characterReference[name]?:return
-  val cache=java.io.File(filesDir,"verified_portraits").apply{mkdirs()}
-  val file=java.io.File(cache,java.lang.Integer.toHexString(name.hashCode())+".jpg")
+  val cache=File(filesDir,"verified_portraits").apply{mkdirs()}
+  val file=File(cache,java.lang.Integer.toHexString(name.hashCode())+".jpg")
   if(file.exists() && file.length()>1024) {
    val bitmap=BitmapFactory.decodeFile(file.absolutePath)
-   if(bitmap!=null){view.setImageBitmap(bitmap);view.visibility=android.view.View.VISIBLE;return}
+   if(bitmap!=null){view.setImageBitmap(bitmap);view.visibility=View.VISIBLE;return}
+   file.delete()
   }
-  synchronized(portraitPending){if(!portraitPending.add(name))return}
-  thread {
+  synchronized(portraitPending){
+   if(portraitRetry[name]?.let{System.currentTimeMillis()-it<3600000L}==true)return
+   val listeners=portraitPending[name]
+   if(listeners!=null){listeners.add(view);return}
+   portraitPending[name]=mutableListOf(view)
+  }
+  portraitExecutor.execute {
+   var bitmap:android.graphics.Bitmap?=null
    try {
-    val endpoint="https://api.jikan.moe/v4/characters?q="+java.net.URLEncoder.encode(query,"UTF-8")+"&limit=10"
-    val conn=(URL(endpoint).openConnection() as HttpURLConnection).apply{connectTimeout=15000;readTimeout=15000}
-    val response=JSONObject(conn.inputStream.bufferedReader().use{it.readText()})
-    conn.disconnect()
+    val endpoint="https://api.jikan.moe/v4/characters?q="+URLEncoder.encode(query,"UTF-8")+"&limit=25"
+    val conn=(URL(endpoint).openConnection() as HttpURLConnection).apply{
+     connectTimeout=12000;readTimeout=12000;setRequestProperty("User-Agent","ShadowRP/0.11.1")
+    }
+    val response=JSONObject(conn.inputStream.bufferedReader().use{it.readText()});conn.disconnect()
     val matches=response.optJSONArray("data")?:JSONArray()
-    val canonical=query.lowercase().replace(Regex("[^a-z]"),"")
-    var imageUrl=""
+    val parts=query.lowercase().split(Regex("[^a-z]+")).filter{it.isNotEmpty()}
+    var url=""
     for(i in 0 until matches.length()){
      val item=matches.optJSONObject(i)?:continue
-     val found=item.optString("name").lowercase().replace(Regex("[^a-z]"),"")
-     if(found!=canonical)continue
-     imageUrl=item.optJSONObject("images")?.optJSONObject("jpg")?.optString("image_url","").orEmpty()
-     if(imageUrl.startsWith("https://"))break
+     val nameParts=item.optString("name").lowercase().split(Regex("[^a-z]+")).filter{it.isNotEmpty()}
+     val exact=parts.size==nameParts.size && parts.toSet()==nameParts.toSet()
+     if(!exact)continue
+     url=item.optJSONObject("images")?.optJSONObject("jpg")?.optString("image_url","").orEmpty()
+     if(url.startsWith("https://"))break
     }
-    if(imageUrl.startsWith("https://")){
-     val download=(URL(imageUrl).openConnection() as HttpURLConnection).apply{connectTimeout=15000;readTimeout=15000}
+    if(url.startsWith("https://")){
+     val download=(URL(url).openConnection() as HttpURLConnection).apply{connectTimeout=12000;readTimeout=12000}
      val bytes=download.inputStream.use{it.readBytes()};download.disconnect()
      if(bytes.size in 1024..3000000){
-      val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)
-      if(bitmap!=null){
-       file.writeBytes(bytes)
-       runOnUiThread{if(prefs.getString("avatar_$name",null)==null){view.setImageBitmap(bitmap);view.visibility=android.view.View.VISIBLE}}
-      }
+      bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+      if(bitmap!=null)file.writeBytes(bytes)
      }
     }
-   }catch(_:Exception){}finally{synchronized(portraitPending){portraitPending.remove(name)}}
+   }catch(_:Exception){}
+   val result=bitmap
+   val listeners=synchronized(portraitPending){
+    if(result==null)portraitRetry[name]=System.currentTimeMillis()
+    portraitPending.remove(name)?:mutableListOf()
+   }
+   if(result!=null)runOnUiThread {
+    if(prefs.getString("avatar_$name",null)==null)listeners.forEach{it.setImageBitmap(result);it.visibility=View.VISIBLE}
+   }
+   Thread.sleep(500)
   }
  }
  private fun avatar(name:String,height:Int):android.view.View {
