@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
  namespace = "com.shadowrp.app"
  compileSdk = 35
- defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 26; versionName = "0.13.0" }
+ defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 27; versionName = "0.14.0" }
  val keystorePath = System.getenv("SHADOWRP_KEYSTORE_PATH")
  signingConfigs {
   create("permanentRelease") {
