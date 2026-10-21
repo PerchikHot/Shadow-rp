@@ -11,6 +11,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
+import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
+import java.io.File
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
@@ -125,7 +130,45 @@ class MainActivity : Activity() {
   "Эсдес|Akame ga Kill",
   "Оливье Армстронг|Fullmetal Alchemist",
   "Макима|Chainsaw Man",
-  "Йор Форджер|Spy x Family"
+  "Йор Форджер|Spy x Family",
+  "Асуна Юки|Sword Art Online",
+  "Алиса Цуберг|Sword Art Online",
+  "Синон|Sword Art Online",
+  "Лифа|Sword Art Online",
+  "Куруми Токисаки|Date A Live",
+  "Тока Ятогами|Date A Live",
+  "Оригами Тобиичи|Date A Live",
+  "Котори Ицука|Date A Live",
+  "Лилит Асами|Trinity Seven",
+  "Арин Каннадзуки|Trinity Seven",
+  "Леви Кадзама|Trinity Seven",
+  "Рем|Re:Zero",
+  "Рам|Re:Zero",
+  "Эмилия|Re:Zero",
+  "Эхидна|Re:Zero",
+  "Мегумин|Konosuba",
+  "Виз|Konosuba",
+  "Ультиар Милкович|Fairy Tail",
+  "Кана Альберона|Fairy Tail",
+  "Биска Коннелл|Fairy Tail",
+  "Тиа Харрибел|Bleach",
+  "Неллиэль Ту Одельшванк|Bleach",
+  "Орихимэ Иноуэ|Bleach",
+  "Сакура Харуно|Naruto",
+  "Хината Хьюга|Naruto",
+  "Темари|Naruto",
+  "Кушина Узумаки|Naruto",
+  "Виви Нефертари|One Piece",
+  "Перона|One Piece",
+  "Ребекка|One Piece",
+  "Элизабет|The Eminence in Shadow",
+  "Альфа|The Eminence in Shadow",
+  "Бета|The Eminence in Shadow",
+  "Гамма|The Eminence in Shadow",
+  "Дельта|The Eminence in Shadow",
+  "Эпсилон|The Eminence in Shadow",
+  "Дзета|The Eminence in Shadow",
+  "Эта|The Eminence in Shadow"
  ).map { it.split("|") }
  private fun migrateDefaults() {
   if(prefs.getBoolean("removed_old_defaults",false))return
@@ -136,7 +179,7 @@ class MainActivity : Activity() {
   prefs.edit().putBoolean("removed_old_defaults",true).apply();save()
  }
  private fun seedCatalog() {
-  if(prefs.getBoolean("story_defaults_094",false))return
+  // Synchronize newly added catalog entries without resetting user edits.
   animeRoster.forEach { parts ->
    val name=parts[0]
    if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
@@ -186,24 +229,73 @@ class MainActivity : Activity() {
    avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();characterDetail(it) }
   }
  }
+ private val englishNames=mapOf(
+  "Цунаде" to "Tsunade Naruto","Йоруичи Сихоин" to "Yoruichi Shihouin Bleach",
+  "Нико Робин" to "Nico Robin One Piece","Боа Хэнкок" to "Boa Hancock One Piece",
+  "Нами" to "Nami One Piece","Эрза Скарлет" to "Erza Scarlet Fairy Tail",
+  "Рангику Мацумото" to "Rangiku Matsumoto Bleach","Куруми Токисаки" to "Kurumi Tokisaki Date A Live",
+  "Асуна Юки" to "Asuna Yuuki Sword Art Online","Мегумин" to "Megumin Konosuba",
+  "Рем" to "Rem Re Zero","Эмилия" to "Emilia Re Zero","Альфа" to "Alpha Eminence in Shadow",
+  "Дельта" to "Delta Eminence in Shadow"
+ )
  private fun avatar(name:String,height:Int):android.view.View {
+  val image=ImageView(this).apply {
+   scaleType=ImageView.ScaleType.CENTER_CROP
+   background=shape(Color.rgb(25,38,67))
+   clipToOutline=true
+  }
   val saved=prefs.getString("avatar_$name",null)
-  if(saved!=null){
+  if(saved!=null) {
+   try {image.setImageURI(android.net.Uri.parse(saved));return image}catch(_:Exception){}
+  }
+  val dir=File(filesDir,"portraits").apply {mkdirs()}
+  val file=File(dir,name.hashCode().toUInt().toString()+".jpg")
+  if(file.exists() && file.length()>1000) {
+   val bmp=BitmapFactory.decodeFile(file.absolutePath)
+   if(bmp!=null){image.setImageBitmap(bmp);return image}
+  }
+  val fallback=text("✦\\n"+name.take(1)+"\\n＋ Фото",24f,Color.WHITE,true).apply {
+   gravity=Gravity.CENTER;background=shape(Color.rgb(38,54,89),18f)
+   setOnClickListener {chooseAvatar(name)}
+  }
+  val frame=android.widget.FrameLayout(this)
+  frame.addView(fallback,android.widget.FrameLayout.LayoutParams(-1,-1))
+  frame.addView(image,android.widget.FrameLayout.LayoutParams(-1,-1))
+  image.visibility=android.view.View.GONE
+  val query=englishNames[name] ?: name+" "+(animeRoster.firstOrNull{it[0]==name}?.get(1)?:"anime")
+  thread {
    try {
-    return ImageView(this).apply {
-     setImageURI(android.net.Uri.parse(saved))
-     scaleType=ImageView.ScaleType.CENTER_CROP
-     background=shape(panel)
-     clipToOutline=true
+    val endpoint="https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch="+URLEncoder.encode(query,"UTF-8")+"&gsrlimit=5&prop=pageimages&pithumbsize=640&format=json&origin=*"
+    val connection=(URL(endpoint).openConnection() as HttpURLConnection).apply {
+     connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10 (Android; character reference browser)")
+    }
+    val payload=connection.inputStream.bufferedReader().use{it.readText()}
+    connection.disconnect()
+    val pages=JSONObject(payload).optJSONObject("query")?.optJSONObject("pages")
+    var link:String?=null
+    if(pages!=null){
+     val keys=pages.keys()
+     while(keys.hasNext()){
+      val page=pages.optJSONObject(keys.next())?:continue
+      val thumb=page.optJSONObject("thumbnail")?.optString("source","").orEmpty()
+      if(thumb.startsWith("https://") && link==null)link=thumb
+     }
+    }
+    if(link!=null){
+     val conn=(URL(link).openConnection() as HttpURLConnection).apply {connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10")}
+     val bytes=conn.inputStream.use{it.readBytes()}
+     conn.disconnect()
+     if(bytes.size in 1024..4000000){
+      val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+      if(bitmap!=null){
+       file.writeBytes(bytes)
+       runOnUiThread {image.setImageBitmap(bitmap);image.visibility=android.view.View.VISIBLE}
+      }
+     }
     }
    }catch(_:Exception){}
   }
-  val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
-  return text("✦\\n"+name.take(1)+"\\n＋ Фото",24f,Color.WHITE,true).apply {
-   gravity=Gravity.CENTER
-   background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
-   setOnClickListener { chooseAvatar(name) }
-  }
+  return frame
  }
  private fun characterDetail(name:String) {
   active=name
