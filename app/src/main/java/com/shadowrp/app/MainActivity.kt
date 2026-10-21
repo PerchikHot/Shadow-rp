@@ -929,7 +929,9 @@ class MainActivity : Activity() {
    val tag=if(role=="user")"user" else "assistant"
    "<|im_start|>$tag\n"+value.take(220)+"<|im_end|>\n"
   }
-  val isQwen3=file.name.contains("qwen3",ignoreCase=true)\n  val system="Ты $name, персонаж ролевой истории. Характер: $persona. Важная память: $memory. Собеседник: $identity. Отвечай по-русски только от лица $name, не выходи из роли. Продолжай последнее действие и диалог, не обсуждай правила, инструкции или то, что ты ИИ. 1-3 естественные реплики, без HTML-тегов и анализа."\n  val prompt="<|im_start|>system\\n".replace("\\\\n","\\n")+system+"<|im_end|>\\n".replace("\\\\n","\\n")+recent+"<|im_start|>assistant\\n".replace("\\\\n","\\n")+(if(isQwen3)"<think>\\n\\n</think>\\n".replace("\\\\n","\\n") else "")
+  val isQwen3=file.name.contains("qwen3",ignoreCase=true)
+  val system="Ты $name, персонаж ролевой истории. Характер: $persona. Важная память: $memory. Собеседник: $identity. Отвечай по-русски только от лица $name, не выходи из роли. Продолжай последнее действие и диалог, не обсуждай правила, инструкции или то, что ты ИИ. 1-3 естественные реплики, без HTML-тегов и анализа."
+  val prompt="<|im_start|>system\n"+system+"<|im_end|>\n"+recent+"<|im_start|>assistant\n"+(if(isQwen3)"<think>\n\n</think>\n" else "")
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,64)
