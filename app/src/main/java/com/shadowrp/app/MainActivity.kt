@@ -877,12 +877,14 @@ class MainActivity : Activity() {
   val persona=prefs.getString("persona_$name","").orEmpty().take(350)
   val memory=prefs.getString("memory_$name","").orEmpty().take(220)
   val transcript=history.takeLast(3).joinToString("\n"){(role,value)->(if(role=="user")identity else name)+": "+value.take(180)}
-  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай RP по-русски. Ответь кратко, 1-3 предложения. Не описывай действия игрока. /no_think<|im_end|>\n<|im_start|>user\n$transcript<|im_end|>\n<|im_start|>assistant\n"
+  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай RP по-русски. Ответь кратко, 1-3 предложения. Не описывай действия игрока.<|im_end|>\n<|im_start|>user\n$transcript\n/no_think<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n"
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,96)
     if(response.startsWith("ERROR:"))error(response)
-    runOnUiThread{localPending.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to response.trim().ifBlank{"(Модель вернула пустой ответ)"})};save();if(active==name)chat(name)}
+    val cleaned=response.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").trim()
+    if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
+    runOnUiThread{localPending.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to cleaned)};save();if(active==name)chat(name)}
    }catch(e:Throwable){runOnUiThread{localPending.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
   }
  }
