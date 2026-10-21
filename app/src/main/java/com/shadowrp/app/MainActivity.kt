@@ -779,8 +779,8 @@ class MainActivity : Activity() {
  }
  private fun studio() {
   init("Творческий центр");val b=body()
-  item(b,"＋ Создать персонажа","Аватар, приветствие, характер, сценарий, память") { createCharacter() }
-  item(b,"♧ Создать комнату","Групповой RP с несколькими персонажами") { createRoom() }
+  item(b,"✦ Создать персонажа","Аватар, приветствие, характер, сценарий, память") { createCharacter() }
+  item(b,"♧ Создать групповой чат","Выбрать участников из своих переписок") { createRoom() }
   item(b,"♙ Моя личность","Имя, биография и роль игрока") { editIdentity() }
   item(b,"▣ Создать изображение","Пока доступен просмотр промпта по истории") { imagePrompt() }
   item(b,"▤ Лорбук","Планируется в следующих обновлениях") { AlertDialog.Builder(this).setMessage("Редактор лорбука ещё не реализован.").setPositiveButton("OK",null).show().also {styleDialog(it)} }
@@ -819,6 +819,14 @@ class MainActivity : Activity() {
  private fun chat(name:String) {
   active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
+  val profileRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;background=shape(Color.rgb(13,23,42),16f)}
+  profileRow.addView(avatar(name,54),LinearLayout.LayoutParams(dp(54),dp(54)))
+  val info=LinearLayout(this).apply{orientation=1}
+  info.addView(text(name,17f,Color.WHITE,true))
+  info.addView(text("● Персонаж RP",12f,Color.rgb(116,211,171)))
+  profileRow.addView(info,LinearLayout.LayoutParams(0,-2,1f))
+  profileRow.addView(button("⋮"){characterDetail(name)})
+  b.addView(profileRow)
   if(messages.isEmpty()) {
    val greeting=prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\\n\\nСоздай собственный сюжет и отправь первое сообщение." }
    val bubble=text(greeting,19f,Color.WHITE).apply {background=shape(panel);setPadding(dp(18),dp(18),dp(18),dp(18))}
@@ -826,7 +834,7 @@ class MainActivity : Activity() {
   }
   messages.forEach { (role,value)->
    val bubble=text(value,20f).apply {setPadding(dp(17),dp(16),dp(17),dp(16));minHeight=dp(70);maxWidth=(resources.displayMetrics.widthPixels*0.87).toInt()}
-   bubble.background=shape(if(role=="user")Color.rgb(34,76,150) else Color.rgb(27,39,61))
+   bubble.background=shape(if(role=="user")Color.rgb(67,49,179) else Color.rgb(27,39,61))
    val lp=LinearLayout.LayoutParams(-2,-2).apply {
     gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT
     setMargins(if(role=="user")dp(28) else dp(6),dp(7),if(role=="user")dp(6) else dp(28),dp(7))
@@ -834,7 +842,7 @@ class MainActivity : Activity() {
    b.addView(bubble,lp)
   }
   val input=EditText(this).apply { hint="Напиши сообщение…";setTextColor(Color.WHITE);setHintTextColor(muted);minLines=2;maxLines=6;setTextSize(17f);setPadding(dp(12),dp(12),dp(12),dp(12));background=shape(panel,16f) }
-  val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(7),dp(4),dp(9)) }
+  val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(7),dp(4),dp(9));background=shape(Color.rgb(10,17,32),18f) }
   bar.addView(button("▧") { imagePrompt() }.apply {textSize=21f;setPadding(dp(12),dp(18),dp(12),dp(18))})
   bar.addView(input,LinearLayout.LayoutParams(0,-2,1f))
   bar.addView(button("➤") {
@@ -996,7 +1004,9 @@ class MainActivity : Activity() {
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
  private fun settings() {
   init("Настройки ИИ");val b=body()
-  b.addView(section("Подключение модели"))
+  b.addView(section("Подключить ИИ"))
+  b.addView(text("API URL  ·  ID модели  ·  API ключ",16f,Color.rgb(174,161,255),true))
+  b.addView(button("✦  Настроить подключение"){editModel(0)}.apply{background=shape(Color.rgb(66,49,162),17f);textSize=19f})
   b.addView(text("Выбери тип подключения. Для облачной модели нужен API, для локальной — запущенный совместимый сервер.",14f,muted))
   val providers=listOf("OpenAI-совместимый API","OpenRouter","Локальный сервер (LM Studio / Ollama)")
   providers.forEachIndexed { index,label ->
