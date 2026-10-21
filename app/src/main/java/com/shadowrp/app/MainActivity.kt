@@ -90,7 +90,23 @@ class MainActivity : Activity() {
   super.onCreate(savedInstanceState)
   window.statusBarColor=bg;window.navigationBarColor=bg
   window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-  load();seedCatalog();migrateDefaults();home()
+  load();seedCatalog();migrateDefaults();showSplash()
+ }
+ private fun showSplash() {
+  val backdrop=android.widget.FrameLayout(this).apply {setBackgroundColor(Color.rgb(5,9,19))}
+  val center=LinearLayout(this).apply {orientation=1;gravity=Gravity.CENTER}
+  val logo=ImageView(this).apply{setImageResource(R.drawable.shadow_icon);scaleType=ImageView.ScaleType.FIT_CENTER}
+  center.addView(logo,LinearLayout.LayoutParams(dp(156),dp(156)))
+  val label=text("Shadow RP",26f,Color.WHITE,true).apply{gravity=Gravity.CENTER}
+  center.addView(label)
+  backdrop.addView(center,android.widget.FrameLayout.LayoutParams(-1,-1))
+  setContentView(backdrop)
+  val handler=Handler(Looper.getMainLooper())
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},570)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},720)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},1170)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},1310)
+  handler.postDelayed({if(!isFinishing)home()},1800)
  }
  private fun load() {
   val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")).toString()))
