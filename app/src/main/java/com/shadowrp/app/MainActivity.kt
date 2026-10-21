@@ -1120,6 +1120,7 @@ class MainActivity : Activity() {
     editModel(index)
    }
   }
+  item(b,"🎨 Генератор изображений","Stable Diffusion Forge / WebUI: txt2img и img2img"){imageServerSettings()}
   modelInstaller(b)
   val model=prefs.getString("model","").orEmpty()
   item(b,"Текущая модель",if(model.isBlank())"Не настроена" else model){editModel(0)}
