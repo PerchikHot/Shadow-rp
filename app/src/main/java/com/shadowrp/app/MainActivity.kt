@@ -135,14 +135,29 @@ class MainActivity : Activity() {
   prefs.edit().putBoolean("removed_old_defaults",true).apply();save()
  }
  private fun seedCatalog() {
-  if(prefs.getBoolean("catalog_seed_05",false))return
+  if(prefs.getBoolean("story_defaults_094",false))return
   animeRoster.forEach { parts ->
    val name=parts[0]
    if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
-   if(!prefs.contains("persona_$name"))prefs.edit().putString("persona_$name","Вселенная: ${parts[1]}. Альтернативная взрослая версия персонажа.").apply()
+   fillStoryDefaults(name,parts[1])
   }
-  prefs.edit().putBoolean("catalog_seed_05",true).apply()
+  prefs.edit().putBoolean("catalog_seed_05",true).putBoolean("story_defaults_094",true).apply()
   save()
+ }
+ private fun fillStoryDefaults(name:String,universe:String) {
+  val editor=prefs.edit()
+  val role=prefs.getString("persona_$name","").orEmpty()
+  if(role.isBlank() || role.startsWith("Вселенная:"))editor.putString("persona_$name",
+   "$name — персонаж вселенной $universe. Учитывай канонические особенности личности, привычки, цели и отношения. Не придумывай факты о прошлом игрока.")
+  if(prefs.getString("scenario_$name","").isNullOrBlank())editor.putString("scenario_$name",
+   "Мир: $universe. Интерактивная ролевая история с последовательными событиями, выборами и последствиями. Персонаж $name действует самостоятельно, но не управляет решениями игрока.")
+  if(prefs.getString("opening_$name","").isNullOrBlank())editor.putString("opening_$name",
+   "Игрок впервые встречает $name. Место, обстоятельства и причина встречи раскрываются в первых сообщениях. История начинается с живой сцены, а не пересказа.")
+  if(prefs.getString("greeting_$name","").isNullOrBlank())editor.putString("greeting_$name",
+   "*Встреча начинается неожиданно. $name замечает тебя и внимательно смотрит.*\\n— Кто ты и что привело тебя сюда?")
+  if(prefs.getString("protocol_$name","").isNullOrBlank())editor.putString("protocol_$name",
+   "Пиши по-русски. Сохраняй характер, логику мира и хронологию. Отвечай живыми сценами и диалогами средней длины. Не пиши реплики, мысли или действия за игрока. Не повторяй дословно сообщения игрока.")
+  editor.apply()
  }
  private fun characterCard(parent:LinearLayout,name:String) {
   val tile=LinearLayout(this).apply { orientation=1;background=shape(panel,20f);setPadding(dp(6),dp(6),dp(6),dp(8)) }
