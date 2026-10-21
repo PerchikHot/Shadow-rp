@@ -1301,7 +1301,7 @@ class MainActivity : Activity() {
    buttonTintList=android.content.res.ColorStateList.valueOf(violet)
    setOnCheckedChangeListener {_,checked->
     if(checked && !LocalLlm.available){isChecked=false;alert("Нативный движок недоступен в этой сборке.");return@setOnCheckedChangeListener}
-    if(checked && File(folder,prefs.getString("local_model",modelName).orEmpty()).length()<(if(prefs.getString("local_model",modelName)==bigName)bigMin else 450000000L)){isChecked=false;alert("Сначала скачай выбранную модель GGUF.");return@setOnCheckedChangeListener}
+    if(checked && File(folder,prefs.getString("local_model",modelName).orEmpty()).length()<(if(prefs.getString("local_model",modelName)==bigName)bigMin else if(prefs.getString("local_model",modelName).orEmpty().startsWith("imported-"))10000000L else 450000000L)){isChecked=false;alert("Сначала скачай выбранную модель GGUF.");return@setOnCheckedChangeListener}
     prefs.edit().putBoolean("local_llm",checked).apply()
    }
   }
