@@ -5,6 +5,9 @@
 #include "llama.h"
 
 static std::mutex inference_mutex;
+static llama_model *cached_model = nullptr;
+static std::string cached_path;
+static bool backend_ready = false;
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstring prompt, jint maxTokens) {
@@ -12,14 +15,18 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     const char *model_path = env->GetStringUTFChars(path, nullptr);
     const char *prompt_chars = env->GetStringUTFChars(prompt, nullptr);
     std::string input(prompt_chars);
-    llama_backend_init();
-    llama_model_params mp = llama_model_default_params();
-    mp.n_gpu_layers = 0;
-    llama_model *model = llama_model_load_from_file(model_path, mp);
+    if (!backend_ready) { llama_backend_init(); backend_ready = true; }
+    if (!cached_model || cached_path != model_path) {
+        if (cached_model) { llama_model_free(cached_model); cached_model = nullptr; }
+        llama_model_params mp = llama_model_default_params();
+        mp.n_gpu_layers = 0;
+        cached_model = llama_model_load_from_file(model_path, mp);
+        cached_path = cached_model ? model_path : "";
+    }
+    llama_model *model = cached_model;
     env->ReleaseStringUTFChars(path, model_path);
     env->ReleaseStringUTFChars(prompt, prompt_chars);
     if (!model) {
-        llama_backend_free();
         return env->NewStringUTF("ERROR: Model could not be loaded");
     }
     llama_context_params cp = llama_context_default_params();
@@ -28,8 +35,6 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     cp.n_threads = 4;
     llama_context *ctx = llama_init_from_model(model, cp);
     if (!ctx) {
-        llama_model_free(model);
-        llama_backend_free();
         return env->NewStringUTF("ERROR: Context allocation failed");
     }
     const llama_vocab *vocab = llama_model_get_vocab(model);
@@ -37,7 +42,7 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     std::vector<llama_token> tokens(count);
     int actual = llama_tokenize(vocab, input.c_str(), (int)input.size(), tokens.data(), count, true, true);
     if (actual <= 0 || actual >= 1300) {
-        llama_free(ctx); llama_model_free(model); llama_backend_free();
+        llama_free(ctx);
         return env->NewStringUTF("ERROR: Prompt too long");
     }
     tokens.resize(actual);
@@ -65,7 +70,5 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     }
     llama_sampler_free(sampler);
     llama_free(ctx);
-    llama_model_free(model);
-    llama_backend_free();
     return env->NewStringUTF(output.c_str());
 }
