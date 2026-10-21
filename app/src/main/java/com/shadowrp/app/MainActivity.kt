@@ -955,15 +955,22 @@ class MainActivity : Activity() {
   }
   root.addView(button("✓  Далее • Создать чат") {
    if(selected.isEmpty()){alert("Выбери хотя бы одного персонажа");return@button}
-   val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
-   val title=visibleField("Название комнаты", "Новая история",l)
-   val story=visibleField("Сюжет и отношения участников","",l)
-   AlertDialog.Builder(this).setTitle("Новая комната").setView(l)
-    .setPositiveButton("✓ Создать"){_,_->
-     val rooms=JSONArray(prefs.getString("rooms","[]"))
-     val room=JSONObject().put("title",title.text.toString().trim().ifBlank{"Групповой чат"}+" #"+(rooms.length()+1)).put("members",selected.joinToString(", ")).put("story",story.text.toString())
-     rooms.put(room);prefs.edit().putString("rooms",rooms.toString()).apply();roomChat(room)
-    }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+   init("Создать комнату")
+   val form=body()
+   form.addView(text("Участники: "+selected.joinToString(", "),16f,muted))
+   val title=visibleField("Название комнаты","Новая история",form)
+   val story=visibleField("Тема и отношения между персонажами","",form)
+   val background=visibleField("Фон комнаты (ссылка на изображение, необязательно)","",form)
+   val privateRoom=CheckBox(this).apply{text="Приватная комната";setTextColor(Color.WHITE);isChecked=true;buttonTintList=android.content.res.ColorStateList.valueOf(blue)}
+   form.addView(privateRoom)
+   root.addView(button("✦ Создать комнату"){
+    val rooms=JSONArray(prefs.getString("rooms","[]"))
+    val room=JSONObject().put("title",title.text.toString().trim().ifBlank{"Групповой чат"}+" #"+(rooms.length()+1))
+     .put("members",selected.joinToString(", ")).put("story",story.text.toString())
+     .put("background",background.text.toString().trim()).put("private",privateRoom.isChecked)
+    rooms.put(room);prefs.edit().putString("rooms",rooms.toString()).apply();roomChat(room)
+   }.apply{background=shape(Color.rgb(76,54,189),16f);textSize=19f})
+
   }.apply {setBackgroundColor(Color.rgb(38,81,162));textSize=19f})
  }
  private fun roomChat(room:JSONObject) {
