@@ -15,9 +15,9 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
  private val bg=Color.rgb(4,9,18)
- private val panel=Color.rgb(15,22,34)
+ private val panel=Color.rgb(22,31,49)
  private val blue=Color.rgb(53,117,255)
- private val muted=Color.rgb(160,183,211)
+ private val muted=Color.rgb(186,204,228)
  private val violet=Color.rgb(109,93,242)
  private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt()
  private val prefs by lazy { getSharedPreferences("shadowrp", MODE_PRIVATE) }
@@ -45,7 +45,7 @@ class MainActivity : Activity() {
    dialog.getButton(id)?.apply {setTextColor(Color.rgb(124,175,255));isAllCaps=false;textSize=15f}
   }
  }
- private fun section(title:String)=text(title,22f,Color.WHITE,true)
+ private fun section(title:String)=text(title,24f,Color.WHITE,true)
  private fun space(h:Int)=android.view.View(this).apply { layoutParams=LinearLayout.LayoutParams(1,dp(h)) }
  private fun init(title:String) {
   root=LinearLayout(this).apply { orientation=1;setBackgroundColor(bg);setPadding(8,0,8,0); fitsSystemWindows=true }
@@ -75,7 +75,7 @@ class MainActivity : Activity() {
   val names=listOf("⌂\nГлавная","◈\nКаталог","＋\nСоздать","☏\nЧаты","♙\nПрофиль")
   names.forEachIndexed { i,name ->
    val view=button(name) { when(i){0->home();1->catalog();2->studio();3->chatList();else->profile()} }
-   view.textSize=14f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(dp(2),dp(16),dp(2),dp(16));view.gravity=Gravity.CENTER
+   view.textSize=16f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(dp(2),dp(20),dp(2),dp(20));view.gravity=Gravity.CENTER
    row.addView(view,LinearLayout.LayoutParams(0,-2,1f))
   }
   root.addView(row)
@@ -240,11 +240,11 @@ class MainActivity : Activity() {
   val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL }
   names.forEach { name ->
    val card=LinearLayout(this).apply { orientation=1;background=shape(panel,18f);setPadding(dp(5),dp(5),dp(5),dp(7)) }
-   val face=avatar(name,140)
-   card.addView(face,LinearLayout.LayoutParams(-1,dp(140)))
-   card.addView(text(name,14f,Color.WHITE,true))
+   val face=avatar(name,175)
+   card.addView(face,LinearLayout.LayoutParams(-1,dp(175)))
+   card.addView(text(name,16f,Color.WHITE,true))
    card.setOnClickListener { characterDetail(name) };card.setOnLongClickListener { chooseAvatar(name);true }
-   row.addView(card,LinearLayout.LayoutParams(dp(152),-2).apply {setMargins(dp(4),dp(5),dp(4),dp(8))})
+   row.addView(card,LinearLayout.LayoutParams(dp(178),-2).apply {setMargins(dp(4),dp(5),dp(4),dp(8))})
   }
   scroller.addView(row);parent.addView(scroller)
  }
@@ -411,18 +411,42 @@ class MainActivity : Activity() {
   nav(3)
  }
  private fun createRoom() {
-  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
-  fun field(h:String):EditText=EditText(this).apply {hint=h;setTextColor(Color.WHITE);setHintTextColor(muted);l.addView(this)}
-  val title=field("Название комнаты")
-  val members=field("Участники через запятую (имена из каталога)")
-  val story=field("Тема и отношения между персонажами")
-  AlertDialog.Builder(this).setTitle("Создать комнату").setView(l).setPositiveButton("Создать"){_,_->
-   if(title.text.isNotBlank() && members.text.isNotBlank()) {
-    val a=JSONArray(prefs.getString("rooms","[]"))
-    val room=JSONObject().put("title",title.text.toString()).put("members",members.text.toString()).put("story",story.text.toString())
-    a.put(room);prefs.edit().putString("rooms",a.toString()).apply();roomChat(room)
+  val candidates=characters.filter { !chats[it].isNullOrEmpty() }
+  if(candidates.isEmpty()){alert("Сначала начни переписку хотя бы с одним персонажем в каталоге, затем здесь появится список участников.");return}
+  val selected=linkedSetOf<String>()
+  init("Участники комнаты")
+  val b=body()
+  b.addView(text("Выбери персонажей из своих переписок. Нажми на карточку, чтобы выделить участника.",16f,muted))
+  val counter=text("Выбрано: 0",18f,Color.WHITE,true)
+  b.addView(counter)
+  candidates.forEach { name ->
+   val row=LinearLayout(this).apply {gravity=Gravity.CENTER_VERTICAL;background=shape(panel);setPadding(dp(8),dp(6),dp(8),dp(6))}
+   row.addView(avatar(name,64),LinearLayout.LayoutParams(dp(64),dp(64)))
+   val title=text(name,18f,Color.WHITE,true)
+   row.addView(title,LinearLayout.LayoutParams(0,-2,1f))
+   val check=CheckBox(this).apply {buttonTintList=android.content.res.ColorStateList.valueOf(blue)}
+   row.addView(check)
+   fun update(checked:Boolean) {
+    if(checked)selected.add(name) else selected.remove(name)
+    row.background=shape(if(checked)Color.rgb(36,66,120) else panel)
+    counter.text="Выбрано: ${selected.size}"
    }
-  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+   check.setOnCheckedChangeListener {_,checked->update(checked)}
+   row.setOnClickListener {check.isChecked=!check.isChecked}
+   b.addView(row,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(6),dp(5),dp(6),dp(5))})
+  }
+  root.addView(button("✓  Далее • Создать чат") {
+   if(selected.isEmpty()){alert("Выбери хотя бы одного персонажа");return@button}
+   val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
+   val title=visibleField("Название комнаты", "Новая история",l)
+   val story=visibleField("Сюжет и отношения участников","",l)
+   AlertDialog.Builder(this).setTitle("Новая комната").setView(l)
+    .setPositiveButton("✓ Создать"){_,_->
+     val rooms=JSONArray(prefs.getString("rooms","[]"))
+     val room=JSONObject().put("title",title.text.toString().trim().ifBlank{"Групповой чат"}+" #"+(rooms.length()+1)).put("members",selected.joinToString(", ")).put("story",story.text.toString())
+     rooms.put(room);prefs.edit().putString("rooms",rooms.toString()).apply();roomChat(room)
+    }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+  }.apply {setBackgroundColor(Color.rgb(38,81,162));textSize=19f})
  }
  private fun roomChat(room:JSONObject) {
   val title=room.optString("title")
@@ -478,12 +502,19 @@ class MainActivity : Activity() {
   item(b,"Текущая модель",if(model.isBlank())"Не настроена" else model){editModel(0)}
   nav(4)
  }
- private fun editModel(provider:Int) {
-  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(18),dp(8),dp(18),dp(8))}
-  fun field(label:String,value:String):EditText {
-   l.addView(text(label,14f,muted))
-   return EditText(this).apply {setText(value);setTextColor(Color.WHITE);setSingleLine(true);background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12));l.addView(this,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(12)})}
+ private fun visibleField(label:String,value:String,parent:LinearLayout):EditText {
+  parent.addView(text(label,16f,Color.WHITE,true))
+  val outline=GradientDrawable().apply {setColor(Color.rgb(34,46,69));cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(83,126,205))}
+  return EditText(this).apply {
+   setText(value);hint=label;setHintTextColor(Color.rgb(151,173,207));setTextColor(Color.WHITE);textSize=17f
+   setSingleLine(label!="Сюжет и отношения участников");background=outline
+   setPadding(dp(14),dp(14),dp(14),dp(14))
+   parent.addView(this,LinearLayout.LayoutParams(-1,dp(if(label=="Сюжет и отношения участников")110 else 58)).apply {bottomMargin=dp(14)})
   }
+ }
+ private fun editModel(provider:Int) {
+  val l=LinearLayout(this).apply {orientation=1;setPadding(dp(12),dp(8),dp(12),dp(8))}
+  fun field(label:String,value:String):EditText=visibleField(label,value,l)
   val defaultUrl=when(provider){1->"https://openrouter.ai/api/v1";2->"http://127.0.0.1:11434/v1";else->""}
   val url=field("API URL (включая /v1)",if(provider==0)prefs.getString("url","").orEmpty() else defaultUrl)
   val model=field("ID модели",prefs.getString("model","").orEmpty())
