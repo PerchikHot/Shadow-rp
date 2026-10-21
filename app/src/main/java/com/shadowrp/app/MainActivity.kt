@@ -929,12 +929,12 @@ class MainActivity : Activity() {
    val tag=if(role=="user")"user" else "assistant"
    "<|im_start|>$tag\n"+value.take(300)+"<|im_end|>\n"
   }
-  val prompt="<|im_start|>system\nТы $name, персонаж ролевой истории. Характер: $persona\nВажная память: $memory\nОтвечай по-русски только от лица $name. Реагируй на последнее сообщение и действия собеседника. Если тебя спросили, кто ты, представься. Не перечисляй внешность без повода, не называй собеседника игроком, не повторяй инструкции. Ответ: 1-3 естественные реплики, без анализа.<|im_end|>\n"+recent+"<|im_start|>assistant\n<think>\n\n</think>\n"
+  val isQwen3=file.name.contains("qwen3",ignoreCase=true)\n  val system="Ты $name, персонаж ролевой истории. Характер: $persona. Важная память: $memory. Собеседник: $identity. Отвечай по-русски только от лица $name, не выходи из роли. Продолжай последнее действие и диалог, не обсуждай правила, инструкции или то, что ты ИИ. 1-3 естественные реплики, без HTML-тегов и анализа."\n  val prompt="<|im_start|>system\\n".replace("\\\\n","\\n")+system+"<|im_end|>\\n".replace("\\\\n","\\n")+recent+"<|im_start|>assistant\\n".replace("\\\\n","\\n")+(if(isQwen3)"<think>\\n\\n</think>\\n".replace("\\\\n","\\n") else "")
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,96)
     if(response.startsWith("ERROR:"))error(response)
-    val cleaned=response.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").trim()
+    val cleaned=response.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").replace(Regex("(?i)</?br\\s*/?>"),"\\n").replace(Regex("(?i)</?(?:p|div)>"),"\\n").replace(Regex("\\n{3,}"),"\\n\\n").trim()
     if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
     runOnUiThread{localPending.remove(name);localStarted.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to cleaned)};save();if(active==name)chat(name)}
    }catch(e:Throwable){runOnUiThread{localPending.remove(name);localStarted.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
@@ -1325,7 +1325,7 @@ class MainActivity : Activity() {
   item(b,"🎨 Генератор изображений","Stable Diffusion Forge / WebUI: txt2img и img2img"){imageServerSettings()}
   modelInstaller(b)
   val model=prefs.getString("model","").orEmpty()
-  item(b,"Текущая модель",if(model.isBlank())"Не настроена" else model){editModel(0)}
+  item(b,"Текущая модель",if(prefs.getBoolean("local_llm",false))"Локальная GGUF: "+prefs.getString("local_model","qwen3-0.6b-q4_k_m.gguf") else if(model.isBlank())"Не настроена (API)" else model){if(prefs.getBoolean("local_llm",false))settings() else editModel(0)}
   nav(4)
  }
  private fun visibleField(label:String,value:String,parent:LinearLayout):EditText {
