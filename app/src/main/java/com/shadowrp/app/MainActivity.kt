@@ -379,6 +379,11 @@ class MainActivity : Activity() {
    if(msg.isNotBlank()){messages.add("user" to msg);save();chat(name);request(name)}
   }.apply {textSize=23f;setPadding(dp(14),dp(18),dp(14),dp(18))})
   root.addView(bar)
+  b.post {
+   var v:android.view.View?=b.parent as? android.view.View
+   while(v!=null && v !is ScrollView){v=v.parent as? android.view.View}
+   (v as? ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
+  }
  }
  private fun request(name:String) {
   val base=prefs.getString("url","")!!.trimEnd('/')
@@ -542,12 +547,25 @@ class MainActivity : Activity() {
  }
  private fun visibleField(label:String,value:String,parent:LinearLayout):EditText {
   parent.addView(text(label,16f,Color.WHITE,true))
-  val outline=GradientDrawable().apply {setColor(Color.rgb(34,46,69));cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(83,126,205))}
+  val outline=GradientDrawable().apply {
+   setColor(Color.rgb(34,46,69));cornerRadius=dp(12).toFloat()
+   setStroke(dp(1),Color.rgb(83,126,205))
+  }
+  val short=label=="Имя персонажа" || label=="Название комнаты" || label=="ID модели" ||
+   label=="API URL (включая /v1)" || label=="API ключ" || label=="Имя игрока"
   return EditText(this).apply {
-   setText(value);hint=label;setHintTextColor(Color.rgb(151,173,207));setTextColor(Color.WHITE);textSize=17f
-   setSingleLine(label!="Сюжет и отношения участников" && label!="Характер, роль, предыстория");background=outline
+   setText(value);hint=label;setHintTextColor(Color.rgb(151,173,207))
+   setTextColor(Color.WHITE);textSize=17f
+   setSingleLine(short)
+   if(!short) {
+    inputType=android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+    minLines=4;maxLines=12;gravity=Gravity.TOP or Gravity.START
+   }
+   background=outline
    setPadding(dp(14),dp(14),dp(14),dp(14))
-   parent.addView(this,LinearLayout.LayoutParams(-1,dp(if(label=="Сюжет и отношения участников" || label=="Характер, роль, предыстория")110 else 58)).apply {bottomMargin=dp(14)})
+   parent.addView(this,LinearLayout.LayoutParams(-1,if(short)dp(58) else -2).apply {
+    leftMargin=dp(5);rightMargin=dp(5);bottomMargin=dp(14)
+   })
   }
  }
  private fun editModel(provider:Int) {
