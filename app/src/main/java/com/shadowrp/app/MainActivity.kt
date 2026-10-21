@@ -147,10 +147,6 @@ class MainActivity : Activity() {
  private fun characterCard(parent:LinearLayout,name:String) {
   val tile=LinearLayout(this).apply { orientation=1;background=shape(panel,20f);setPadding(dp(6),dp(6),dp(6),dp(8)) }
   val palette=intArrayOf(Color.rgb(41,75,135),Color.rgb(90,58,130),Color.rgb(26,107,117),Color.rgb(112,65,96))
-  val portrait=text(name.take(1),36f,Color.WHITE,true).apply {
-   gravity=Gravity.CENTER
-   background=shape(palette[(name.hashCode() and Int.MAX_VALUE)%palette.size],18f)
-  }
   tile.addView(avatar(name,116),LinearLayout.LayoutParams(-1,dp(116)))
   tile.addView(text(name,14f,Color.WHITE,true))
   tile.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?: "Мой персонаж",12f,muted))
@@ -212,7 +208,14 @@ class MainActivity : Activity() {
    val value=prefs.getString(key+"_"+name,"").orEmpty().ifBlank {
     if(key=="persona")prefs.getString("persona_$name","").orEmpty() else ""
    }
-   item(b,label,value.ifBlank{"Не заполнено • нажми, чтобы добавить"}.take(180)) { editCharacterField(name,label,key) }
+   val card=LinearLayout(this).apply {orientation=1;background=shape(panel,20f);setPadding(dp(12),dp(12),dp(12),dp(12))}
+   card.addView(text(label,20f,Color.WHITE,true))
+   card.addView(text(value.ifBlank { "Пока не заполнено" },16f,if(value.isBlank())muted else Color.WHITE))
+   val edit=button("✎  Изменить") {editCharacterField(name,label,key)}.apply {
+    textSize=15f;setTextColor(Color.rgb(153,193,255));gravity=Gravity.RIGHT
+   }
+   card.addView(edit)
+   b.addView(card,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(5),dp(7),dp(5),dp(7))})
   }
   item(b,"🖼  Изображение персонажа","Выбрать свой портрет из галереи") {chooseAvatar(name)}
   item(b,"✦  Отзывы","Комментарии об этом персонаже") {comments(name)}
@@ -229,7 +232,9 @@ class MainActivity : Activity() {
   }
   val field=visibleField(label,old,b)
   field.minLines=7
+  field.maxLines=20
   field.gravity=Gravity.TOP
+  field.setSingleLine(false)
   root.addView(button("✓ Сохранить") {
    prefs.edit().putString(key+"_"+name,field.text.toString()).apply()
    characterDetail(name)
