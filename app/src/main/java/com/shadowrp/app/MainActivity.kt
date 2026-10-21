@@ -195,20 +195,45 @@ class MainActivity : Activity() {
   active=name
   init("✦ $name")
   val b=body()
-  val portrait=avatar(name,300)
-  b.addView(portrait,LinearLayout.LayoutParams(-1,dp(300)).apply {setMargins(dp(8),dp(12),dp(8),dp(8))})
+  b.addView(avatar(name,300),LinearLayout.LayoutParams(-1,dp(300)).apply {setMargins(dp(8),dp(12),dp(8),dp(8))})
   b.addView(text(name,30f,Color.WHITE,true))
   val universe=animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский персонаж"
   b.addView(text("✦ $universe",16f,Color.rgb(133,179,255),true))
-  b.addView(text(prefs.getString("persona_$name","Персонаж для ролевой истории.").orEmpty(),17f,muted))
-  item(b,"🖼  Установить портрет","Выбрать изображение из галереи") {chooseAvatar(name)}
-  item(b,"✎  Характер и предыстория","Редактировать описание и поведение") {editPersona(name)}
+  val fields=listOf(
+   "Характер и предыстория" to "persona",
+   "Внешность" to "appearance",
+   "Сценарий ролевой игры" to "scenario",
+   "Начальная ситуация" to "opening",
+   "Первое сообщение персонажа" to "greeting",
+   "Правила поведения ИИ" to "protocol",
+   "Память персонажа" to "memory"
+  )
+  fields.forEach { (label,key) ->
+   val value=prefs.getString(key+"_"+name,"").orEmpty().ifBlank {
+    if(key=="persona")prefs.getString("persona_$name","").orEmpty() else ""
+   }
+   item(b,label,value.ifBlank{"Не заполнено • нажми, чтобы добавить"}.take(180)) { editCharacterField(name,label,key) }
+  }
+  item(b,"🖼  Изображение персонажа","Выбрать свой портрет из галереи") {chooseAvatar(name)}
   item(b,"✦  Отзывы","Комментарии об этом персонаже") {comments(name)}
-  b.addView(space(14))
-  root.addView(button("▶  Начать ролевую историю") {chat(name)}.apply {
+  root.addView(button("▶  Начать RP") {chat(name)}.apply {
    textSize=20f;background=shape(Color.rgb(35,89,191),18f)
    setPadding(dp(14),dp(19),dp(14),dp(19))
   },LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(10),dp(4),dp(10),dp(10))})
+ }
+ private fun editCharacterField(name:String,label:String,key:String) {
+  init(label)
+  val b=body()
+  val old=prefs.getString(key+"_"+name,"").orEmpty().ifBlank {
+   if(key=="persona")prefs.getString("persona_$name","").orEmpty() else ""
+  }
+  val field=visibleField(label,old,b)
+  field.minLines=7
+  field.gravity=Gravity.TOP
+  root.addView(button("✓ Сохранить") {
+   prefs.edit().putString(key+"_"+name,field.text.toString()).apply()
+   characterDetail(name)
+  }.apply {textSize=19f;background=shape(Color.rgb(35,89,191))})
  }
  private fun comments(name:String) {
   val key="comments_$name"
@@ -313,7 +338,7 @@ class MainActivity : Activity() {
    if(n.isBlank()){alert("Укажи имя персонажа");return@button}
    if(characters.contains(n)){alert("Персонаж с таким именем уже существует");return@button}
    characters.add(n);chats[n]=mutableListOf()
-   prefs.edit().putString("persona_$n",listOf(persona.text.toString(),"Внешность: "+appearance.text.toString(),"Сценарий: "+scenario.text.toString(),"Протокол: "+protocol.text.toString(),"Память: "+memory.text.toString()).joinToString("\n")).putString("greeting_$n",greeting.text.toString()).apply()
+   prefs.edit().putString("persona_$n",persona.text.toString()).putString("appearance_$n",appearance.text.toString()).putString("scenario_$n",scenario.text.toString()).putString("greeting_$n",greeting.text.toString()).putString("protocol_$n",protocol.text.toString()).putString("memory_$n",memory.text.toString()).apply()
    save();chooseAvatar(n)
   }.apply {textSize=19f;setBackgroundColor(Color.rgb(39,84,165))})
  }
@@ -359,7 +384,7 @@ class MainActivity : Activity() {
   thread {
    try {
     val arr=JSONArray()
-    val persona=prefs.getString("persona_$name","")!! + "\nИгрок: " + prefs.getString("identity_name","Игрок").orEmpty() + ". " + prefs.getString("identity_bio","").orEmpty()
+    val persona=listOf("Характер: "+prefs.getString("persona_$name","").orEmpty(),"Внешность: "+prefs.getString("appearance_$name","").orEmpty(),"Сценарий: "+prefs.getString("scenario_$name","").orEmpty(),"Начальная ситуация: "+prefs.getString("opening_$name","").orEmpty(),"Правила: "+prefs.getString("protocol_$name","").orEmpty(),"Память: "+prefs.getString("memory_$name","").orEmpty()).joinToString("\n") + "\nИгрок: " + prefs.getString("identity_name","Игрок").orEmpty() + ". " + prefs.getString("identity_bio","").orEmpty()
     arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
     snapshot.forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second)) }
     val data=JSONObject().put("model",model).put("messages",arr).put("stream",false).toString()
