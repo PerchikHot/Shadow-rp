@@ -195,10 +195,10 @@ class MainActivity : Activity() {
   val universe=animeRoster.firstOrNull {it[0]==name}?.get(1) ?: "Авторский персонаж"
   val intro=prefs.getString("persona_$name","Персонаж для ролевой истории.").orEmpty()
   val panelView=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(6),dp(16),dp(8))}
-  val face=avatar(name,110)
-  panelView.addView(face,LinearLayout.LayoutParams(-1,dp(110)))
+  val face=avatar(name,205)
+  panelView.addView(face,LinearLayout.LayoutParams(-1,dp(205)))
   panelView.addView(text(universe,14f,Color.rgb(124,175,255),true))
-  panelView.addView(text(intro,15f,Color.WHITE))
+  panelView.addView(text(intro,17f,Color.WHITE))
   panelView.addView(button("🖼 Изменить изображение") {chooseAvatar(name)})
   panelView.addView(button("✎ Редактировать описание") {editPersona(name)})
   panelView.addView(text("Сценарий и история общения сохраняются отдельно для этого персонажа. Другие варианты истории можно будет добавить позже.",13f,muted))
@@ -217,7 +217,7 @@ class MainActivity : Activity() {
   if(list.length()==0)contents.addView(text("Пока нет отзывов. Оставь первый!",14f,muted))
   scroll.addView(contents)
   box.addView(scroll,LinearLayout.LayoutParams(-1,dp(170)))
-  val entry=EditText(this).apply {hint="Твой отзыв о персонаже";setHintTextColor(muted);setTextColor(Color.WHITE);background=shape(bg);setPadding(dp(12),dp(12),dp(12),dp(12))}
+  val entry=EditText(this).apply {hint="Твой отзыв о персонаже";setHintTextColor(muted);setTextColor(Color.WHITE);background=shape(Color.rgb(34,46,69));setPadding(dp(12),dp(12),dp(12),dp(12))}
   box.addView(entry)
   AlertDialog.Builder(this).setTitle("Отзывы • $name").setView(box)
    .setPositiveButton("Добавить"){_,_->
@@ -294,21 +294,24 @@ class MainActivity : Activity() {
   nav(2)
  }
  private fun createCharacter() {
-  val layout=LinearLayout(this).apply { orientation=1;setPadding(20,8,20,8) }
-  val name=EditText(this).apply { hint="Имя персонажа";layout.addView(this) }
-  val persona=EditText(this).apply { hint="Характер, роль, предыстория";minLines=3;layout.addView(this) }
-  val appearance=EditText(this).apply { hint="Внешность и стиль";minLines=2;layout.addView(this) }
-  val scenario=EditText(this).apply { hint="Сценарий и начало истории";minLines=2;layout.addView(this) }
-  val greeting=EditText(this).apply {hint="Приветствие персонажа";minLines=2;layout.addView(this)}
-  val protocol=EditText(this).apply {hint="Протокол: правила поведения ИИ";minLines=2;layout.addView(this)}
-  val memory=EditText(this).apply {hint="Карточка памяти: важные факты";minLines=2;layout.addView(this)}
-  AlertDialog.Builder(this).setTitle("Новый персонаж").setView(layout).setPositiveButton("Создать") { _,_->
+  init("Новый персонаж")
+  val b=body()
+  b.addView(text("Создай свою героиню или героя. Все поля оформлены в едином стиле.",15f,muted))
+  val name=visibleField("Имя персонажа","",b)
+  val persona=visibleField("Характер, роль, предыстория","",b)
+  val appearance=visibleField("Внешность и стиль","",b)
+  val scenario=visibleField("Сценарий и начало истории","",b)
+  val greeting=visibleField("Приветствие персонажа","",b)
+  val protocol=visibleField("Протокол: правила поведения ИИ","",b)
+  val memory=visibleField("Карточка памяти: важные факты","",b)
+  root.addView(button("✓ Создать персонажа") {
    val n=name.text.toString().trim()
-   if(n.isNotBlank()&&!characters.contains(n)) {
-    characters.add(n);chats[n]=mutableListOf()
-    prefs.edit().putString("persona_$n",listOf(persona.text.toString(), "Внешность: "+appearance.text.toString(), "Сценарий: "+scenario.text.toString(), "Протокол: "+protocol.text.toString(), "Память: "+memory.text.toString()).joinToString("\n")).putString("greeting_$n",greeting.text.toString()).apply();save();chooseAvatar(n);characterDetail(n)
-   }
-  }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+   if(n.isBlank()){alert("Укажи имя персонажа");return@button}
+   if(characters.contains(n)){alert("Персонаж с таким именем уже существует");return@button}
+   characters.add(n);chats[n]=mutableListOf()
+   prefs.edit().putString("persona_$n",listOf(persona.text.toString(),"Внешность: "+appearance.text.toString(),"Сценарий: "+scenario.text.toString(),"Протокол: "+protocol.text.toString(),"Память: "+memory.text.toString()).joinToString("\\n")).putString("greeting_$n",greeting.text.toString()).apply()
+   save();chooseAvatar(n)
+  }.apply {textSize=19f;setBackgroundColor(Color.rgb(39,84,165))})
  }
  private fun chatList() {
   init("Чаты");val b=body()
@@ -325,8 +328,8 @@ class MainActivity : Activity() {
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
   if(messages.isEmpty())b.addView(text(prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение." },16f,muted))
   messages.forEach { (role,value)->
-   val bubble=text(value,15f).apply {setPadding(dp(10),dp(8),dp(10),dp(8))}
-   bubble.background=shape(if(role=="user")Color.rgb(13,75,148) else panel)
+   val bubble=text(value,19f).apply {setPadding(dp(10),dp(8),dp(10),dp(8))}
+   bubble.background=shape(if(role=="user")Color.rgb(34,76,150) else Color.rgb(27,39,61))
    val lp=LinearLayout.LayoutParams(-2,-2).apply {
     gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT
     setMargins(if(role=="user")dp(55) else dp(6),dp(4),if(role=="user")dp(6) else dp(55),dp(4))
@@ -386,15 +389,15 @@ class MainActivity : Activity() {
  }
 
  private fun editPersona(name:String) {
-  val field=EditText(this).apply {setText(prefs.getString("persona_$name",""));minLines=6;setTextColor(Color.WHITE);setPadding(dp(16),dp(12),dp(16),dp(12))}
-  AlertDialog.Builder(this).setTitle("Описание • $name").setView(field).setPositiveButton("Сохранить"){_,_->
+  val holder=LinearLayout(this).apply {orientation=1;setPadding(dp(14),dp(8),dp(14),dp(8))}\n  val field=visibleField("Описание персонажа",prefs.getString("persona_$name","").orEmpty(),holder)
+  AlertDialog.Builder(this).setTitle("Описание • $name").setView(holder).setPositiveButton("Сохранить"){_,_->
    prefs.edit().putString("persona_$name",field.text.toString()).apply();characterDetail(name)
   }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
  }
  private fun editIdentity() {
   val l=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
-  val name=EditText(this).apply {hint="Имя игрока";setText(prefs.getString("identity_name",""));l.addView(this)}
-  val bio=EditText(this).apply {hint="Биография и RP-личность";minLines=4;setText(prefs.getString("identity_bio",""));l.addView(this)}
+  val name=visibleField("Имя игрока",prefs.getString("identity_name","").orEmpty(),l)
+  val bio=visibleField("Биография и RP-личность",prefs.getString("identity_bio","").orEmpty(),l)
   AlertDialog.Builder(this).setTitle("Моя личность").setView(l).setPositiveButton("Сохранить"){_,_->
    prefs.edit().putString("identity_name",name.text.toString()).putString("identity_bio",bio.text.toString()).apply();profile()
   }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
@@ -459,7 +462,7 @@ class MainActivity : Activity() {
    val o=history.optJSONObject(i)?:continue
    b.addView(text(o.optString("role")+": "+o.optString("text"),15f))
   }
-  val input=EditText(this).apply {hint="Твоё действие или реплика";setTextColor(Color.WHITE);setHintTextColor(muted)}
+  val input=EditText(this).apply {hint="Твоё действие или реплика";setTextColor(Color.WHITE);setHintTextColor(muted);textSize=19f;background=shape(panel);setPadding(dp(14),dp(14),dp(14),dp(14))}
   root.addView(input)
   root.addView(button("➤ Отправить") {
    val msg=input.text.toString().trim()
@@ -507,9 +510,9 @@ class MainActivity : Activity() {
   val outline=GradientDrawable().apply {setColor(Color.rgb(34,46,69));cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(83,126,205))}
   return EditText(this).apply {
    setText(value);hint=label;setHintTextColor(Color.rgb(151,173,207));setTextColor(Color.WHITE);textSize=17f
-   setSingleLine(label!="Сюжет и отношения участников");background=outline
+   setSingleLine(label!="Сюжет и отношения участников" && label!="Характер, роль, предыстория");background=outline
    setPadding(dp(14),dp(14),dp(14),dp(14))
-   parent.addView(this,LinearLayout.LayoutParams(-1,dp(if(label=="Сюжет и отношения участников")110 else 58)).apply {bottomMargin=dp(14)})
+   parent.addView(this,LinearLayout.LayoutParams(-1,dp(if(label=="Сюжет и отношения участников" || label=="Характер, роль, предыстория")110 else 58)).apply {bottomMargin=dp(14)})
   }
  }
  private fun editModel(provider:Int) {
