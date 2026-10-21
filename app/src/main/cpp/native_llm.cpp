@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <chrono>
 #include "llama.h"
 
 static std::mutex inference_mutex;
@@ -12,6 +13,8 @@ static bool backend_ready = false;
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstring prompt, jint maxTokens) {
     std::lock_guard<std::mutex> lock(inference_mutex);
+    using clock = std::chrono::steady_clock;
+    const auto started = clock::now();
     const char *model_path = env->GetStringUTFChars(path, nullptr);
     const char *prompt_chars = env->GetStringUTFChars(prompt, nullptr);
     std::string input(prompt_chars);
@@ -29,10 +32,11 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     if (!model) {
         return env->NewStringUTF("ERROR: Model could not be loaded");
     }
+    const auto loaded = clock::now();
     llama_context_params cp = llama_context_default_params();
-    cp.n_ctx = 1536;
-    cp.n_batch = 512;
-    cp.n_threads = 4;
+    cp.n_ctx = 768;
+    cp.n_batch = 256;
+    cp.n_threads = 2;
     llama_context *ctx = llama_init_from_model(model, cp);
     if (!ctx) {
         return env->NewStringUTF("ERROR: Context allocation failed");
@@ -59,9 +63,12 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
         if (llama_decode(ctx, batch) != 0) break;
         offset += batchSize;
     }
-    for (int i=0; i < maxTokens && actual+i < 1500; ++i) {
+    const auto prefillingDone = clock::now();
+    int produced = 0;
+    for (int i=0; i < maxTokens && actual+i < 750; ++i) {
         llama_token token = llama_sampler_sample(sampler, ctx, -1);
         if (llama_vocab_is_eog(vocab, token)) break;
+        ++produced;
         char piece[512];
         int size = llama_token_to_piece(vocab, token, piece, sizeof(piece), 0, true);
         if (size > 0) output.append(piece, size);
@@ -70,5 +77,8 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     }
     llama_sampler_free(sampler);
     llama_free(ctx);
+    const auto finished = clock::now();
+    const auto ms = [](clock::time_point a, clock::time_point b) { return std::chrono::duration_cast<std::chrono::milliseconds>(b-a).count(); };
+    output += "\\n[[SHADOW_STATS:" + std::to_string(ms(started,loaded)) + "," + std::to_string(ms(loaded,prefillingDone)) + "," + std::to_string(ms(prefillingDone,finished)) + "," + std::to_string(produced) + "]]";
     return env->NewStringUTF(output.c_str());
 }
