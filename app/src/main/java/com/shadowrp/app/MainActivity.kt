@@ -281,6 +281,27 @@ class MainActivity : Activity() {
       if(thumb.startsWith("https://") && link==null)link=thumb
      }
     }
+    if(link==null){
+     val commonsQuery=URLEncoder.encode(query+" anime character","UTF-8")
+     val commonsUrl="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch="+commonsQuery+"&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json"
+     val commonsConn=(URL(commonsUrl).openConnection() as HttpURLConnection).apply {
+      connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10 (Android; Wikimedia Commons character browser)")
+     }
+     val commons=JSONObject(commonsConn.inputStream.bufferedReader().use{it.readText()})
+     commonsConn.disconnect()
+     val results=commons.optJSONObject("query")?.optJSONObject("pages")
+     if(results!=null){
+      val keys=results.keys()
+      val needle=query.substringBefore(" ").lowercase()
+      while(keys.hasNext()){
+       val page=results.optJSONObject(keys.next())?:continue
+       val title=page.optString("title").lowercase()
+       if(!title.contains(needle))continue
+       val url=page.optJSONArray("imageinfo")?.optJSONObject(0)?.optString("thumburl","").orEmpty()
+       if(url.startsWith("https://") && (url.contains(".jpg")||url.contains(".png")||url.contains(".jpeg"))) {link=url;break}
+      }
+     }
+    }
     if(link!=null){
      val conn=(URL(link).openConnection() as HttpURLConnection).apply {connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10")}
      val bytes=conn.inputStream.use{it.readBytes()}
