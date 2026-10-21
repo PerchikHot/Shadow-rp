@@ -367,7 +367,7 @@ class MainActivity : Activity() {
     val response=JSONObject(conn.inputStream.bufferedReader().use{it.readText()})
     conn.disconnect()
     val matches=response.optJSONArray("data")?:JSONArray()
-    val canonical=query.substringBeforeLast(" ").lowercase().replace(Regex("[^a-z]"),"")
+    val canonical=query.lowercase().replace(Regex("[^a-z]"),"")
     var imageUrl=""
     for(i in 0 until matches.length()){
      val item=matches.optJSONObject(i)?:continue
