@@ -1013,6 +1013,36 @@ class MainActivity : Activity() {
   })
  }
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
+ private fun modelInstaller(parent:LinearLayout) {
+  parent.addView(section("Локальные модели • на устройстве"))
+  parent.addView(text("Скачивание сохраняет модель в папку приложения. Для генерации текста нужен отдельный движок llama.cpp, который пока не встроен в Shadow RP.",14f,muted))
+  val modelName="qwen3-0.6b-q4_k_m.gguf"
+  val modelUrl="https://huggingface.co/harzva/mobilecore-qwen3-0.6b-gguf/resolve/main/qwen3-0.6b-q4_k_m.gguf?download=true"
+  val folder=File(getExternalFilesDir(null),"models/text").apply{mkdirs()}
+  val destination=File(folder,modelName)
+  val status=text(if(destination.length()>450000000L)"✓ Скачано • "+destination.length()/1048576+" МБ" else "Qwen3 0.6B Q4 • около 462 МиБ • русский текст, базовый RP",14f,muted)
+  parent.addView(status)
+  parent.addView(button(if(destination.length()>450000000L)"✓ Qwen3 0.6B • на устройстве" else "↓ Скачать Qwen3 0.6B (текст)") {
+   if(destination.length()>450000000L){alert("Модель находится в "+destination.absolutePath+"; движок локального запуска ещё не подключён.");return@button}
+   AlertDialog.Builder(this).setTitle("Скачать текстовую модель?")
+    .setMessage("Размер около 462 МиБ. Файл GGUF не требует распаковки. Загрузка через Android DownloadManager, желательно Wi-Fi. Модель сама по себе не начнёт отвечать без встроенного движка.")
+    .setPositiveButton("Скачать"){_,_->
+     try{
+      val request=android.app.DownloadManager.Request(android.net.Uri.parse(modelUrl))
+       .setTitle("Shadow RP • Qwen3 0.6B").setDescription("Локальная модель текста")
+       .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+       .setDestinationUri(android.net.Uri.fromFile(destination))
+       .setAllowedOverMetered(true)
+      val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+      val id=manager.enqueue(request)
+      prefs.edit().putLong("download_qwen3",id).apply()
+      status.text="↓ Загрузка передана Android • проверь уведомления"
+     }catch(e:Exception){alert("Не удалось начать загрузку: "+e.message)}
+    }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+  }.apply{background=shape(Color.rgb(61,51,146),16f)})
+  parent.addView(text("Генерация изображений • img2img",19f,Color.WHITE,true))
+  parent.addView(text("Для image-to-image нужна отдельная модель диффузии и Android-движок. Пока не установлены: кнопка загрузки будет добавлена после проверки совместимости, иначе скачанный файл не сможет генерировать изображения.",14f,muted))
+ }
  private fun settings() {
   init("Настройки ИИ");val b=body()
   b.addView(section("Подключить ИИ"))
@@ -1025,6 +1055,7 @@ class MainActivity : Activity() {
     editModel(index)
    }
   }
+  modelInstaller(b)
   val model=prefs.getString("model","").orEmpty()
   item(b,"Текущая модель",if(model.isBlank())"Не настроена" else model){editModel(0)}
   nav(4)
