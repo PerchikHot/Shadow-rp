@@ -1211,7 +1211,7 @@ class MainActivity : Activity() {
         val cursor=manager.query(android.app.DownloadManager.Query().setFilterById(previous))
         var running=false
         cursor.use{if(it.moveToFirst()){val state=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS));running=state==android.app.DownloadManager.STATUS_PENDING||state==android.app.DownloadManager.STATUS_RUNNING||state==android.app.DownloadManager.STATUS_PAUSED}}
-        if(running){alert("Qwen3 1.7B уже скачивается.");return@setPositiveButton}
+        if(running){alert("Загрузка уже существует. Не запускай новую: проверь уведомления или нажми «Проверить загрузку Qwen3 1.7B».");return@setPositiveButton}
         manager.remove(previous)
        }
        if(bigFile.exists())bigFile.delete()
@@ -1240,9 +1240,9 @@ class MainActivity : Activity() {
     val reason=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON))
     val label=when(state){
      android.app.DownloadManager.STATUS_SUCCESSFUL->"Загрузка завершена"
-     android.app.DownloadManager.STATUS_FAILED->"Ошибка загрузки (код "+reason+")"
-     android.app.DownloadManager.STATUS_PAUSED->"Загрузка приостановлена (код "+reason+")"
-     android.app.DownloadManager.STATUS_RUNNING->"Загрузка идёт"
+     android.app.DownloadManager.STATUS_FAILED->"Загрузка прервана. Код "+reason+". Проверь свободное место, интернет и ограничения батареи Xiaomi. При повторной попытке Android DownloadManager может начать файл заново."
+     android.app.DownloadManager.STATUS_PAUSED->"Загрузка приостановлена. Код "+reason+". Не нажимай «Скачать» повторно: Android может продолжить текущую задачу автоматически."
+     android.app.DownloadManager.STATUS_RUNNING->"Загрузка идёт в системном менеджере загрузок, даже если Shadow RP закрыт"
      else->"Ожидание загрузки"
     }
     alert(label+"\n"+bytes/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ")
