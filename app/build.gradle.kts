@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
  namespace = "com.shadowrp.app"
  compileSdk = 35
- defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 34; versionName = "0.16.4"
+ defaultConfig { applicationId = "com.shadowrp.app"; minSdk = 26; targetSdk = 35; versionCode = 35; versionName = "0.16.5"
   ndk { abiFilters += listOf("arm64-v8a") }
   externalNativeBuild { cmake { cppFlags += listOf("-std=c++17", "-O2") } }
  }
