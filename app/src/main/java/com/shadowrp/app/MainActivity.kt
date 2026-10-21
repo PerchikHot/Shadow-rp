@@ -1054,7 +1054,7 @@ class MainActivity : Activity() {
      .put("members",selected.joinToString(", ")).put("story",story.text.toString())
      .put("background",background.text.toString().trim()).put("private",privateRoom.isChecked)
     rooms.put(room);prefs.edit().putString("rooms",rooms.toString()).apply();roomChat(room)
-   }.apply{background=shape(Color.rgb(76,54,189),16f);textSize=19f})
+   }.apply{this.background=shape(Color.rgb(76,54,189),16f);textSize=19f})
 
   }.apply {setBackgroundColor(Color.rgb(38,81,162));textSize=19f})
  }
