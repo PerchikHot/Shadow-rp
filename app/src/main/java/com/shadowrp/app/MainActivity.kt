@@ -29,6 +29,7 @@ class MainActivity : Activity() {
  private val characters=mutableListOf<String>()
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
  private var active="Цунаде"
+ private val localPending=mutableSetOf<String>()
  private lateinit var root:LinearLayout
  private var avatarTarget:String?=null
  private var avatarReturn:String?=null
@@ -823,6 +824,7 @@ class MainActivity : Activity() {
  private fun chat(name:String) {
   active=name;save();init("✦ $name")
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
+  if(localPending.contains(name))b.addView(text("⏳ Локальная Qwen обрабатывает сообщение… Первый ответ может занять несколько минут.",14f,Color.rgb(196,172,255)))
   val profileRow=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;background=shape(Color.rgb(13,23,42),16f)}
   profileRow.addView(avatar(name,54),LinearLayout.LayoutParams(dp(54),dp(54)))
   val info=LinearLayout(this).apply{orientation=1}
@@ -863,6 +865,8 @@ class MainActivity : Activity() {
  private fun requestLocal(name:String) {
   val file=File(File(getExternalFilesDir(null),"models/text"),"qwen3-0.6b-q4_k_m.gguf")
   if(!file.exists()||!LocalLlm.available){alert("Локальная модель или движок недоступны. Проверь настройки.");return}
+  if(!localPending.add(name)){alert("Qwen уже генерирует ответ. Дождись завершения.");return}
+  if(active==name)chat(name)
   val history=chats[name]?.takeLast(5)?.toList()?:return
   val identity=prefs.getString("identity_name","Игрок").orEmpty()
   val persona=prefs.getString("persona_$name","").orEmpty().take(900)
@@ -873,8 +877,8 @@ class MainActivity : Activity() {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,180)
     if(response.startsWith("ERROR:"))error(response)
-    runOnUiThread{chats[name]?.add("assistant" to response.trim());save();if(active==name)chat(name)}
-   }catch(e:Throwable){runOnUiThread{alert("Ошибка локального ИИ: "+e.message)}}
+    runOnUiThread{localPending.remove(name);chats[name]?.add("assistant" to response.trim().ifBlank{"(Модель вернула пустой ответ)"});save();if(active==name)chat(name)}
+   }catch(e:Throwable){runOnUiThread{localPending.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
   }
  }
  private fun request(name:String) {
