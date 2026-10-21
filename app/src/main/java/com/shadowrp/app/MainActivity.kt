@@ -838,14 +838,19 @@ class MainActivity : Activity() {
    val bubble=text(greeting,19f,Color.WHITE).apply {background=shape(panel);setPadding(dp(18),dp(18),dp(18),dp(18))}
    b.addView(bubble,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(8),dp(12),dp(32),dp(8))})
   }
-  messages.forEach { (role,value)->
+  messages.forEachIndexed { index,(role,value)->
    val bubble=text(value,20f).apply {setPadding(dp(17),dp(16),dp(17),dp(16));minHeight=dp(70);maxWidth=(resources.displayMetrics.widthPixels*0.87).toInt()}
    bubble.background=shape(if(role=="user")Color.rgb(67,49,179) else Color.rgb(27,39,61))
    val lp=LinearLayout.LayoutParams(-2,-2).apply {
     gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT
     setMargins(if(role=="user")dp(28) else dp(6),dp(7),if(role=="user")dp(6) else dp(28),dp(7))
    }
-   b.addView(bubble,lp)
+   val column=LinearLayout(this).apply{orientation=1;gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT}
+   column.addView(bubble)
+   val timestamp=prefs.getLong("chat_time_${name}_$index",0L)
+   val timeLabel=if(timestamp>0L)java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault()).format(java.util.Date(timestamp)) else "Время неизвестно"
+   column.addView(text(timeLabel,11f,muted).apply{setPadding(dp(10),dp(3),dp(10),0)})
+   b.addView(column,lp)
   }
   val input=EditText(this).apply { hint="Напиши сообщение…";setTextColor(Color.WHITE);setHintTextColor(muted);minLines=2;maxLines=6;setTextSize(17f);setPadding(dp(12),dp(12),dp(12),dp(12));background=shape(panel,16f) }
   val bar=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(7),dp(4),dp(9));background=shape(Color.rgb(10,17,32),18f) }
@@ -853,7 +858,7 @@ class MainActivity : Activity() {
   bar.addView(input,LinearLayout.LayoutParams(0,-2,1f))
   bar.addView(button("➤") {
    val msg=input.text.toString().trim()
-   if(msg.isNotBlank()){messages.add("user" to msg);save();chat(name);request(name)}
+   if(msg.isNotBlank()){prefs.edit().putLong("chat_time_${name}_${messages.size}",System.currentTimeMillis()).apply();messages.add("user" to msg);save();chat(name);request(name)}
   }.apply {textSize=23f;setPadding(dp(14),dp(18),dp(14),dp(18))})
   root.addView(bar)
   b.post {
@@ -877,7 +882,7 @@ class MainActivity : Activity() {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,180)
     if(response.startsWith("ERROR:"))error(response)
-    runOnUiThread{localPending.remove(name);chats[name]?.add("assistant" to response.trim().ifBlank{"(Модель вернула пустой ответ)"});save();if(active==name)chat(name)}
+    runOnUiThread{localPending.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to response.trim().ifBlank{"(Модель вернула пустой ответ)"})};save();if(active==name)chat(name)}
    }catch(e:Throwable){runOnUiThread{localPending.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
   }
  }
@@ -905,7 +910,7 @@ class MainActivity : Activity() {
     if(c.responseCode !in 200..299)error("HTTP ${c.responseCode}: ${response.take(250)}")
     val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
     c.disconnect()
-    runOnUiThread { chats[name]?.add("assistant" to reply);save();if(active==name)chat(name) }
+    runOnUiThread { val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to reply)};save();if(active==name)chat(name) }
    }catch(e:Exception){runOnUiThread { alert("Ошибка модели: ${e.message}") }}
   }
  }
