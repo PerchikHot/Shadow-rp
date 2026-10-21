@@ -1117,17 +1117,26 @@ class MainActivity : Activity() {
   val status=text(if(destination.length()>450000000L)"✓ Скачано • "+destination.length()/1048576+" МБ" else "Qwen3 0.6B Q4 • около 462 МиБ • русский текст, базовый RP",14f,muted)
   parent.addView(status)
   parent.addView(button(if(destination.length()>450000000L)"✓ Qwen3 0.6B • на устройстве" else "↓ Скачать Qwen3 0.6B (текст)") {
-   if(destination.length()>450000000L){alert("Модель находится в "+destination.absolutePath+"; движок локального запуска ещё не подключён.");return@button}
+   if(destination.length()>450000000L){alert("Модель находится в "+destination.absolutePath+". Для RP включи переключатель локальной Qwen ниже.");return@button}
    AlertDialog.Builder(this).setTitle("Скачать текстовую модель?")
     .setMessage("Размер около 462 МиБ. Файл GGUF не требует распаковки. Загрузка через Android DownloadManager, желательно Wi-Fi. Модель сама по себе не начнёт отвечать без встроенного движка.")
     .setPositiveButton("Скачать"){_,_->
      try{
+      val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
+      val previous=prefs.getLong("download_qwen3",-1L)
+      if(previous>=0L){
+       val check=manager.query(android.app.DownloadManager.Query().setFilterById(previous))
+       var running=false
+       check.use{if(it.moveToFirst()){val st=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS));running=st==android.app.DownloadManager.STATUS_RUNNING||st==android.app.DownloadManager.STATUS_PENDING||st==android.app.DownloadManager.STATUS_PAUSED}}
+       if(running){status.text="Загрузка уже запущена. Нажми «Проверить загрузку модели».";return@setPositiveButton}
+       manager.remove(previous)
+      }
+      if(destination.exists()&&destination.length()<450000000L)destination.delete()
       val request=android.app.DownloadManager.Request(android.net.Uri.parse(modelUrl))
        .setTitle("Shadow RP • Qwen3 0.6B").setDescription("Локальная модель текста")
        .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
        .setDestinationUri(android.net.Uri.fromFile(destination))
        .setAllowedOverMetered(true)
-      val manager=getSystemService(DOWNLOAD_SERVICE) as android.app.DownloadManager
       val id=manager.enqueue(request)
       prefs.edit().putLong("download_qwen3",id).apply()
       status.text="↓ Загрузка передана Android • проверь уведомления"
@@ -1146,7 +1155,7 @@ class MainActivity : Activity() {
     val total=it.getLong(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
     val detail=when(state){
      android.app.DownloadManager.STATUS_SUCCESSFUL->"Загрузка завершена"
-     android.app.DownloadManager.STATUS_FAILED->"Ошибка загрузки (код "+it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON))+")"
+     android.app.DownloadManager.STATUS_FAILED->{val reason=it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_REASON));"Загрузка прервана: "+when(reason){1004->"HTTP ошибка (сервер недоступен)";1005->"нет свободного места";1006->"нет соединения";1007->"устройство не может продолжить";1008->"файл уже существует";1009->"недостаточно памяти";1010->"невозможно возобновить загрузку";1011->"файл не найден";1012->"превышено число перенаправлений";1013->"системная ошибка";else->"код $reason"}}
      android.app.DownloadManager.STATUS_RUNNING->"Скачивается"
      android.app.DownloadManager.STATUS_PAUSED->"Приостановлено"
      else->"В очереди"
@@ -1161,7 +1170,7 @@ class MainActivity : Activity() {
    buttonTintList=android.content.res.ColorStateList.valueOf(violet)
    setOnCheckedChangeListener {_,checked->
     if(checked && !LocalLlm.available){isChecked=false;alert("Нативный движок недоступен в этой сборке.");return@setOnCheckedChangeListener}
-    if(checked && destination.length()<100000000L){isChecked=false;alert("Сначала скачай модель GGUF.");return@setOnCheckedChangeListener}
+    if(checked && destination.length()<450000000L){isChecked=false;alert("Сначала скачай модель GGUF.");return@setOnCheckedChangeListener}
     prefs.edit().putBoolean("local_llm",checked).apply()
    }
   }
