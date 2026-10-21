@@ -860,10 +860,28 @@ class MainActivity : Activity() {
    (v as? ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
   }
  }
+ private fun requestLocal(name:String) {
+  val file=File(File(getExternalFilesDir(null),"models/text"),"qwen3-0.6b-q4_k_m.gguf")
+  if(!file.exists()||!LocalLlm.available){alert("Локальная модель или движок недоступны. Проверь настройки.");return}
+  val history=chats[name]?.takeLast(5)?.toList()?:return
+  val identity=prefs.getString("identity_name","Игрок").orEmpty()
+  val persona=prefs.getString("persona_$name","").orEmpty().take(900)
+  val memory=prefs.getString("memory_$name","").orEmpty().take(650)
+  val transcript=history.joinToString("\n"){(role,value)->(if(role=="user")identity else name)+": "+value.take(450)}
+  val prompt="<|im_start|>system\nТы персонаж $name. $persona\nПамять: $memory\nПродолжай RP по-русски. Ответ средней длины. Не описывай действия игрока.<|im_end|>\n<|im_start|>user\n$transcript<|im_end|>\n<|im_start|>assistant\n"
+  thread {
+   try{
+    val response=LocalLlm().generate(file.absolutePath,prompt,180)
+    if(response.startsWith("ERROR:"))error(response)
+    runOnUiThread{chats[name]?.add("assistant" to response.trim());save();if(active==name)chat(name)}
+   }catch(e:Throwable){runOnUiThread{alert("Ошибка локального ИИ: "+e.message)}}
+  }
+ }
  private fun request(name:String) {
   val base=prefs.getString("url","")!!.trimEnd('/')
   val model=prefs.getString("model","")!!
   val key=prefs.getString("key","")!!
+  if(prefs.getBoolean("local_llm",false)){requestLocal(name);return}
   if(base.isBlank()||model.isBlank()){alert("Настрой ИИ-модель через ⚙");return}
   val snapshot=chats[name]?.toList()?:return
   thread {
@@ -1132,6 +1150,19 @@ class MainActivity : Activity() {
     status.text="$detail • "+received/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ"
    }
   })
+  val local=CheckBox(this).apply {
+   text="Использовать Qwen локально для RP"
+   setTextColor(Color.WHITE)
+   isChecked=prefs.getBoolean("local_llm",false)
+   buttonTintList=android.content.res.ColorStateList.valueOf(violet)
+   setOnCheckedChangeListener {_,checked->
+    if(checked && !LocalLlm.available){isChecked=false;alert("Нативный движок недоступен в этой сборке.");return@setOnCheckedChangeListener}
+    if(checked && destination.length()<100000000L){isChecked=false;alert("Сначала скачай модель GGUF.");return@setOnCheckedChangeListener}
+    prefs.edit().putBoolean("local_llm",checked).apply()
+   }
+  }
+  parent.addView(local)
+  parent.addView(text("Локальная генерация выполняется на CPU и может быть медленной. Для Qwen3 рекомендуется короткая история чата.",13f,muted))
   parent.addView(text("Генерация изображений • img2img",19f,Color.WHITE,true))
   parent.addView(text("Для image-to-image нужна отдельная модель диффузии и Android-движок. Пока не установлены: кнопка загрузки будет добавлена после проверки совместимости, иначе скачанный файл не сможет генерировать изображения.",14f,muted))
  }
