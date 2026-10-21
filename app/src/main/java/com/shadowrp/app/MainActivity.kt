@@ -37,6 +37,7 @@ class MainActivity : Activity() {
  private var avatarReturn:String?=null
  private val groups=mutableListOf<String>()
  private val avatarPicker=7311
+ private val ggufPicker=7312
  private fun shape(color:Int,r:Float=18f):GradientDrawable=GradientDrawable().apply { setColor(color);cornerRadius=r*resources.displayMetrics.density }
  private fun text(s:String,size:Float=16f,color:Int=Color.WHITE,bold:Boolean=false)=TextView(this).apply {
   text=s;textSize=size;setTextColor(color);setPadding(14,12,14,12);if(bold)setTypeface(null,Typeface.BOLD)
@@ -541,6 +542,37 @@ class MainActivity : Activity() {
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:android.content.Intent?) {
   super.onActivityResult(requestCode,resultCode,data)
+  if(requestCode==ggufPicker && resultCode==Activity.RESULT_OK && data?.data!=null){
+   val uri=data.data!!
+   val name=try{
+    contentResolver.query(uri,arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),null,null,null)?.use{c->
+     if(c.moveToFirst())c.getString(0) else null
+    }
+   }catch(_:Exception){null}
+   val display=name?:"selected.gguf"
+   if(!display.lowercase(java.util.Locale.ROOT).endsWith(".gguf")){alert("Выбери файл модели с расширением .gguf");return}
+   val target=File(File(getExternalFilesDir(null),"models/text").apply{mkdirs()},"imported-"+System.currentTimeMillis()+".gguf")
+   val progress=AlertDialog.Builder(this).setTitle("Импорт GGUF").setMessage("Копирование модели в память приложения… Не закрывай Shadow RP до завершения.").setCancelable(false).create()
+   progress.show();styleDialog(progress)
+   thread{
+    try{
+     val available=android.os.StatFs(target.parentFile!!.absolutePath).availableBytes
+     val size=contentResolver.openAssetFileDescriptor(uri,"r")?.use{it.length}?:-1L
+     if(size>0 && available<size+64L*1024*1024)error("Недостаточно места: требуется ещё около "+((size+64L*1024*1024-available)/1048576)+" МиБ")
+     contentResolver.openInputStream(uri)?.use{input->
+      target.outputStream().buffered().use{output->input.copyTo(output,1024*1024)}
+     }?:error("Не удалось открыть выбранный файл")
+     if(target.length()<10000000L)error("Файл слишком мал для модели GGUF")
+     target.inputStream().use{stream->
+      val magic=ByteArray(4)
+      if(stream.read(magic)!=4||!magic.contentEquals(byteArrayOf(71,71,85,70)))error("Неверный формат файла GGUF")
+     }
+     prefs.edit().putString("local_model",target.name).apply()
+     runOnUiThread{progress.dismiss();alert("Модель импортирована: "+display+" ("+target.length()/1048576+" МиБ). Она выбрана для RP. Перезапусти приложение перед запуском.") }
+    }catch(e:Exception){target.delete();runOnUiThread{progress.dismiss();alert("Не удалось импортировать GGUF: "+e.message)}}
+   }
+   return
+  }
   if(requestCode==avatarPicker && resultCode==Activity.RESULT_OK && data?.data!=null){
    val uri=data.data!!
    try { contentResolver.takePersistableUriPermission(uri,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }catch(_:Exception){}
@@ -1190,6 +1222,15 @@ class MainActivity : Activity() {
     status.text="$detail • "+received/1048576+" / "+(if(total>0)total/1048576 else 0)+" МиБ"
    }
   })
+  parent.addView(button("📁 Выбрать GGUF-файл с телефона"){
+   val intent=android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply{
+    addCategory(android.content.Intent.CATEGORY_OPENABLE)
+    type="*/*"
+    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+   }
+   try{startActivityForResult(intent,ggufPicker)}catch(e:Exception){alert("Не удалось открыть файлы: "+e.message)}
+  })
+  parent.addView(text("Можно скачать GGUF в браузере или менеджере загрузок, затем выбрать файл здесь. Для llama.cpp он будет скопирован в папку Shadow RP; нужно свободное место под копию. Не закрывай приложение во время импорта.",13f,muted))
   val bigName="Qwen3-1.7B-Q4_K_M.gguf"
   val bigFile=File(folder,bigName)
   val bigMin=1000000000L
