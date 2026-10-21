@@ -565,7 +565,7 @@ class MainActivity : Activity() {
   portraitExecutor.execute {
    var bitmap:android.graphics.Bitmap?=null
    try {
-    val endpoint="https://api.jikan.moe/v4/characters?q="+URLEncoder.encode(query,"UTF-8")+"&limit=25"
+    val endpoint="https://api.jikan.moe/v4/characters?q="+URLEncoder.encode(query.substringBefore(" "),"UTF-8")+"&limit=25"
     val conn=(URL(endpoint).openConnection() as HttpURLConnection).apply{
      connectTimeout=12000;readTimeout=12000;setRequestProperty("User-Agent","ShadowRP/0.11.1")
     }
@@ -598,7 +598,7 @@ class MainActivity : Activity() {
    if(result!=null)runOnUiThread {
     if(prefs.getString("avatar_$name",null)==null)listeners.forEach{it.setImageBitmap(result);it.visibility=View.VISIBLE}
    }
-   Thread.sleep(500)
+   Thread.sleep(900)
   }
  }
  private fun avatar(name:String,height:Int):android.view.View {
@@ -639,7 +639,11 @@ class MainActivity : Activity() {
   val universe=animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский персонаж"
   b.addView(text("✦ $universe",16f,Color.rgb(133,179,255),true))
   b.addView(button("▶  Начать RP с $name"){chat(name)}.apply{background=shape(Color.rgb(78,62,189),16f);textSize=19f})
-  b.addView(text("О персонаже   ·   История   ·   Комментарии",14f,muted,true))
+  val tabs=LinearLayout(this)
+  listOf("О персонаже","История","Отзывы").forEachIndexed {i,label->
+   tabs.addView(button(label){if(i==2)comments(name) else if(i==1)chat(name) else characterDetail(name)}.apply{textSize=13f;setTextColor(if(i==0)Color.rgb(178,149,255) else muted)},LinearLayout.LayoutParams(0,-2,1f))
+  }
+  b.addView(tabs)
   val fields=listOf(
    "Характер и предыстория" to "persona",
    "Внешность" to "appearance",
