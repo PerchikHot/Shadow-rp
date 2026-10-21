@@ -23,7 +23,7 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
         return env->NewStringUTF("ERROR: Model could not be loaded");
     }
     llama_context_params cp = llama_context_default_params();
-    cp.n_ctx = 2048;
+    cp.n_ctx = 1536;
     cp.n_batch = 512;
     cp.n_threads = 4;
     llama_context *ctx = llama_init_from_model(model, cp);
@@ -36,7 +36,7 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
     int count = -llama_tokenize(vocab, input.c_str(), (int)input.size(), nullptr, 0, true, true);
     std::vector<llama_token> tokens(count);
     int actual = llama_tokenize(vocab, input.c_str(), (int)input.size(), tokens.data(), count, true, true);
-    if (actual <= 0 || actual >= 1800) {
+    if (actual <= 0 || actual >= 1300) {
         llama_free(ctx); llama_model_free(model); llama_backend_free();
         return env->NewStringUTF("ERROR: Prompt too long");
     }
@@ -54,7 +54,7 @@ Java_com_shadowrp_app_LocalLlm_generate(JNIEnv *env, jobject, jstring path, jstr
         if (llama_decode(ctx, batch) != 0) break;
         offset += batchSize;
     }
-    for (int i=0; i < maxTokens && actual+i < 2040; ++i) {
+    for (int i=0; i < maxTokens && actual+i < 1500; ++i) {
         llama_token token = llama_sampler_sample(sampler, ctx, -1);
         if (llama_vocab_is_eog(vocab, token)) break;
         char piece[512];
