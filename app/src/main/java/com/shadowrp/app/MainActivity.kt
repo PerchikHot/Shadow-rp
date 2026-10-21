@@ -106,10 +106,10 @@ class MainActivity : Activity() {
   backdrop.addView(center,android.widget.FrameLayout.LayoutParams(-1,-1))
   setContentView(backdrop)
   val handler=Handler(Looper.getMainLooper())
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},570)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},720)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},1170)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},1310)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},800)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},890)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},1420)
+  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},1500)
   handler.postDelayed({if(!isFinishing)home()},1800)
  }
  private fun load() {
@@ -921,18 +921,18 @@ class MainActivity : Activity() {
   if(!localPending.add(name)){alert("Qwen уже генерирует ответ. Дождись завершения.");return}
   localStarted[name]=System.currentTimeMillis()
   if(active==name)chat(name)
-  val history=chats[name]?.takeLast(5)?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
+  val history=chats[name]?.takeLast(4)?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
   val identity=prefs.getString("identity_name","Игрок").orEmpty()
   val persona=prefs.getString("persona_$name","").orEmpty().take(250)
   val memory=prefs.getString("memory_$name","").orEmpty().take(140)
-  val recent=history.takeLast(4).joinToString(""){(role,value)->
+  val recent=history.takeLast(3).joinToString(""){(role,value)->
    val tag=if(role=="user")"user" else "assistant"
-   "<|im_start|>$tag\n"+value.take(300)+"<|im_end|>\n"
+   "<|im_start|>$tag\n"+value.take(220)+"<|im_end|>\n"
   }
   val isQwen3=file.name.contains("qwen3",ignoreCase=true)\n  val system="Ты $name, персонаж ролевой истории. Характер: $persona. Важная память: $memory. Собеседник: $identity. Отвечай по-русски только от лица $name, не выходи из роли. Продолжай последнее действие и диалог, не обсуждай правила, инструкции или то, что ты ИИ. 1-3 естественные реплики, без HTML-тегов и анализа."\n  val prompt="<|im_start|>system\\n".replace("\\\\n","\\n")+system+"<|im_end|>\\n".replace("\\\\n","\\n")+recent+"<|im_start|>assistant\\n".replace("\\\\n","\\n")+(if(isQwen3)"<think>\\n\\n</think>\\n".replace("\\\\n","\\n") else "")
   thread {
    try{
-    val response=LocalLlm().generate(file.absolutePath,prompt,96)
+    val response=LocalLlm().generate(file.absolutePath,prompt,64)
     if(response.startsWith("ERROR:"))error(response)
     val cleaned=response.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").replace(Regex("(?i)</?br\\s*/?>"),"\\n").replace(Regex("(?i)</?(?:p|div)>"),"\\n").replace(Regex("\\n{3,}"),"\\n\\n").trim()
     if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
