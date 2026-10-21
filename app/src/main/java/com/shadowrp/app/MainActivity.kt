@@ -170,6 +170,126 @@ class MainActivity : Activity() {
   "Дзета|The Eminence in Shadow",
   "Эта|The Eminence in Shadow"
  ).map { it.split("|") }
+ private val characterReference=mapOf(
+  "Цунаде" to "Tsunade",
+  "Мэй Теруми" to "Mei Terumi",
+  "Конан" to "Konan",
+  "Йоруичи Сихоин" to "Yoruichi Shihouin",
+  "Рангику Мацумото" to "Rangiku Matsumoto",
+  "Рецу Унохана" to "Retsu Unohana",
+  "Нико Робин" to "Nico Robin",
+  "Боа Хэнкок" to "Boa Hancock",
+  "Нами" to "Nami",
+  "Эрза Скарлет" to "Erza Scarlet",
+  "Мираджейн Штраус" to "Mirajane Strauss",
+  "Люси Хартфилия" to "Lucy Heartfilia",
+  "Аква" to "Aqua",
+  "Даркнесс" to "Darkness",
+  "Круш Карстен" to "Crusch Karsten",
+  "Эльза Гранхирт" to "Elsa Granhiert",
+  "Эсдес" to "Esdeath",
+  "Оливье" to "Olivier",
+  "Макима" to "Makima",
+  "Йор Форджер" to "Yor Forger",
+  "Асуна Юки" to "Asuna Yuuki",
+  "Алиса Цуберг" to "Alice Zuberg",
+  "Синон" to "Shinon",
+  "Лифа" to "Leafa",
+  "Куруми Токисаки" to "Kurumi Tokisaki",
+  "Тока Ятогами" to "Tohka Yatogami",
+  "Оригами Тобиичи" to "Origami Tobiichi",
+  "Котори Ицука" to "Kotori Itsuka",
+  "Лилит Асами" to "Lilith Asami",
+  "Арин Каннадзуки" to "Arin Kannazuki",
+  "Леви Кадзама" to "Levi Kazama",
+  "Рем" to "Rem",
+  "Рам" to "Ram",
+  "Эмилия" to "Emilia",
+  "Эхидна" to "Echidna",
+  "Мегумин" to "Megumin",
+  "Виз" to "Wiz",
+  "Ультиар Милкович" to "Ultear Milkovich",
+  "Кана Альберона" to "Cana Alberona",
+  "Биска Коннелл" to "Bisca Connell",
+  "Тиа Харрибел" to "Tier Harribel",
+  "Неллиэль Ту Одельшванк" to "Nelliel Tu Odelschwanck",
+  "Орихимэ Иноуэ" to "Orihime Inoue",
+  "Сакура Харуно" to "Sakura Haruno",
+  "Хината Хьюга" to "Hinata Hyuuga",
+  "Темари" to "Temari",
+  "Кушина Узумаки" to "Kushina Uzumaki",
+  "Виви Нефертари" to "Nefertari Vivi",
+  "Перона" to "Perona",
+  "Ребекка" to "Rebecca",
+  "Элизабет" to "Elisabeth",
+  "Альфа" to "Alpha",
+  "Бета" to "Beta",
+  "Гамма" to "Gamma",
+  "Дельта" to "Delta",
+  "Эпсилон" to "Epsilon",
+  "Дзета" to "Zeta",
+  "Эта" to "Eta"
+ )
+ private val curatedAppearance=mapOf(
+  "Цунаде" to "Высокая женщина со светлыми волосами, собранными в два длинных хвоста; карие глаза, ромбовидная метка на лбу, зелёная накидка поверх серой одежды.",
+  "Мэй Теруми" to "Стройная женщина с длинными каштановыми волосами, закрывающими один глаз; зелёные глаза, синее платье и пояс.",
+  "Конан" to "Женщина с короткими сине-фиолетовыми волосами, янтарными глазами и бумажным цветком в причёске; чёрный плащ Акацуки.",
+  "Йоруичи Сихоин" to "Темнокожая спортивная женщина с золотистыми глазами и длинными фиолетовыми волосами, собранными в высокий хвост.",
+  "Рангику Мацумото" to "Высокая женщина с пышными волнистыми светло-рыжими волосами, голубыми глазами и формой синигами.",
+  "Рецу Унохана" to "Женщина с длинными чёрными волосами, заплетёнными спереди, тёмными глазами и белым капитанским хаори.",
+  "Нико Робин" to "Высокая стройная женщина с длинными чёрными волосами, голубыми глазами и утончёнными чертами лица; одежда меняется по сюжетным аркам.",
+  "Боа Хэнкок" to "Высокая женщина с очень длинными прямыми чёрными волосами, тёмно-синими глазами и красно-фиолетовым нарядом с золотыми украшениями.",
+  "Нами" to "Стройная девушка с оранжевыми волосами, карими глазами и татуировкой на левом плече; носит разнообразную яркую одежду.",
+  "Эрза Скарлет" to "Высокая девушка с длинными алыми волосами, карими глазами и боевыми доспехами; часто меняет магические комплекты брони.",
+  "Мираджейн Штраус" to "Девушка с длинными белыми волосами, голубыми глазами и доброжелательным выражением лица; часто носит платье.",
+  "Люси Хартфилия" to "Светловолосая девушка с большими карими глазами, длинными волосами и синим знаком гильдии на правой руке.",
+  "Аква" to "Девушка с длинными голубыми волосами, собранными в высокий хвост, голубыми глазами и сине-белым платьем.",
+  "Даркнесс" to "Высокая блондинка с длинными волосами, голубыми глазами и рыцарскими доспехами.",
+  "Круш Карстен" to "Девушка с зелёными волосами до плеч, янтарными глазами и строгой военной формой с белыми элементами.",
+  "Эльза Гранхирт" to "Высокая женщина с длинными тёмными волосами, фиолетовыми глазами и открытым чёрным нарядом с меховыми деталями.",
+  "Эсдес" to "Высокая женщина с длинными голубыми волосами, синими глазами, белой военной формой и фуражкой.",
+  "Оливье" to "Светловолосая воительница с длинными волосами, светлыми глазами и бело-золотыми доспехами; образ героини из «Восхождения в тени».",
+  "Макима" to "Женщина с рыжевато-красными волосами, собранными в косу, золотистыми глазами с концентрическими кольцами; белая рубашка и чёрный галстук.",
+  "Йор Форджер" to "Женщина с длинными чёрными волосами, красными глазами и золотыми украшениями для волос; обычно носит красно-чёрное платье или повседневную одежду.",
+  "Асуна Юки" to "Стройная девушка с длинными каштановыми волосами и янтарными глазами; известна бело-красным костюмом фехтовальщицы.",
+  "Алиса Цуберг" to "Девушка с длинными золотистыми волосами, голубыми глазами и золотыми рыцарскими доспехами.",
+  "Синон" to "Девушка с короткими бирюзовыми волосами, голубыми глазами и сине-белой экипировкой стрелка в GGO.",
+  "Лифа" to "Девушка с длинными светлыми волосами, зелёными глазами и зелёно-белым костюмом сильфа.",
+  "Куруми Токисаки" to "Девушка с длинными чёрными волосами, красным правым глазом и золотым левым глазом с часовым циферблатом; красно-чёрное готическое платье.",
+  "Тока Ятогами" to "Девушка с очень длинными тёмно-фиолетовыми волосами, фиолетовыми глазами и фиолетовыми доспехами духа.",
+  "Оригами Тобиичи" to "Девушка с короткими серебристо-белыми волосами, голубыми глазами и сдержанным выражением лица.",
+  "Котори Ицука" to "Девушка с длинными красными волосами, обычно собранными в два хвоста с чёрными или белыми лентами; красные глаза.",
+  "Лилит Асами" to "Девушка с длинными светлыми волосами, голубыми глазами, школьной формой и чёрной шляпой ведьмы.",
+  "Арин Каннадзуки" to "Девушка с длинными серебристо-белыми волосами, красными глазами и школьной формой.",
+  "Леви Кадзама" to "Девушка с короткими светлыми волосами и зелёными глазами; носит школьную форму и характерные аксессуары.",
+  "Рем" to "Девушка с короткими голубыми волосами, закрывающими один глаз, голубыми глазами и чёрно-белой формой горничной.",
+  "Рам" to "Девушка с короткими розовыми волосами, закрывающими один глаз, красными глазами и чёрно-белой формой горничной.",
+  "Эмилия" to "Девушка с длинными серебристыми волосами, фиолетово-синими глазами и бело-лиловой одеждой.",
+  "Эхидна" to "Женщина с длинными белыми волосами, чёрными глазами и бело-чёрным платьем с украшениями в виде бабочек.",
+  "Мегумин" to "Невысокая девушка с короткими тёмно-каштановыми волосами, красными глазами, красной мантией и большой остроконечной шляпой.",
+  "Виз" to "Женщина с длинными каштановыми волосами, карими глазами и фиолетовым платьем с чёрным плащом.",
+  "Ультиар Милкович" to "Женщина с длинными тёмно-фиолетовыми волосами, красноватыми глазами и нарядом с открытыми плечами.",
+  "Кана Альберона" to "Девушка с длинными каштановыми волосами, фиолетовыми глазами и повседневной одеждой; часто держит карты.",
+  "Биска Коннелл" to "Девушка с зелёными волосами и одеждой в стиле вестерн, часто с ковбойской шляпой.",
+  "Тиа Харрибел" to "Высокая темнокожая женщина со светлыми волосами, зелёными глазами и белым костюмом арранкара.",
+  "Неллиэль Ту Одельшванк" to "Женщина с длинными зелёными волосами, зелёными глазами и остатком маски пустого на голове.",
+  "Орихимэ Иноуэ" to "Девушка с длинными рыжими волосами, серо-карими глазами и цветочными заколками.",
+  "Сакура Харуно" to "Девушка с короткими розовыми волосами, зелёными глазами и красной одеждой шиноби.",
+  "Хината Хьюга" to "Девушка с тёмно-синими волосами, светлыми глазами без видимых зрачков и одеждой клана Хьюга.",
+  "Темари" to "Девушка с песочно-светлыми волосами, собранными в четыре хвоста, зелёными глазами и одеждой шиноби Песка.",
+  "Кушина Узумаки" to "Женщина с очень длинными ярко-красными волосами, фиолетовыми глазами и светлой кожей.",
+  "Виви Нефертари" to "Девушка с длинными светло-голубыми волосами, карими глазами и королевской одеждой.",
+  "Перона" to "Девушка с длинными розовыми волосами, большими глазами и готическим нарядом с зонтиком.",
+  "Ребекка" to "Девушка с длинными розовыми волосами, светлыми глазами и гладиаторскими доспехами.",
+  "Элизабет" to "Женщина с длинными серебристо-белыми волосами, красными глазами и роскошным тёмно-красным платьем; известна как Кровавая Королева.",
+  "Альфа" to "Эльфийка с длинными светлыми волосами, голубыми глазами и острыми ушами; носит тёмный боевой костюм Сада Теней.",
+  "Бета" to "Эльфийка с длинными серебристыми волосами, голубыми глазами и острыми ушами; носит тёмный костюм Сада Теней.",
+  "Гамма" to "Эльфийка с длинными тёмно-синими волосами, голубыми глазами и острыми ушами; носит деловой наряд или форму Сада Теней.",
+  "Дельта" to "Зверолюдка с длинными чёрными волосами, звериными ушами и хвостом; носит чёрный костюм Сада Теней.",
+  "Эпсилон" to "Эльфийка с длинными голубыми волосами и голубыми глазами; носит тёмный костюм Сада Теней.",
+  "Дзета" to "Зверолюдка со светлыми волосами, кошачьими ушами и хвостом; носит тёмный костюм Сада Теней.",
+  "Эта" to "Эльфийка с тёмными волосами, острыми ушами и сонным взглядом; носит тёмный костюм Сада Теней."
+ )
  private fun migrateDefaults() {
   if(prefs.getBoolean("removed_old_defaults",false))return
   listOf("Алиса","Кай","Лира").forEach { name ->
@@ -184,6 +304,7 @@ class MainActivity : Activity() {
    val name=parts[0]
    if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
    fillStoryDefaults(name,parts[1])
+   if(prefs.getString("appearance_$name","").isNullOrBlank())prefs.edit().putString("appearance_$name",curatedAppearance[name].orEmpty()).apply()
   }
   prefs.edit().putBoolean("catalog_seed_05",true).putBoolean("story_defaults_094",true).apply()
   save()
@@ -229,6 +350,46 @@ class MainActivity : Activity() {
    avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();characterDetail(it) }
   }
  }
+ private val portraitPending=mutableSetOf<String>()
+ private fun requestVerifiedPortrait(name:String,view:ImageView) {
+  val query=characterReference[name]?:return
+  val cache=java.io.File(filesDir,"verified_portraits").apply{mkdirs()}
+  val file=java.io.File(cache,java.lang.Integer.toHexString(name.hashCode())+".jpg")
+  if(file.exists() && file.length()>1024) {
+   val bitmap=BitmapFactory.decodeFile(file.absolutePath)
+   if(bitmap!=null){view.setImageBitmap(bitmap);view.visibility=android.view.View.VISIBLE;return}
+  }
+  synchronized(portraitPending){if(!portraitPending.add(name))return}
+  thread {
+   try {
+    val endpoint="https://api.jikan.moe/v4/characters?q="+java.net.URLEncoder.encode(query,"UTF-8")+"&limit=10"
+    val conn=(URL(endpoint).openConnection() as HttpURLConnection).apply{connectTimeout=15000;readTimeout=15000}
+    val response=JSONObject(conn.inputStream.bufferedReader().use{it.readText()})
+    conn.disconnect()
+    val matches=response.optJSONArray("data")?:JSONArray()
+    val canonical=query.substringBeforeLast(" ").lowercase().replace(Regex("[^a-z]"),"")
+    var imageUrl=""
+    for(i in 0 until matches.length()){
+     val item=matches.optJSONObject(i)?:continue
+     val found=item.optString("name").lowercase().replace(Regex("[^a-z]"),"")
+     if(found!=canonical)continue
+     imageUrl=item.optJSONObject("images")?.optJSONObject("jpg")?.optString("image_url","").orEmpty()
+     if(imageUrl.startsWith("https://"))break
+    }
+    if(imageUrl.startsWith("https://")){
+     val download=(URL(imageUrl).openConnection() as HttpURLConnection).apply{connectTimeout=15000;readTimeout=15000}
+     val bytes=download.inputStream.use{it.readBytes()};download.disconnect()
+     if(bytes.size in 1024..3000000){
+      val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)
+      if(bitmap!=null){
+       file.writeBytes(bytes)
+       runOnUiThread{if(prefs.getString("avatar_$name",null)==null){view.setImageBitmap(bitmap);view.visibility=android.view.View.VISIBLE}}
+      }
+     }
+    }
+   }catch(_:Exception){}finally{synchronized(portraitPending){portraitPending.remove(name)}}
+  }
+ }
  private fun avatar(name:String,height:Int):android.view.View {
   val saved=prefs.getString("avatar_$name",null)
   if(saved!=null){
@@ -245,11 +406,17 @@ class MainActivity : Activity() {
     }
    }catch(_:Exception){}
   }
-  return text("✦\n＋ Портрет\n"+name,17f,Color.WHITE,true).apply {
+  val holder=android.widget.FrameLayout(this)
+  val placeholder=text("✦\n＋ Портрет\n"+name,17f,Color.WHITE,true).apply {
    gravity=Gravity.CENTER
    background=shape(Color.rgb(37,54,86),18f)
    setOnClickListener {chooseAvatar(name)}
   }
+  holder.addView(placeholder,android.widget.FrameLayout.LayoutParams(-1,-1))
+  val remote=ImageView(this).apply{scaleType=ImageView.ScaleType.CENTER_CROP;visibility=android.view.View.GONE;clipToOutline=true;background=shape(panel)}
+  holder.addView(remote,android.widget.FrameLayout.LayoutParams(-1,-1))
+  requestVerifiedPortrait(name,remote)
+  return holder
  }
  private fun characterDetail(name:String) {
   active=name
