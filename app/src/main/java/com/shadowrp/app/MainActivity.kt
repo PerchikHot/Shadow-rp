@@ -943,7 +943,7 @@ class MainActivity : Activity() {
      val prefill=stats.groupValues[2].toLongOrNull()?:0L
      val decode=stats.groupValues[3].toLongOrNull()?:0L
      val count=stats.groupValues[4].toLongOrNull()?:0L
-     prefs.edit().putString("local_llm_stats","Загрузка: ${load/1000} с • обработка: ${prefill/1000} с • ответ: ${decode/1000} с • токенов: $count • скорость: "+if(decode>0)"%.2f".format(java.util.Locale.US,count*1000.0/decode)+" ток/с" else "—").apply()
+     prefs.edit().putString("local_llm_stats","Загрузка: ${load/1000} с • обработка: ${prefill/1000} с • ответ: ${decode/1000} с • токенов: $count • скорость: "+(if(decode>0)"%.2f".format(java.util.Locale.US,count*1000.0/decode)+" ток/с" else "—")).apply()
     }
     val cleaned=raw.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").replace(Regex("(?i)</?br\\s*/?>"),"\\n").replace(Regex("(?i)</?(?:p|div)>"),"\\n").replace(Regex("\\n{3,}"),"\\n\\n").trim()
     if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
