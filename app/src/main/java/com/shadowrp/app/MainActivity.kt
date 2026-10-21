@@ -898,7 +898,7 @@ class MainActivity : Activity() {
   val strength=SeekBar(this).apply{max=90;progress=45}
   layout.addView(text("Сила изменений img2img: 0.45",14f,muted))
   layout.addView(strength)
-  val reference=CheckBox(this).apply{text="Использовать портрет персонажа (img2img)";setTextColor(Color.WHITE);isChecked=prefs.getString("avatar_$name",null)!=null}
+  val reference=CheckBox(this).apply{text="Использовать портрет персонажа (img2img)";setTextColor(Color.WHITE);isChecked=prefs.getString("avatar_$name",null)!=null || File(File(filesDir,"verified_portraits"),java.lang.Integer.toHexString(name.hashCode())+".jpg").length()>1024}
   layout.addView(reference)
   AlertDialog.Builder(this).setTitle("✦ Изображение • $name").setView(ScrollView(this).apply{addView(layout)})
    .setPositiveButton("Генерировать"){_,_->
@@ -918,7 +918,8 @@ class MainActivity : Activity() {
   val base=prefs.getString("image_url","").orEmpty().trimEnd('/')
   if(base.isBlank()){imageServerSettings();alert("Сначала настрой сервер изображений, затем повтори генерацию.");return}
   val uri=prefs.getString("avatar_$name",null)
-  val withImage=useReference && uri!=null
+  val cachedPortrait=File(File(filesDir,"verified_portraits"),java.lang.Integer.toHexString(name.hashCode())+".jpg")
+  val withImage=useReference && (uri!=null || cachedPortrait.length()>1024)
   val progress=AlertDialog.Builder(this).setTitle("Создание сцены").setMessage("Генерация выполняется на подключённом сервере. Подожди…").setNegativeButton("Скрыть",null).create()
   progress.show();styleDialog(progress)
   thread {
@@ -926,7 +927,8 @@ class MainActivity : Activity() {
     val request=JSONObject().put("prompt",prompt).put("negative_prompt","low quality, wrong character, distorted face, extra limbs")
      .put("steps",22).put("width",512).put("height",512).put("cfg_scale",6.5)
     if(withImage){
-     val bytes=contentResolver.openInputStream(android.net.Uri.parse(uri))?.use{it.readBytes()}?:error("Не удалось открыть портрет")
+     val bytes=if(uri!=null)contentResolver.openInputStream(android.net.Uri.parse(uri))?.use{it.readBytes()} else if(cachedPortrait.length()>1024)cachedPortrait.readBytes() else null
+     if(bytes==null)error("Не удалось открыть портрет")
      val encoded=android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)
      request.put("init_images",JSONArray().put(encoded)).put("denoising_strength",denoise)
     }
@@ -1042,12 +1044,17 @@ class MainActivity : Activity() {
   val title=room.optString("title")
   val members=room.optString("members").split(",").map{it.trim()}.filter{it.isNotBlank()}
   init(title);val b=body()
-  b.addView(text("Участники: "+members.joinToString(", "),14f,muted))
+  val banner=LinearLayout(this).apply{orientation=1;background=shape(Color.rgb(24,18,57),20f);setPadding(dp(14),dp(16),dp(14),dp(16))}
+  banner.addView(text("✦ "+title,23f,Color.WHITE,true))
+  banner.addView(text("Участники: "+members.joinToString(", "),14f,muted))
+  banner.addView(text("Сюжет: "+room.optString("story").ifBlank{"Свободная история"},14f,Color.rgb(195,181,255)))
+  b.addView(banner)
   val key="room_chat_$title"
   val history=JSONArray(prefs.getString(key,"[]"))
   for(i in 0 until history.length()) {
    val o=history.optJSONObject(i)?:continue
-   b.addView(text(o.optString("role")+": "+o.optString("text"),15f))
+   val fromUser=o.optString("role")=="Игрок"
+   b.addView(text(o.optString("role")+"\n"+o.optString("text"),16f).apply{background=shape(if(fromUser)Color.rgb(67,49,179) else panel,16f)},LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(8),dp(5),dp(8),dp(5))})
   }
   val input=EditText(this).apply {hint="Твоё действие или реплика";setTextColor(Color.WHITE);setHintTextColor(muted);textSize=19f;background=shape(panel);setPadding(dp(14),dp(14),dp(14),dp(14))}
   root.addView(input)
