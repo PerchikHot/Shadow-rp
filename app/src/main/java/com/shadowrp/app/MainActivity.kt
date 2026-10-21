@@ -888,8 +888,73 @@ class MainActivity : Activity() {
   }
  }
  private fun imagePrompt() {
-  val scene=chats[active]?.takeLast(6)?.joinToString("\n"){ "${it.first}: ${it.second}" }?:""
-  AlertDialog.Builder(this).setTitle("Контекст для изображения").setMessage(scene.ifBlank { "Сначала начни переписку." }+"\n\nГенератор изображений пока не подключён.").setPositiveButton("OK",null).show().also {styleDialog(it)}
+  val name=active
+  val scene=chats[name]?.takeLast(8)?.joinToString("\n"){"${it.first}: ${it.second}"}?:""
+  val appearance=prefs.getString("appearance_$name","").orEmpty()
+  val prompt="Anime illustration, character: $name. Appearance: $appearance. Scene from roleplay: $scene. Consistent character identity, coherent background, expressive composition, detailed clothing."
+  val layout=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(8),dp(14),dp(8))}
+  layout.addView(text("Сцена из последних сообщений + внешность персонажа. Для img2img сначала выбери портрет в карточке.",14f,muted))
+  val editor=visibleField("Промпт для генерации",prompt,layout)
+  val strength=SeekBar(this).apply{max=90;progress=45}
+  layout.addView(text("Сила изменений img2img: 0.45",14f,muted))
+  layout.addView(strength)
+  val reference=CheckBox(this).apply{text="Использовать портрет персонажа (img2img)";setTextColor(Color.WHITE);isChecked=prefs.getString("avatar_$name",null)!=null}
+  layout.addView(reference)
+  AlertDialog.Builder(this).setTitle("✦ Изображение • $name").setView(ScrollView(this).apply{addView(layout)})
+   .setPositiveButton("Генерировать"){_,_->
+    generateScene(name,editor.text.toString(),reference.isChecked,strength.progress/100.0)
+   }.setNeutralButton("Настроить сервер"){_,_->imageServerSettings()}
+   .setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+ }
+ private fun imageServerSettings() {
+  val form=LinearLayout(this).apply{orientation=1;setPadding(dp(14),dp(8),dp(14),dp(8))}
+  form.addView(text("Нужен запущенный Stable Diffusion WebUI / Forge с включённым API. Адрес укажи до /sdapi/v1, например http://192.168.1.10:7860",14f,muted))
+  val url=visibleField("URL сервера изображений",prefs.getString("image_url","").orEmpty(),form)
+  AlertDialog.Builder(this).setTitle("Сервер генерации").setView(form)
+   .setPositiveButton("Сохранить"){_,_->prefs.edit().putString("image_url",url.text.toString().trim().trimEnd('/')).apply()}
+   .setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+ }
+ private fun generateScene(name:String,prompt:String,useReference:Boolean,denoise:Double) {
+  val base=prefs.getString("image_url","").orEmpty().trimEnd('/')
+  if(base.isBlank()){imageServerSettings();alert("Сначала настрой сервер изображений, затем повтори генерацию.");return}
+  val uri=prefs.getString("avatar_$name",null)
+  val withImage=useReference && uri!=null
+  val progress=AlertDialog.Builder(this).setTitle("Создание сцены").setMessage("Генерация выполняется на подключённом сервере. Подожди…").setNegativeButton("Скрыть",null).create()
+  progress.show();styleDialog(progress)
+  thread {
+   try{
+    val request=JSONObject().put("prompt",prompt).put("negative_prompt","low quality, wrong character, distorted face, extra limbs")
+     .put("steps",22).put("width",512).put("height",512).put("cfg_scale",6.5)
+    if(withImage){
+     val bytes=contentResolver.openInputStream(android.net.Uri.parse(uri))?.use{it.readBytes()}?:error("Не удалось открыть портрет")
+     val encoded=android.util.Base64.encodeToString(bytes,android.util.Base64.NO_WRAP)
+     request.put("init_images",JSONArray().put(encoded)).put("denoising_strength",denoise)
+    }
+    val endpoint=base+"/sdapi/v1/"+if(withImage)"img2img" else "txt2img"
+    val conn=(URL(endpoint).openConnection() as HttpURLConnection).apply{
+     requestMethod="POST";doOutput=true;connectTimeout=15000;readTimeout=180000
+     setRequestProperty("Content-Type","application/json")
+    }
+    conn.outputStream.use{it.write(request.toString().toByteArray(Charsets.UTF_8))}
+    val status=conn.responseCode
+    val response=(if(status in 200..299)conn.inputStream else conn.errorStream).bufferedReader().use{it.readText()}
+    conn.disconnect()
+    if(status !in 200..299)error("HTTP $status: "+response.take(250))
+    val imageBase64=JSONObject(response).getJSONArray("images").getString(0).substringAfter(",")
+    val bytes=android.util.Base64.decode(imageBase64,android.util.Base64.DEFAULT)
+    val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)?:error("Неподдерживаемый формат изображения")
+    val folder=File(getExternalFilesDir(null),"generated").apply{mkdirs()}
+    val saved=File(folder,"scene_"+System.currentTimeMillis()+".png")
+    saved.writeBytes(bytes)
+    runOnUiThread{
+     progress.dismiss()
+     val image=ImageView(this).apply{setImageBitmap(bitmap);adjustViewBounds=true}
+     AlertDialog.Builder(this).setTitle("Сцена • $name").setView(image)
+      .setMessage("Сохранено: "+saved.absolutePath)
+      .setPositiveButton("Готово",null).show().also{styleDialog(it)}
+    }
+   }catch(e:Exception){runOnUiThread{progress.dismiss();alert("Ошибка генерации: "+e.message)}}
+  }
  }
  override fun onBackPressed() { home() }
  private fun profile() {
