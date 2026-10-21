@@ -1105,7 +1105,7 @@ class MainActivity : Activity() {
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
  private fun modelInstaller(parent:LinearLayout) {
   parent.addView(section("Локальные модели • на устройстве"))
-  parent.addView(text("Скачивание сохраняет модель в папку приложения. Для генерации текста нужен отдельный движок llama.cpp, который пока не встроен в Shadow RP.",14f,muted))
+  parent.addView(text("Модель скачивается в папку приложения. Нативный llama.cpp подключён к проекту; возможность запуска зависит от успешной сборки и совместимости устройства.",14f,muted))
   val modelName="qwen3-0.6b-q4_k_m.gguf"
   val modelUrl="https://huggingface.co/harzva/mobilecore-qwen3-0.6b-gguf/resolve/main/qwen3-0.6b-q4_k_m.gguf?download=true"
   val folder=File(getExternalFilesDir(null),"models/text").apply{mkdirs()}
