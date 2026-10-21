@@ -128,7 +128,7 @@ class MainActivity : Activity() {
   "Круш Карстен|Re:Zero",
   "Эльза Гранхирт|Re:Zero",
   "Эсдес|Akame ga Kill",
-  "Оливье Армстронг|Fullmetal Alchemist",
+  "Оливье|The Eminence in Shadow",
   "Макима|Chainsaw Man",
   "Йор Форджер|Spy x Family",
   "Асуна Юки|Sword Art Online",
@@ -179,7 +179,7 @@ class MainActivity : Activity() {
   prefs.edit().putBoolean("removed_old_defaults",true).apply();save()
  }
  private fun seedCatalog() {
-  // Synchronize newly added catalog entries without resetting user edits.
+  // Synchronize new characters without overwriting existing user profiles.
   animeRoster.forEach { parts ->
    val name=parts[0]
    if(!characters.contains(name)){characters.add(name);chats[name]=mutableListOf()}
@@ -229,94 +229,27 @@ class MainActivity : Activity() {
    avatarTarget?.let { prefs.edit().putString("avatar_$it",uri.toString()).apply();characterDetail(it) }
   }
  }
- private val englishNames=mapOf(
-  "Цунаде" to "Tsunade Naruto","Йоруичи Сихоин" to "Yoruichi Shihouin Bleach",
-  "Нико Робин" to "Nico Robin One Piece","Боа Хэнкок" to "Boa Hancock One Piece",
-  "Нами" to "Nami One Piece","Эрза Скарлет" to "Erza Scarlet Fairy Tail",
-  "Рангику Мацумото" to "Rangiku Matsumoto Bleach","Куруми Токисаки" to "Kurumi Tokisaki Date A Live",
-  "Асуна Юки" to "Asuna Yuuki Sword Art Online","Мегумин" to "Megumin Konosuba",
-  "Рем" to "Rem Re Zero","Эмилия" to "Emilia Re Zero","Альфа" to "Alpha Eminence in Shadow",
-  "Дельта" to "Delta Eminence in Shadow"
- )
  private fun avatar(name:String,height:Int):android.view.View {
-  val image=ImageView(this).apply {
-   scaleType=ImageView.ScaleType.CENTER_CROP
-   background=shape(Color.rgb(25,38,67))
-   clipToOutline=true
-  }
   val saved=prefs.getString("avatar_$name",null)
-  if(saved!=null) {
-   try {image.setImageURI(android.net.Uri.parse(saved));return image}catch(_:Exception){}
-  }
-  val dir=File(filesDir,"portraits").apply {mkdirs()}
-  val file=File(dir,name.hashCode().toUInt().toString()+".jpg")
-  if(file.exists() && file.length()>1000) {
-   val bmp=BitmapFactory.decodeFile(file.absolutePath)
-   if(bmp!=null){image.setImageBitmap(bmp);return image}
-  }
-  val fallback=text("✦\\n"+name.take(1)+"\\n＋ Фото",24f,Color.WHITE,true).apply {
-   gravity=Gravity.CENTER;background=shape(Color.rgb(38,54,89),18f)
-   setOnClickListener {chooseAvatar(name)}
-  }
-  val frame=android.widget.FrameLayout(this)
-  frame.addView(fallback,android.widget.FrameLayout.LayoutParams(-1,-1))
-  frame.addView(image,android.widget.FrameLayout.LayoutParams(-1,-1))
-  image.visibility=android.view.View.GONE
-  val query=englishNames[name] ?: name+" "+(animeRoster.firstOrNull{it[0]==name}?.get(1)?:"anime")
-  thread {
+  if(saved!=null){
+   val image=ImageView(this).apply {
+    scaleType=ImageView.ScaleType.CENTER_CROP
+    background=shape(panel)
+    clipToOutline=true
+   }
    try {
-    val endpoint="https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch="+URLEncoder.encode(query,"UTF-8")+"&gsrlimit=5&prop=pageimages&pithumbsize=640&format=json&origin=*"
-    val connection=(URL(endpoint).openConnection() as HttpURLConnection).apply {
-     connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10 (Android; character reference browser)")
-    }
-    val payload=connection.inputStream.bufferedReader().use{it.readText()}
-    connection.disconnect()
-    val pages=JSONObject(payload).optJSONObject("query")?.optJSONObject("pages")
-    var link:String?=null
-    if(pages!=null){
-     val keys=pages.keys()
-     while(keys.hasNext()){
-      val page=pages.optJSONObject(keys.next())?:continue
-      val thumb=page.optJSONObject("thumbnail")?.optString("source","").orEmpty()
-      if(thumb.startsWith("https://") && link==null)link=thumb
-     }
-    }
-    if(link==null){
-     val commonsQuery=URLEncoder.encode(query+" anime character","UTF-8")
-     val commonsUrl="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch="+commonsQuery+"&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json"
-     val commonsConn=(URL(commonsUrl).openConnection() as HttpURLConnection).apply {
-      connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10 (Android; Wikimedia Commons character browser)")
-     }
-     val commons=JSONObject(commonsConn.inputStream.bufferedReader().use{it.readText()})
-     commonsConn.disconnect()
-     val results=commons.optJSONObject("query")?.optJSONObject("pages")
-     if(results!=null){
-      val keys=results.keys()
-      val needle=query.substringBefore(" ").lowercase()
-      while(keys.hasNext()){
-       val page=results.optJSONObject(keys.next())?:continue
-       val title=page.optString("title").lowercase()
-       if(!title.contains(needle))continue
-       val url=page.optJSONArray("imageinfo")?.optJSONObject(0)?.optString("thumburl","").orEmpty()
-       if(url.startsWith("https://") && (url.contains(".jpg")||url.contains(".png")||url.contains(".jpeg"))) {link=url;break}
-      }
-     }
-    }
-    if(link!=null){
-     val conn=(URL(link).openConnection() as HttpURLConnection).apply {connectTimeout=12000;readTimeout=15000;setRequestProperty("User-Agent","ShadowRP/0.10")}
-     val bytes=conn.inputStream.use{it.readBytes()}
-     conn.disconnect()
-     if(bytes.size in 1024..4000000){
-      val bitmap=BitmapFactory.decodeByteArray(bytes,0,bytes.size)
-      if(bitmap!=null){
-       file.writeBytes(bytes)
-       runOnUiThread {image.setImageBitmap(bitmap);image.visibility=android.view.View.VISIBLE}
-      }
-     }
+    val uri=android.net.Uri.parse(saved)
+    contentResolver.openInputStream(uri)?.use { stream ->
+     val bmp=BitmapFactory.decodeStream(stream)
+     if(bmp!=null){image.setImageBitmap(bmp);return image}
     }
    }catch(_:Exception){}
   }
-  return frame
+  return text("✦\n＋ Портрет\n"+name,17f,Color.WHITE,true).apply {
+   gravity=Gravity.CENTER
+   background=shape(Color.rgb(37,54,86),18f)
+   setOnClickListener {chooseAvatar(name)}
+  }
  }
  private fun characterDetail(name:String) {
   active=name
