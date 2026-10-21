@@ -192,20 +192,23 @@ class MainActivity : Activity() {
   }
  }
  private fun characterDetail(name:String) {
-  val universe=animeRoster.firstOrNull {it[0]==name}?.get(1) ?: "Авторский персонаж"
-  val intro=prefs.getString("persona_$name","Персонаж для ролевой истории.").orEmpty()
-  val panelView=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(6),dp(16),dp(8))}
-  val face=avatar(name,205)
-  panelView.addView(face,LinearLayout.LayoutParams(-1,dp(205)))
-  panelView.addView(text(universe,14f,Color.rgb(124,175,255),true))
-  panelView.addView(text(intro,17f,Color.WHITE))
-  panelView.addView(button("🖼 Изменить изображение") {chooseAvatar(name)})
-  panelView.addView(button("✎ Редактировать описание") {editPersona(name)})
-  panelView.addView(text("Сценарий и история общения сохраняются отдельно для этого персонажа. Другие варианты истории можно будет добавить позже.",13f,muted))
-  AlertDialog.Builder(this).setTitle(name).setView(panelView)
-   .setPositiveButton("Начать RP"){_,_->chat(name)}
-   .setNeutralButton("Отзывы"){_,_->comments(name)}
-   .setNegativeButton("Закрыть",null).show().also {styleDialog(it)}
+  active=name
+  init("✦ $name")
+  val b=body()
+  val portrait=avatar(name,300)
+  b.addView(portrait,LinearLayout.LayoutParams(-1,dp(300)).apply {setMargins(dp(8),dp(12),dp(8),dp(8))})
+  b.addView(text(name,30f,Color.WHITE,true))
+  val universe=animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский персонаж"
+  b.addView(text("✦ $universe",16f,Color.rgb(133,179,255),true))
+  b.addView(text(prefs.getString("persona_$name","Персонаж для ролевой истории.").orEmpty(),17f,muted))
+  item(b,"🖼  Установить портрет","Выбрать изображение из галереи") {chooseAvatar(name)}
+  item(b,"✎  Характер и предыстория","Редактировать описание и поведение") {editPersona(name)}
+  item(b,"✦  Отзывы","Комментарии об этом персонаже") {comments(name)}
+  b.addView(space(14))
+  root.addView(button("▶  Начать ролевую историю") {chat(name)}.apply {
+   textSize=20f;background=shape(Color.rgb(35,89,191),18f)
+   setPadding(dp(14),dp(19),dp(14),dp(19))
+  },LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(10),dp(4),dp(10),dp(10))})
  }
  private fun comments(name:String) {
   val key="comments_$name"
@@ -250,6 +253,7 @@ class MainActivity : Activity() {
  }
  private fun home() {
   init("Shadow RP");val b=body()
+  hero(b)
   b.addView(text("Открой новую историю",24f,Color.WHITE,true))
   val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { chats[it]?.size?:0 }
   shelf(b,"Продолжить общение",recent.take(8))
@@ -328,11 +332,11 @@ class MainActivity : Activity() {
   val b=body();val messages=chats.getOrPut(name){mutableListOf()}
   if(messages.isEmpty())b.addView(text(prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\n\nСоздай собственный сюжет и отправь первое сообщение." },16f,muted))
   messages.forEach { (role,value)->
-   val bubble=text(value,19f).apply {setPadding(dp(10),dp(8),dp(10),dp(8))}
+   val bubble=text(value,20f).apply {setPadding(dp(17),dp(16),dp(17),dp(16));minHeight=dp(70);maxWidth=(resources.displayMetrics.widthPixels*0.87).toInt()}
    bubble.background=shape(if(role=="user")Color.rgb(34,76,150) else Color.rgb(27,39,61))
    val lp=LinearLayout.LayoutParams(-2,-2).apply {
     gravity=if(role=="user")Gravity.RIGHT else Gravity.LEFT
-    setMargins(if(role=="user")dp(55) else dp(6),dp(4),if(role=="user")dp(6) else dp(55),dp(4))
+    setMargins(if(role=="user")dp(28) else dp(6),dp(7),if(role=="user")dp(6) else dp(28),dp(7))
    }
    b.addView(bubble,lp)
   }
