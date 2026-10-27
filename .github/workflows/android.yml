@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: shadow-rp-android-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -65,3 +68,7 @@ jobs:
               --title "Shadow RP — Android" --notes "$NOTES" --latest=false
           gh release upload shadow-rp-android /tmp/ShadowRP-Android.apk \
             --repo "$GITHUB_REPOSITORY" --clobber
+          VERSION="$(sed -nE 's/.*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          test -n "$VERSION"
+          gh release edit shadow-rp-android --repo "$GITHUB_REPOSITORY" \
+            --notes "$(printf '%s\nVersion: %s\n' "$NOTES" "$VERSION")"
