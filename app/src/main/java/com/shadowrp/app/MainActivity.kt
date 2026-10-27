@@ -124,11 +124,17 @@ class MainActivity : Activity() {
   }
  }
  private fun save() {
-  prefs.edit().putString("characters",JSONArray(characters).toString()).putString("active",active).apply()
-  chats.forEach { (name,messages)->
-   val a=JSONArray();messages.forEach { a.put(JSONObject().put("role",it.first).put("content",it.second)) }
-   prefs.edit().putString("chat_$name",a.toString()).apply()
+  // Persist all chat changes with one editor/apply instead of scheduling a
+  // separate preferences write for every character after each message.
+  val editor = prefs.edit()
+  editor.putString("characters", JSONArray(characters).toString())
+  editor.putString("active", active)
+  chats.forEach { (name, messages) ->
+   val a = JSONArray()
+   messages.forEach { a.put(JSONObject().put("role", it.first).put("content", it.second)) }
+   editor.putString("chat_$name", a.toString())
   }
+  editor.apply()
  }
  private val animeRoster=listOf(
   "Цунаде|Naruto",
