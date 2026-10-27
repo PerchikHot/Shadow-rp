@@ -113,12 +113,14 @@ class MainActivity : Activity() {
   handler.postDelayed({if(!isFinishing)home()},1800)
  }
  private fun load() {
-  val a=JSONArray(prefs.getString("characters", JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")).toString()))
+  // Corrupted preferences must not prevent startup; preserve stored bytes for recovery.
+  val a=runCatching { JSONArray(prefs.getString("characters", JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")).toString())) }
+   .getOrElse { JSONArray(listOf("Цунаде","Йоруичи Сихоин","Нико Робин")) }
   for(i in 0 until a.length())characters.add(a.getString(i))
   active=prefs.getString("active",characters.firstOrNull()?:"Цунаде")!!
   characters.forEach { name ->
    val messages=mutableListOf<Pair<String,String>>()
-   val arr=JSONArray(prefs.getString("chat_$name","[]"))
+   val arr=runCatching { JSONArray(prefs.getString("chat_$name","[]")) }.getOrElse { JSONArray() }
    for(i in 0 until arr.length()){val o=arr.getJSONObject(i);messages.add(o.getString("role") to o.getString("content"))}
    chats[name]=messages
   }
