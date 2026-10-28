@@ -833,13 +833,14 @@ class MainActivity : Activity() {
    val sets=if(query.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to shown) else listOf("Все героини • ${filtered.size}" to shown)
    sets.forEach{(heading,names)->
     result.addView(section(heading))
+    if(filtered.size>names.size) result.addView(text("Показано ${names.size} из ${filtered.size} • ниже можно загрузить ещё",13f,muted))
     names.chunked(2).forEach{pair->
      val row=LinearLayout(this).apply{orientation=0}
      pair.forEach{name->
       val card=LinearLayout(this).apply{orientation=1;background=shape(panel,17f);setPadding(dp(5),dp(5),dp(5),dp(8))}
       card.addView(avatar(name,190),LinearLayout.LayoutParams(-1,dp(190)))
       card.addView(text(name,15f,Color.WHITE,true))
-      card.addView(text(animeRoster.firstOrNull{it[0]==name}?.get(1)?:"Авторский",11f,muted))
+      card.addView(text(seriesByCharacter[name]?:"Авторский",11f,muted))
       card.setOnClickListener{characterDetail(name)}
       card.setOnLongClickListener{chooseAvatar(name);true}
       row.addView(card,LinearLayout.LayoutParams(0,-2,1f).apply{setMargins(dp(4),dp(4),dp(4),dp(4))})
