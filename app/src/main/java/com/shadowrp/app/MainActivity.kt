@@ -820,6 +820,7 @@ class MainActivity : Activity() {
   val result=LinearLayout(this).apply{orientation=1};b.addView(result)
   // Index series once instead of scanning the entire roster per character on each keystroke.
   val seriesByCharacter=animeRoster.associate { it[0] to it[1] }
+  var visibleLimit=30
   fun render(q:String) {
    result.removeAllViews()
    val query=q.trim()
@@ -828,7 +829,8 @@ class MainActivity : Activity() {
     result.addView(text("Ничего не найдено. Попробуй другое имя или название аниме.",15f,muted))
     return
    }
-   val sets=if(query.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to filtered) else listOf("Все героини" to filtered)
+   val shown=filtered.take(visibleLimit)
+   val sets=if(query.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to shown) else listOf("Все героини • ${filtered.size}" to shown)
    sets.forEach{(heading,names)->
     result.addView(section(heading))
     names.chunked(2).forEach{pair->
@@ -846,11 +848,17 @@ class MainActivity : Activity() {
      result.addView(row)
     }
    }
+   if(filtered.size>visibleLimit) {
+    result.addView(button("Показать ещё (${filtered.size-visibleLimit} осталось)"){
+     visibleLimit+=30
+     render(search.text.toString())
+    })
+   }
   }
   render("")
   search.addTextChangedListener(object:android.text.TextWatcher{
    override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
-   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s?.toString()?:"")}
+   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){visibleLimit=30;render(s?.toString()?:"")}
    override fun afterTextChanged(s:android.text.Editable?){}
   })
   nav(1)
