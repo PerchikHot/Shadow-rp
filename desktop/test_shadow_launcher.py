@@ -1,0 +1,37 @@
+"""Read-only Minecraft instance inspection tests."""
+import tempfile
+import unittest
+from pathlib import Path
+
+from shadow_launcher import inspect_instance
+
+
+class InstanceTests(unittest.TestCase):
+    def test_missing_directory_is_not_created(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / ".minecraft"
+            result = inspect_instance(target)
+            self.assertFalse(result["exists"])
+            self.assertFalse(target.exists())
+
+    def test_detects_forge_1201_and_jar_mods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "versions" / "1.20.1-forge-47.3.0").mkdir(parents=True)
+            (root / "mods").mkdir()
+            (root / "mods" / "sample.jar").write_bytes(b"test")
+            (root / "mods" / "notes.txt").write_text("not a mod")
+            result = inspect_instance(root)
+            self.assertTrue(result["forge"])
+            self.assertEqual(result["mods"], ["sample.jar"])
+            self.assertTrue((root / "mods" / "notes.txt").exists())
+
+    def test_other_versions_do_not_count_as_forge_1201(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "versions" / "1.19.2-forge-43.2.0").mkdir(parents=True)
+            self.assertFalse(inspect_instance(root)["forge"])
+
+
+if __name__ == "__main__":
+    unittest.main()
