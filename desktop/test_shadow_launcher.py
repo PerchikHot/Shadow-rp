@@ -70,5 +70,20 @@ class InstanceTests(unittest.TestCase):
             self.assertFalse(inspect_instance(root)["forge"])
 
 
+    def test_zero_byte_jar_warning_is_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "mods" / "1.20.1"
+            folder.mkdir(parents=True)
+            empty = folder / "unfinished.jar"
+            empty.write_bytes(b"")
+            valid = root / "mods" / "working.jar"
+            valid.write_bytes(b"valid")
+            report = inspect_instance(root)
+            self.assertEqual(report["empty_mods"], ["1.20.1/unfinished.jar"])
+            self.assertEqual(empty.read_bytes(), b"")
+            self.assertEqual(valid.read_bytes(), b"valid")
+
+
 if __name__ == "__main__":
     unittest.main()
