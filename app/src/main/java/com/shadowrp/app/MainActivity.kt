@@ -817,6 +817,9 @@ class MainActivity : Activity() {
    setOnClickListener{search.text.clear()}
   },LinearLayout.LayoutParams(dp(52),-2))
   b.addView(searchRow)
+  b.addView(button("🎲 Случайная героиня") {
+   if(characters.isNotEmpty()) characterDetail(characters.random())
+  })
   val result=LinearLayout(this).apply{orientation=1};b.addView(result)
   // Index series once instead of scanning the entire roster per character on each keystroke.
   val seriesByCharacter=animeRoster.associate { it[0] to it[1] }
