@@ -928,16 +928,26 @@ class MainActivity : Activity() {
    b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
   } else {
    val search=EditText(this).apply {
-    hint="⌕  Найти переписку";setSingleLine(true)
+    hint="⌕  Имя или текст переписки";setSingleLine(true)
     setTextColor(Color.WHITE);setHintTextColor(muted)
     background=shape(panel);setPadding(dp(15),dp(14),dp(15),dp(14))
    }
-   b.addView(search)
+   val searchRow=LinearLayout(this).apply {orientation=LinearLayout.HORIZONTAL}
+   searchRow.addView(search,LinearLayout.LayoutParams(0,-2,1f))
+   searchRow.addView(button("✕") {search.text.clear()}.apply {
+    contentDescription="Очистить поиск переписок"
+    setPadding(dp(14),dp(10),dp(14),dp(10))
+   })
+   b.addView(searchRow)
    val results=LinearLayout(this).apply {orientation=1}
    b.addView(results)
    fun render(query:String) {
     results.removeAllViews()
-    val filtered=started.filter {it.contains(query.trim(),ignoreCase=true)}
+    val needle=query.trim()
+    val filtered=started.filter { name ->
+     needle.isEmpty() || name.contains(needle,ignoreCase=true) ||
+      chats[name]?.any { message -> message.second.contains(needle,ignoreCase=true) } == true
+    }
     results.addView(text("Переписки • ${filtered.size} из ${started.size}",14f,muted))
     if(filtered.isEmpty())results.addView(text("Переписка не найдена.",15f,muted))
     filtered.forEach { name ->
