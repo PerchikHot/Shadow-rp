@@ -812,14 +812,17 @@ class MainActivity : Activity() {
   val search=EditText(this).apply{hint="⌕  Поиск по персонажам и аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(15),dp(14),dp(15),dp(14))}
   b.addView(search)
   val result=LinearLayout(this).apply{orientation=1};b.addView(result)
+  // Index series once instead of scanning the entire roster per character on each keystroke.
+  val seriesByCharacter=animeRoster.associate { it[0] to it[1] }
   fun render(q:String) {
    result.removeAllViews()
-   val filtered=characters.filter{it.contains(q,true)||animeRoster.firstOrNull{r->r[0]==it}?.get(1)?.contains(q,true)==true}
+   val query=q.trim()
+   val filtered=characters.filter{it.contains(query,true)||seriesByCharacter[it]?.contains(query,true)==true}
    if(filtered.isEmpty()) {
     result.addView(text("Ничего не найдено. Попробуй другое имя или название аниме.",15f,muted))
     return
    }
-   val sets=if(q.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to filtered) else listOf("Все героини" to filtered)
+   val sets=if(query.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to filtered) else listOf("Все героини" to filtered)
    sets.forEach{(heading,names)->
     result.addView(section(heading))
     names.chunked(2).forEach{pair->
