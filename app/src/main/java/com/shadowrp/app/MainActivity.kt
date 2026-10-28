@@ -106,11 +106,12 @@ class MainActivity : Activity() {
   backdrop.addView(center,android.widget.FrameLayout.LayoutParams(-1,-1))
   setContentView(backdrop)
   val handler=Handler(Looper.getMainLooper())
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},800)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},890)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon_blink)},1420)
-  handler.postDelayed({logo.setImageResource(R.drawable.shadow_icon)},1500)
-  handler.postDelayed({if(!isFinishing)home()},1800)
+  // Delayed splash callbacks must not touch views after Activity destruction.
+  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},800)
+  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},890)
+  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},1420)
+  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},1500)
+  handler.postDelayed({if(!isFinishing && !isDestroyed)home()},1800)
  }
  private fun load() {
   // Corrupted preferences must not prevent startup; preserve stored bytes for recovery.
