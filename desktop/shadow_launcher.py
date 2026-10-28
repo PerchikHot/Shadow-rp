@@ -22,6 +22,15 @@ def default_minecraft_dir() -> Path:
     return Path(appdata, ".minecraft") if appdata else Path.home() / ".minecraft"
 
 
+def duplicate_mod_names(mods: list[str]) -> list[str]:
+    """Flag same-named JARs across mod folders without altering either copy."""
+    counts: dict[str, int] = {}
+    for mod in mods:
+        key = mod.rsplit("/", 1)[-1].casefold()
+        counts[key] = counts.get(key, 0) + 1
+    return sorted(name for name, count in counts.items() if count > 1)
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
@@ -49,7 +58,8 @@ def inspect_instance(folder: Path) -> dict:
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
-            "mods": mods, "message": message}
+            "mods": mods, "duplicates": duplicate_mod_names(mods),
+            "message": message}
 
 
 class ShadowCompanion(tk.Tk):
@@ -111,7 +121,9 @@ class ShadowCompanion(tk.Tk):
         self.details.config(text=(
             f"Версий Minecraft: {len(report['versions'])}  •  "
             f"JAR-модов: {len(report['mods'])}\n"
-            "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."
+            "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."\n"
+            + (f"\nВнимание: повторяющиеся JAR: {', '.join(report['duplicates'])}"
+               if report.get("duplicates") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
