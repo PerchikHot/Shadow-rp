@@ -31,8 +31,17 @@ def inspect_instance(folder: Path) -> dict:
         versions_dir = folder / "versions"
         versions = sorted(p.name for p in versions_dir.iterdir() if p.is_dir()) if versions_dir.is_dir() else []
         mods_dir = folder / "mods"
-        mods = sorted(p.name for p in mods_dir.iterdir()
-                      if p.is_file() and p.suffix.lower() == ".jar") if mods_dir.is_dir() else []
+        mods = []
+        if mods_dir.is_dir():
+            mods.extend(p.name for p in mods_dir.iterdir()
+                        if p.is_file() and p.suffix.lower() == ".jar")
+            # Some mod managers keep Forge 1.20.1 JARs in a version folder.
+            # Inspect it without changing the user's mod installation.
+            versioned = mods_dir / "1.20.1"
+            if versioned.is_dir():
+                mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
+                            if p.is_file() and p.suffix.lower() == ".jar")
+            mods.sort(key=str.lower)
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
