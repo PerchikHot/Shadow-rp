@@ -26,6 +26,13 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(result["mods"], ["sample.jar"])
             self.assertTrue((root / "mods" / "notes.txt").exists())
 
+    def test_similar_versions_do_not_trigger_false_forge_detection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "versions" / "1.20.10-forge-47.3.0").mkdir(parents=True)
+            (root / "versions" / "1.20.1.1-forge-47.3.0").mkdir(parents=True)
+            self.assertFalse(inspect_instance(root)["forge"])
+
     def test_other_versions_do_not_count_as_forge_1201(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
