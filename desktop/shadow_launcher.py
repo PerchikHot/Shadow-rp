@@ -6,6 +6,7 @@ The actual Forge 1.20.1 mod is a separate, unfinished deliverable.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
