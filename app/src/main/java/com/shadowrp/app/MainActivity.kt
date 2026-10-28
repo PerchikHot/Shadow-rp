@@ -791,6 +791,12 @@ class MainActivity : Activity() {
   }
   scroller.addView(row);parent.addView(scroller)
  }
+ // Most recent chat is determined by its last message timestamp, not by
+ // the number of messages. Older histories without timestamps remain intact.
+ private fun lastChatActivity(name:String):Long {
+  val lastIndex=(chats[name]?.size ?: 0)-1
+  return if(lastIndex>=0) prefs.getLong("chat_time_${name}_$lastIndex",0L) else 0L
+ }
  private fun home() {
   init("Shadow RP");val b=body()
   val tabs=LinearLayout(this)
@@ -799,7 +805,7 @@ class MainActivity : Activity() {
   val searchButton=button("⌕  Поиск по персонажам и аниме"){catalog()}.apply{gravity=Gravity.LEFT;background=shape(Color.rgb(18,35,62),14f)}
   b.addView(searchButton)
   b.addView(text("Для вас",22f,Color.WHITE,true))
-  val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { chats[it]?.size?:0 }
+  val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { lastChatActivity(it) }
   shelf(b,"Продолжить общение",recent.take(8))
   shelf(b,"✦ Популярные героини",listOf("Цунаде","Йоруичи Сихоин","Сакура Харуно","Хината Хьюга","Альфа","Дельта"))
   animeRoster.map{it[1]}.distinct().take(5).forEach { title ->
@@ -917,7 +923,7 @@ class MainActivity : Activity() {
  }
  private fun chatList() {
   init("Чаты");val b=body()
-  val started=characters.filter { chats[it]?.isNotEmpty()==true }
+  val started=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { lastChatActivity(it) }
   if(started.isEmpty())b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
   started.forEach { name ->
    val last=chats[name]?.lastOrNull()?.second?:""
