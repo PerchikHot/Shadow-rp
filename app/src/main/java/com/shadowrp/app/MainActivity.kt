@@ -138,6 +138,10 @@ class MainActivity : Activity() {
    chats[name]=messages
   }
  }
+ private fun savedArray(key:String):JSONArray =
+  // Damaged optional histories must not crash the catalog, room or comments.
+  // Reading a fallback does not alter the original stored preferences.
+  runCatching { JSONArray(prefs.getString(key,"[]")) }.getOrElse { JSONArray() }
  private fun save() {
   // Persist all chat changes with one editor/apply instead of scheduling a
   // separate preferences write for every character after each message.
@@ -747,7 +751,7 @@ class MainActivity : Activity() {
  }
  private fun comments(name:String) {
   val key="comments_$name"
-  val list=JSONArray(prefs.getString(key,"[]"))
+  val list=savedArray(key)
   val box=LinearLayout(this).apply {orientation=1;setPadding(dp(16),dp(8),dp(16),dp(8))}
   val scroll=ScrollView(this)
   val contents=LinearLayout(this).apply {orientation=1}
@@ -1100,7 +1104,7 @@ class MainActivity : Activity() {
  private fun roomList() {
   init("Групповые комнаты");val b=body()
   item(b,"＋ Создать комнату","Укажи участников и сюжет") {createRoom()}
-  val a=JSONArray(prefs.getString("rooms","[]"))
+  val a=savedArray("rooms")
   for(i in 0 until a.length()) {
    val room=a.optJSONObject(i)?:continue
    val title=room.optString("title")
@@ -1144,7 +1148,7 @@ class MainActivity : Activity() {
    val privateRoom=CheckBox(this).apply{text="Приватная комната";setTextColor(Color.WHITE);isChecked=true;buttonTintList=android.content.res.ColorStateList.valueOf(blue)}
    form.addView(privateRoom)
    root.addView(button("✦ Создать комнату"){
-    val rooms=JSONArray(prefs.getString("rooms","[]"))
+    val rooms=savedArray("rooms")
     val room=JSONObject().put("title",title.text.toString().trim().ifBlank{"Групповой чат"}+" #"+(rooms.length()+1))
      .put("members",selected.joinToString(", ")).put("story",story.text.toString())
      .put("background",background.text.toString().trim()).put("private",privateRoom.isChecked)
@@ -1163,7 +1167,7 @@ class MainActivity : Activity() {
   banner.addView(text("Сюжет: "+room.optString("story").ifBlank{"Свободная история"},14f,Color.rgb(195,181,255)))
   b.addView(banner)
   val key="room_chat_$title"
-  val history=JSONArray(prefs.getString(key,"[]"))
+  val history=savedArray(key)
   for(i in 0 until history.length()) {
    val o=history.optJSONObject(i)?:continue
    val fromUser=o.optString("role")=="Игрок"
