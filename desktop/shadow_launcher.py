@@ -36,7 +36,7 @@ def inspect_instance(folder: Path) -> dict:
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
-    forge = any("forge" in v.lower() and "1.20.1" in v for v in versions)
+    forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
