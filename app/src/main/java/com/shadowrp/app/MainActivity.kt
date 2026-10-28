@@ -815,7 +815,11 @@ class MainActivity : Activity() {
   fun render(q:String) {
    result.removeAllViews()
    val filtered=characters.filter{it.contains(q,true)||animeRoster.firstOrNull{r->r[0]==it}?.get(1)?.contains(q,true)==true}
-   val sets=if(q.isNotBlank())listOf("Результаты поиска" to filtered) else listOf("Все героини" to filtered)
+   if(filtered.isEmpty()) {
+    result.addView(text("Ничего не найдено. Попробуй другое имя или название аниме.",15f,muted))
+    return
+   }
+   val sets=if(q.isNotBlank())listOf("Результаты поиска • ${filtered.size}" to filtered) else listOf("Все героини" to filtered)
    sets.forEach{(heading,names)->
     result.addView(section(heading))
     names.chunked(2).forEach{pair->
