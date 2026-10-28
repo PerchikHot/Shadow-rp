@@ -927,7 +927,9 @@ class MainActivity : Activity() {
   if(started.isEmpty())b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
   started.forEach { name ->
    val last=chats[name]?.lastOrNull()?.second?:""
-   item(b,name,last.take(90)) { chat(name) }
+   val lastTime=lastChatActivity(name)
+   val whenText=if(lastTime>0L) java.text.SimpleDateFormat("dd.MM HH:mm",java.util.Locale.getDefault()).format(java.util.Date(lastTime)) else "Дата неизвестна"
+   item(b,name,"$whenText • ${last.take(90)}") { chat(name) }
   }
   nav(3)
  }
