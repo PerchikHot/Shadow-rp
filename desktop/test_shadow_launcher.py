@@ -26,6 +26,18 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(result["mods"], ["sample.jar"])
             self.assertTrue((root / "mods" / "notes.txt").exists())
 
+    def test_versioned_mods_are_listed_without_editing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "mods" / "1.20.1"
+            folder.mkdir(parents=True)
+            jar = folder / "addon.jar"
+            jar.write_bytes(b"original")
+            (folder / "readme.txt").write_text("notes")
+            result = inspect_instance(root)
+            self.assertEqual(result["mods"], ["1.20.1/addon.jar"])
+            self.assertEqual(jar.read_bytes(), b"original")
+
     def test_similar_versions_do_not_trigger_false_forge_detection(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
