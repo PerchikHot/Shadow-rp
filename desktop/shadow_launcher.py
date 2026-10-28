@@ -35,6 +35,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
+                "empty_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -51,15 +52,20 @@ def inspect_instance(folder: Path) -> dict:
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
                             if p.is_file() and p.suffix.lower() == ".jar")
             mods.sort(key=str.lower)
+        # Empty JARs are not valid mods and may indicate interrupted downloads.
+        # Only inspect file sizes; never delete or modify user files.
+        empty_mods = [name for name in mods
+                      if (mods_dir / name).stat().st_size == 0]
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
+                "empty_mods": [], "duplicates": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "duplicates": duplicate_mod_names(mods),
-            "message": message}
+            "empty_mods": empty_mods, "message": message}
 
 
 class ShadowCompanion(tk.Tk):
@@ -124,6 +130,8 @@ class ShadowCompanion(tk.Tk):
             "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."
             + (f"\nВнимание: повторяющиеся JAR: {', '.join(report['duplicates'])}"
                if report.get("duplicates") else "")
+            + ("\nВнимание: пустые JAR-файлы: " + ", ".join(report["empty_mods"])
+               if report.get("empty_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
