@@ -121,7 +121,7 @@ class ShadowCompanion(tk.Tk):
         self.details.config(text=(
             f"Версий Minecraft: {len(report['versions'])}  •  "
             f"JAR-модов: {len(report['mods'])}\n"
-            "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."\n"
+            "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."
             + (f"\nВнимание: повторяющиеся JAR: {', '.join(report['duplicates'])}"
                if report.get("duplicates") else "")
         ))
