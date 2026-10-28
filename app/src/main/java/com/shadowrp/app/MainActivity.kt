@@ -924,12 +924,35 @@ class MainActivity : Activity() {
  private fun chatList() {
   init("Чаты");val b=body()
   val started=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { lastChatActivity(it) }
-  if(started.isEmpty())b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
-  started.forEach { name ->
-   val last=chats[name]?.lastOrNull()?.second?:""
-   val lastTime=lastChatActivity(name)
-   val whenText=if(lastTime>0L) java.text.SimpleDateFormat("dd.MM HH:mm",java.util.Locale.getDefault()).format(java.util.Date(lastTime)) else "Дата неизвестна"
-   item(b,name,"$whenText • ${last.take(90)}") { chat(name) }
+  if(started.isEmpty()) {
+   b.addView(text("Здесь появятся персонажи, с которыми ты начнёшь общаться. Выбери героиню в каталоге.",16f,muted))
+  } else {
+   val search=EditText(this).apply {
+    hint="⌕  Найти переписку";setSingleLine(true)
+    setTextColor(Color.WHITE);setHintTextColor(muted)
+    background=shape(panel);setPadding(dp(15),dp(14),dp(15),dp(14))
+   }
+   b.addView(search)
+   val results=LinearLayout(this).apply {orientation=1}
+   b.addView(results)
+   fun render(query:String) {
+    results.removeAllViews()
+    val filtered=started.filter {it.contains(query.trim(),ignoreCase=true)}
+    results.addView(text("Переписки • ${filtered.size} из ${started.size}",14f,muted))
+    if(filtered.isEmpty())results.addView(text("Переписка не найдена.",15f,muted))
+    filtered.forEach { name ->
+     val last=chats[name]?.lastOrNull()?.second?:""
+     val lastTime=lastChatActivity(name)
+     val whenText=if(lastTime>0L) java.text.SimpleDateFormat("dd.MM HH:mm",java.util.Locale.getDefault()).format(java.util.Date(lastTime)) else "Дата неизвестна"
+     item(results,name,"$whenText • ${last.take(90)}") { chat(name) }
+    }
+   }
+   render("")
+   search.addTextChangedListener(object:android.text.TextWatcher {
+    override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
+    override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s?.toString()?:"")}
+    override fun afterTextChanged(s:android.text.Editable?){}
+   })
   }
   nav(3)
  }
