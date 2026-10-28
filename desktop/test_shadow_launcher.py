@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from shadow_launcher import inspect_instance
+from shadow_launcher import inspect_instance, duplicate_mod_names
 
 
 class InstanceTests(unittest.TestCase):
@@ -37,6 +37,24 @@ class InstanceTests(unittest.TestCase):
             result = inspect_instance(root)
             self.assertEqual(result["mods"], ["1.20.1/addon.jar"])
             self.assertEqual(jar.read_bytes(), b"original")
+
+    def test_duplicate_mod_names_are_reported_without_deleting_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = root / "mods"
+            versioned = base / "1.20.1"
+            versioned.mkdir(parents=True)
+            first = base / "Addon.jar"
+            second = versioned / "addon.JAR"
+            first.write_bytes(b"first")
+            second.write_bytes(b"second")
+            report = inspect_instance(root)
+            self.assertEqual(report["duplicates"], ["addon.jar"])
+            self.assertEqual(first.read_bytes(), b"first")
+            self.assertEqual(second.read_bytes(), b"second")
+
+    def test_distinct_mod_names_have_no_duplicate_warning(self):
+        self.assertEqual(duplicate_mod_names(["a.jar", "1.20.1/b.jar"]), [])
 
     def test_similar_versions_do_not_trigger_false_forge_detection(self):
         with tempfile.TemporaryDirectory() as tmp:
