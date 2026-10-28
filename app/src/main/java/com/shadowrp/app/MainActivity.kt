@@ -810,7 +810,13 @@ class MainActivity : Activity() {
  private fun catalog() {
   init("Каталог");val b=body()
   val search=EditText(this).apply{hint="⌕  Поиск по персонажам и аниме";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted);background=shape(panel);setPadding(dp(15),dp(14),dp(15),dp(14))}
-  b.addView(search)
+  val searchRow=LinearLayout(this).apply{orientation=0}
+  searchRow.addView(search,LinearLayout.LayoutParams(0,-2,1f))
+  searchRow.addView(Button(this).apply{
+   text="×";contentDescription="Очистить поиск"
+   setOnClickListener{search.text.clear()}
+  },LinearLayout.LayoutParams(dp(52),-2))
+  b.addView(searchRow)
   val result=LinearLayout(this).apply{orientation=1};b.addView(result)
   // Index series once instead of scanning the entire roster per character on each keystroke.
   val seriesByCharacter=animeRoster.associate { it[0] to it[1] }
