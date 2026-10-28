@@ -1190,7 +1190,14 @@ class MainActivity : Activity() {
       val arr=JSONArray()
       val personas=members.joinToString("\n"){ it+": "+prefs.getString("persona_$it","").orEmpty() }
       arr.put(JSONObject().put("role","system").put("content","Ты ведущий групповой ролевой игры. Участники: "+members.joinToString(", ")+". Сюжет: "+room.optString("story")+"\n"+personas+"\nОтвечай по-русски, от лица нескольких персонажей, не управляй действиями игрока."))
-      for(i in 0 until history.length()){val o=history.getJSONObject(i);arr.put(JSONObject().put("role",if(o.optString("role")=="Игрок")"user" else "assistant").put("content",o.optString("text")))}
+      // Ignore malformed room messages while preserving their original stored JSON.
+      for(i in 0 until history.length()){
+       val o=history.optJSONObject(i)?:continue
+       if(!o.has("text") || o.isNull("text"))continue
+       arr.put(JSONObject()
+        .put("role",if(o.optString("role")=="Игрок")"user" else "assistant")
+        .put("content",o.optString("text")))
+      }
       val conn=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000;setRequestProperty("Content-Type","application/json");if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")}
       conn.outputStream.use{it.write(JSONObject().put("model",model).put("messages",arr).put("stream",false).toString().toByteArray())}
       val response=(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream).bufferedReader().use{it.readText()}
