@@ -819,9 +819,17 @@ class MainActivity : Activity() {
   b.addView(searchRow)
   // Reuse the same indexed series names for search and random discovery.
   val seriesByCharacter=animeRoster.associate { it[0] to it[1] }
+  val onlyChats=CheckBox(this).apply {
+   text="Только персонажи с перепиской"
+   setTextColor(Color.WHITE)
+  }
+  b.addView(onlyChats)
   b.addView(button("🎲 Случайная героиня") {
    val query=search.text.toString().trim()
-   val candidates=characters.filter{it.contains(query,true)||seriesByCharacter[it]?.contains(query,true)==true}
+   val candidates=characters.filter{
+    (it.contains(query,true)||seriesByCharacter[it]?.contains(query,true)==true) &&
+     (!onlyChats.isChecked || chats[it]?.isNotEmpty()==true)
+   }
    if(candidates.isEmpty()) {
     android.widget.Toast.makeText(this,"По запросу нет персонажей",android.widget.Toast.LENGTH_SHORT).show()
    } else characterDetail(candidates.random())
@@ -831,7 +839,10 @@ class MainActivity : Activity() {
   fun render(q:String) {
    result.removeAllViews()
    val query=q.trim()
-   val filtered=characters.filter{it.contains(query,true)||seriesByCharacter[it]?.contains(query,true)==true}
+   val filtered=characters.filter{
+    (it.contains(query,true)||seriesByCharacter[it]?.contains(query,true)==true) &&
+     (!onlyChats.isChecked || chats[it]?.isNotEmpty()==true)
+   }
    if(filtered.isEmpty()) {
     result.addView(text("Ничего не найдено. Попробуй другое имя или название аниме.",15f,muted))
     return
@@ -864,6 +875,10 @@ class MainActivity : Activity() {
    }
   }
   render("")
+  onlyChats.setOnCheckedChangeListener { _, _ ->
+   visibleLimit=30
+   render(search.text.toString())
+  }
   search.addTextChangedListener(object:android.text.TextWatcher{
    override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
    override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){visibleLimit=30;render(s?.toString()?:"")}
