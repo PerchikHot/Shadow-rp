@@ -194,6 +194,15 @@ class DiagnosticReportTests(unittest.TestCase):
             self.assertNotIn(str(root), report)
             self.assertEqual(bad.read_bytes(), b'not a jar')
 
+    def test_empty_mod_folder_has_actionable_read_only_hint(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'mods').mkdir()
+            report = format_instance_report(inspect_instance(root))
+            self.assertIn('Моды не найдены', report)
+            self.assertIn('mods/1.20.1', report)
+            self.assertNotIn(str(root), report)
+
     def test_missing_instance_has_clear_message(self):
         with tempfile.TemporaryDirectory() as tmp:
             report = format_instance_report(inspect_instance(Path(tmp) / 'missing'))
