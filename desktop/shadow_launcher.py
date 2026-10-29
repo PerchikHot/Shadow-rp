@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+import zipfile
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -56,15 +57,14 @@ def inspect_instance(folder: Path) -> dict:
         # Only inspect file sizes; never delete or modify user files.
         empty_mods = [name for name in mods
                       if (mods_dir / name).stat().st_size == 0]
-        # JAR files are ZIP archives. Read only their first four bytes;
-        # flag HTML/error downloads renamed to .jar without unpacking them.
+        # JARs must have a valid ZIP central directory. A PK header alone
+        # can also belong to a truncated download; inspect without extracting.
         invalid_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
-            with (mods_dir / name).open('rb') as jar:
-                if jar.read(4) != b'PK\x03\x04':
-                    invalid_mods.append(name)
+            if not zipfile.is_zipfile(mods_dir / name):
+                invalid_mods.append(name)
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
                 "empty_mods": [], "invalid_mods": [], "duplicates": [],
