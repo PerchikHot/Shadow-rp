@@ -361,6 +361,23 @@ class ShadowCompanion(tk.Tk):
         self.clipboard_append(format_instance_report(self.last_report))
         self.status.config(text="Отчёт скопирован в буфер обмена")
 
+    def save_report(self):
+        """Only write a report when the user explicitly chooses a destination."""
+        destination = filedialog.asksaveasfilename(
+            title="Сохранить отчёт Shadow RP",
+            defaultextension=".txt",
+            filetypes=[("Текстовый отчёт", "*.txt")],
+            initialfile="shadow-rp-diagnostics.txt",
+        )
+        if not destination:
+            return
+        try:
+            save_report_text(Path(destination), self.last_report)
+        except OSError as exc:
+            messagebox.showerror("Shadow RP", f"Не удалось сохранить отчёт: {exc}")
+            return
+        self.status.config(text="Диагностический отчёт сохранён локально")
+
     def open_mods(self):
         folder = Path(self.folder.get()).expanduser() / "mods"
         if not folder.is_dir():
