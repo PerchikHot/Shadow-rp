@@ -100,11 +100,16 @@ def unsupported_jar_compression(infos: list[zipfile.ZipInfo]) -> bool:
                for info in infos if not info.is_dir())
 
 
+def encrypted_jar_members(infos: list[zipfile.ZipInfo]) -> bool:
+    """Encrypted ZIP entries cannot be loaded as ordinary Forge JAR assets."""
+    return any(info.flag_bits & 0x1 for info in infos if not info.is_dir())
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -141,6 +146,7 @@ def inspect_instance(folder: Path) -> dict:
         large_mods = []
         unsupported_compression_mods = []
         duplicate_members = []
+        encrypted_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -161,6 +167,8 @@ def inspect_instance(folder: Path) -> dict:
                         large_mods.append(name)
                     if unsupported_jar_compression(jar.infolist()):
                         unsupported_compression_mods.append(name)
+                    if encrypted_jar_members(jar.infolist()):
+                        encrypted_mods.append(name)
                     if unsafe_jar_members(list(members)):
                         unsafe_mods.append(name)
                     if "fabric.mod.json" in members and "META-INF/mods.toml" not in members:
@@ -182,7 +190,7 @@ def inspect_instance(folder: Path) -> dict:
                 invalid_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -191,7 +199,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods": mods, "mods_folder_exists": mods_folder_exists,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members,
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
             "message": message}
 
 
@@ -222,6 +230,7 @@ def format_instance_report(report: dict) -> str:
         ("large_mods", "Подозрительно большой или сильно сжатый JAR (проверь вручную)"),
         ("unsupported_compression_mods", "JAR с неподдерживаемым Java сжатием (BZIP2/LZMA)"),
         ("duplicate_members", "Повторяющиеся или неоднозначные пути внутри JAR (проверь вручную)"),
+        ("encrypted_mods", "Зашифрованные записи JAR несовместимы с обычной загрузкой Forge"),
     )
     for key, label in warnings:
         if report.get(key):
