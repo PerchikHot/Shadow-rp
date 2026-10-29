@@ -99,6 +99,23 @@ class JarCompressionTests(unittest.TestCase):
             self.assertEqual(jar_path.stat().st_size > 0, True)
 
 
+class EncryptedJarMetadataTests(unittest.TestCase):
+    def test_encrypted_entries_are_flagged_without_reading_data(self):
+        from shadow_launcher import encrypted_jar_members
+        plain = zipfile.ZipInfo('META-INF/mods.toml')
+        secret = zipfile.ZipInfo('assets/locked.bin')
+        secret.flag_bits |= 0x1
+        self.assertFalse(encrypted_jar_members([plain]))
+        self.assertTrue(encrypted_jar_members([plain, secret]))
+        self.assertFalse(encrypted_jar_members([]))
+
+    def test_encryption_warning_appears_in_diagnostic_report(self):
+        report = {'exists': True, 'message': 'Forge 1.20.1 обнаружен',
+                  'versions': [], 'mods': ['locked.jar'],
+                  'mods_folder_exists': True, 'encrypted_mods': ['locked.jar']}
+        self.assertIn('Зашифрованные записи JAR', format_instance_report(report))
+
+
 class UnsupportedJarCompressionTests(unittest.TestCase):
     def test_java_supported_methods_and_unsupported_methods(self):
         from shadow_launcher import unsupported_jar_compression
