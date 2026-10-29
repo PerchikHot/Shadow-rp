@@ -39,6 +39,37 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(result["mods"], ["1.20.1/addon.jar"])
             self.assertEqual(jar.read_bytes(), b"original")
 
+    def test_linked_jar_outside_instance_is_not_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "minecraft"
+            mods = root / "mods"
+            mods.mkdir(parents=True)
+            outside = Path(tmp) / "private.jar"
+            outside.write_bytes(b"outside")
+            try:
+                (mods / "linked.jar").symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("Windows symlinks require additional privileges")
+            report = inspect_instance(root)
+            self.assertEqual(report["mods"], [])
+            self.assertEqual(outside.read_bytes(), b"outside")
+
+    def test_linked_versioned_mod_folder_is_not_scanned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "minecraft"
+            mods = root / "mods"
+            mods.mkdir(parents=True)
+            outside = Path(tmp) / "outside"
+            outside.mkdir()
+            (outside / "external.jar").write_bytes(b"outside")
+            try:
+                (mods / "1.20.1").symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Windows directory symlinks require additional privileges")
+            report = inspect_instance(root)
+            self.assertEqual(report["mods"], [])
+            self.assertEqual((outside / "external.jar").read_bytes(), b"outside")
+
     def test_duplicate_mod_names_are_reported_without_deleting_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
