@@ -213,6 +213,34 @@ class InstanceTests(unittest.TestCase):
 
 
 
+class UnsafeJarPathTests(unittest.TestCase):
+    def test_warns_about_traversal_without_extracting_or_editing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar = mods / "suspicious.jar"
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("../outside.txt", "do not extract")
+                archive.writestr("META-INF/mods.toml", "")
+            original = jar.read_bytes()
+            result = inspect_instance(root)
+            self.assertEqual(result["unsafe_mods"], ["suspicious.jar"])
+            self.assertIn("Подозрительные пути внутри JAR", format_instance_report(result))
+            self.assertFalse((root / "outside.txt").exists())
+            self.assertEqual(jar.read_bytes(), original)
+
+    def test_normal_jar_paths_are_not_flagged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            with zipfile.ZipFile(mods / "safe.jar", "w") as archive:
+                archive.writestr("META-INF/mods.toml", "")
+                archive.writestr("assets/example/icon.png", "ok")
+            self.assertEqual(inspect_instance(root)["unsafe_mods"], [])
+
+
 class DiagnosticReportTests(unittest.TestCase):
     def test_report_contains_warnings_but_not_absolute_instance_path(self):
         with tempfile.TemporaryDirectory() as tmp:
