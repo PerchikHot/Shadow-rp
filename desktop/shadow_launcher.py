@@ -36,7 +36,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -66,6 +66,7 @@ def inspect_instance(folder: Path) -> dict:
         invalid_mods = []
         fabric_mods = []
         neoforge_mods = []
+        quilt_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -83,11 +84,13 @@ def inspect_instance(folder: Path) -> dict:
                     # the Forge descriptor is absent; do not edit any JAR.
                     if "META-INF/neoforge.mods.toml" in members and "META-INF/mods.toml" not in members:
                         neoforge_mods.append(name)
+                    if "quilt.mod.json" in members and "META-INF/mods.toml" not in members:
+                        quilt_mods.append(name)
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -95,7 +98,7 @@ def inspect_instance(folder: Path) -> dict:
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods,
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods,
             "message": message}
 
 
@@ -114,6 +117,7 @@ def format_instance_report(report: dict) -> str:
         ("invalid_mods", "Повреждённые JAR"),
         ("fabric_mods", "Возможно несовместимые Fabric"),
         ("neoforge_mods", "Возможно несовместимые NeoForge"),
+        ("quilt_mods", "Возможно несовместимые Quilt"),
     )
     for key, label in warnings:
         if report.get(key):
