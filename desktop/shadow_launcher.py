@@ -32,6 +32,14 @@ def duplicate_mod_names(mods: list[str]) -> list[str]:
     return sorted(name for name, count in counts.items() if count > 1)
 
 
+
+def forge_1201_versions(versions: list[str]) -> list[str]:
+    """Find Forge 1.20.1 without confusing 1.20.10 or 1.20.1.1."""
+    return [version for version in versions
+            if "forge" in version.casefold()
+            and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", version)]
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
@@ -92,7 +100,7 @@ def inspect_instance(folder: Path) -> dict:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
                 "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
-    forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
+    forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
@@ -108,6 +116,9 @@ def format_instance_report(report: dict) -> str:
     if not report.get("exists"):
         return "\n".join(lines)
     lines.append(f"Версий Minecraft: {len(report['versions'])}")
+    matching = forge_1201_versions(report['versions'])
+    if matching:
+        lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
     if not report['mods']:
         lines.append("Моды не найдены: проверь папку mods и mods/1.20.1")
@@ -197,6 +208,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("fabric_mods") else "")
             + ("\nВозможно несовместимые NeoForge-моды для Forge: " + ", ".join(report["neoforge_mods"])
                if report.get("neoforge_mods") else "")
+            + ("\nВозможно несовместимые Quilt-моды для Forge: " + ", ".join(report["quilt_mods"])
+               if report.get("quilt_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
