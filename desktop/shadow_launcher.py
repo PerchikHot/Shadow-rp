@@ -35,7 +35,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -56,16 +56,26 @@ def inspect_instance(folder: Path) -> dict:
         # Only inspect file sizes; never delete or modify user files.
         empty_mods = [name for name in mods
                       if (mods_dir / name).stat().st_size == 0]
+        # JAR files are ZIP archives. Read only their first four bytes;
+        # flag HTML/error downloads renamed to .jar without unpacking them.
+        invalid_mods = []
+        for name in mods:
+            if name in empty_mods:
+                continue
+            with (mods_dir / name).open('rb') as jar:
+                if jar.read(4) != b'PK\x03\x04':
+                    invalid_mods.append(name)
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "duplicates": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "duplicates": duplicate_mod_names(mods),
-            "empty_mods": empty_mods, "message": message}
+            "empty_mods": empty_mods, "invalid_mods": invalid_mods,
+            "message": message}
 
 
 class ShadowCompanion(tk.Tk):
@@ -132,6 +142,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("duplicates") else "")
             + ("\nВнимание: пустые JAR-файлы: " + ", ".join(report["empty_mods"])
                if report.get("empty_mods") else "")
+            + ("\nВнимание: повреждённые или не-ZIP JAR: " + ", ".join(report["invalid_mods"])
+               if report.get("invalid_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
