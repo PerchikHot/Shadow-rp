@@ -36,7 +36,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -61,6 +61,7 @@ def inspect_instance(folder: Path) -> dict:
         # can also belong to a truncated download; inspect without extracting.
         invalid_mods = []
         fabric_mods = []
+        neoforge_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -74,11 +75,15 @@ def inspect_instance(folder: Path) -> dict:
                     members = set(jar.namelist())
                     if "fabric.mod.json" in members and "META-INF/mods.toml" not in members:
                         fabric_mods.append(name)
+                    # NeoForge uses a different mod descriptor. Warn only when
+                    # the Forge descriptor is absent; do not edit any JAR.
+                    if "META-INF/neoforge.mods.toml" in members and "META-INF/mods.toml" not in members:
+                        neoforge_mods.append(name)
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "duplicates": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -86,7 +91,8 @@ def inspect_instance(folder: Path) -> dict:
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "message": message}
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods,
+            "message": message}
 
 
 class ShadowCompanion(tk.Tk):
@@ -157,6 +163,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("invalid_mods") else "")
             + ("\nВозможно несовместимые Fabric-моды для Forge: " + ", ".join(report["fabric_mods"])
                if report.get("fabric_mods") else "")
+            + ("\nВозможно несовместимые NeoForge-моды для Forge: " + ", ".join(report["neoforge_mods"])
+               if report.get("neoforge_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
