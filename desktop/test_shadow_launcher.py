@@ -97,6 +97,24 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(report['invalid_mods'], ['partial.jar'])
             self.assertEqual(partial.read_bytes(), b'PK\x03\x04unfinished')
 
+    def test_fabric_only_mod_is_flagged_but_dual_loader_is_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            fabric = mods / "fabric_only.jar"
+            dual = mods / "dual.jar"
+            with zipfile.ZipFile(fabric, "w") as jar:
+                jar.writestr("fabric.mod.json", '{"id":"sample"}')
+            with zipfile.ZipFile(dual, "w") as jar:
+                jar.writestr("fabric.mod.json", '{"id":"sample"}')
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            report = inspect_instance(root)
+            self.assertEqual(report["fabric_mods"], ["fabric_only.jar"])
+            self.assertEqual(report["invalid_mods"], [])
+            with zipfile.ZipFile(fabric) as jar:
+                self.assertIn("fabric.mod.json", jar.namelist())
+
     def test_zero_byte_jar_warning_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
