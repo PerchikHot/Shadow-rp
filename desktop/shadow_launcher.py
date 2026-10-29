@@ -107,6 +107,12 @@ def encrypted_jar_members(infos: list[zipfile.ZipInfo]) -> bool:
 
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
+    # A symlinked instance root may escape the directory the user selected.
+    # Do not inspect an external Minecraft tree implicitly.
+    if folder.is_symlink():
+        return {"exists": True, "linked_instance": True, "forge": False,
+                "versions": [], "mods": [],
+                "message": "Папка Minecraft является ссылкой: внешние файлы не проверялись."}
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
                 "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
@@ -208,7 +214,7 @@ def inspect_instance(folder: Path) -> dict:
 def format_instance_report(report: dict) -> str:
     """Share a local, read-only diagnostic summary without absolute paths."""
     lines = ["Shadow RP — диагностика Forge 1.20.1", report["message"]]
-    if not report.get("exists"):
+    if not report.get("exists") or report.get("linked_instance"):
         return "\n".join(lines)
     lines.append(f"Версий Minecraft: {len(report['versions'])}")
     matching = forge_1201_versions(report['versions'])

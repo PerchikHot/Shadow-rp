@@ -8,6 +8,28 @@ from pathlib import Path
 from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class LinkedInstanceRootTests(unittest.TestCase):
+    def test_symlinked_instance_root_is_not_scanned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            external = base / "private-minecraft"
+            (external / "mods").mkdir(parents=True)
+            with zipfile.ZipFile(external / "mods" / "private.jar", "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            alias = base / "minecraft-alias"
+            try:
+                alias.symlink_to(external, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Directory symlinks unavailable on this runner")
+            report = inspect_instance(alias)
+            self.assertTrue(report["linked_instance"])
+            self.assertEqual(report["mods"], [])
+            summary = format_instance_report(report)
+            self.assertIn("является ссылкой", summary)
+            self.assertNotIn("private.jar", summary)
+            self.assertNotIn(str(external), summary)
+
+
 class LinkedModsFolderTests(unittest.TestCase):
     def test_symlinked_mods_folder_is_not_scanned_or_misreported_as_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
