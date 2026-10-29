@@ -66,6 +66,16 @@ def unsafe_jar_members(names: list[str]) -> bool:
     return False
 
 
+def ambiguous_jar_members(names: list[str]) -> bool:
+    """Detect paths that collide after Windows case/slash normalization.
+
+    This is advisory only: Java ZIP readers can be case-sensitive, but
+    extraction or antivirus tooling on Windows may treat these as one file.
+    """
+    normalized = [name.replace("\\", "/").casefold() for name in names]
+    return len(normalized) != len(set(normalized))
+
+
 def suspicious_jar_compression(infos: list[zipfile.ZipInfo]) -> bool:
     """Flag unusually large/unbalanced JAR metadata without decompressing it.
 
@@ -138,7 +148,7 @@ def inspect_instance(folder: Path) -> dict:
                     members = set(member_names)
                     # Duplicate ZIP paths can make different readers choose
                     # different payloads. Warn without extracting or editing.
-                    if len(member_names) != len(members):
+                    if ambiguous_jar_members(member_names):
                         duplicate_members.append(name)
                     if suspicious_jar_compression(jar.infolist()):
                         large_mods.append(name)
@@ -201,7 +211,7 @@ def format_instance_report(report: dict) -> str:
         ("unsafe_mods", "Подозрительные пути внутри JAR"),
         ("unknown_mods", "JAR без распознанных метаданных мода (проверь вручную)"),
         ("large_mods", "Подозрительно большой или сильно сжатый JAR (проверь вручную)"),
-        ("duplicate_members", "Повторяющиеся пути внутри JAR (проверь вручную)"),
+        ("duplicate_members", "Повторяющиеся или неоднозначные пути внутри JAR (проверь вручную)"),
     )
     for key, label in warnings:
         if report.get(key):
