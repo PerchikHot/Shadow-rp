@@ -266,6 +266,11 @@ def format_instance_report(report: dict) -> str:
     return "\n".join(lines)
 
 
+def save_report_text(destination: Path, report: dict) -> None:
+    """Write only the sanitized summary to a user-chosen local text file."""
+    destination.write_text(format_instance_report(report) + "\n", encoding="utf-8")
+
+
 class ShadowCompanion(tk.Tk):
     def __init__(self):
         super().__init__()
