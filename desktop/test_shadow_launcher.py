@@ -30,6 +30,26 @@ class ReportExportTests(unittest.TestCase):
                              format_instance_report(report))
 
 
+class ActiveModSizeTests(unittest.TestCase):
+    def test_reports_total_active_jar_bytes_without_reading_or_changing_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar_path = mods / "sample.jar"
+            with zipfile.ZipFile(jar_path, "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            disabled = mods / "old.jar.disabled"
+            disabled.write_bytes(b"unused backup")
+            before = jar_path.read_bytes()
+            report = inspect_instance(root)
+            self.assertEqual(report["mods_bytes"], len(before))
+            self.assertIn("Размер активных JAR:", format_instance_report(report))
+            self.assertIn(str(len(before)), format_instance_report(report))
+            self.assertEqual(jar_path.read_bytes(), before)
+            self.assertEqual(disabled.read_bytes(), b"unused backup")
+
+
 class DisabledModTests(unittest.TestCase):
     def test_disabled_jar_is_reported_but_not_scanned_as_active(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -152,6 +152,8 @@ def inspect_instance(folder: Path) -> dict:
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
                             if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             mods.sort(key=str.lower)
+        # A quick storage overview without reading or extracting JAR payloads.
+        mods_bytes = sum((mods_dir / name).stat().st_size for name in mods)
         # Empty JARs are not valid mods and may indicate interrupted downloads.
         # Only inspect file sizes; never delete or modify user files.
         empty_mods = [name for name in mods
@@ -217,7 +219,7 @@ def inspect_instance(folder: Path) -> dict:
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
-            "mods": mods, "disabled_mods": disabled_mods,
+            "mods": mods, "mods_bytes": mods_bytes, "disabled_mods": disabled_mods,
             "mods_folder_exists": mods_folder_exists,
             "linked_mods": linked_mods,
             "duplicates": duplicate_mod_names(mods),
@@ -236,6 +238,9 @@ def format_instance_report(report: dict) -> str:
     if matching:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
+    if report["mods"]:
+        size = f"{report.get('mods_bytes', 0):,}".replace(",", " ")
+        lines.append(f"Размер активных JAR: {size} байт")
     if report.get("disabled_mods"):
         lines.append("Отключённые JAR (не загружаются Forge): " +
                      ", ".join(report["disabled_mods"]))
