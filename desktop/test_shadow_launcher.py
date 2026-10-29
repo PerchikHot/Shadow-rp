@@ -164,6 +164,24 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(report["invalid_mods"], [])
             self.assertEqual(neo.read_bytes(), original)
 
+    def test_quilt_only_mod_is_flagged_without_modifying_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            quilt = mods / 'quilt.jar'
+            dual = mods / 'dual.jar'
+            with zipfile.ZipFile(quilt, 'w') as jar:
+                jar.writestr('quilt.mod.json', '{"quilt_loader":{"id":"sample"}}')
+            with zipfile.ZipFile(dual, 'w') as jar:
+                jar.writestr('quilt.mod.json', '{}')
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+            before = quilt.read_bytes()
+            report = inspect_instance(root)
+            self.assertEqual(report['quilt_mods'], ['quilt.jar'])
+            self.assertIn('Quilt: quilt.jar', format_instance_report(report))
+            self.assertEqual(quilt.read_bytes(), before)
+
     def test_zero_byte_jar_warning_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
