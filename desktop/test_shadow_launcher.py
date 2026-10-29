@@ -7,6 +7,40 @@ from pathlib import Path
 from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression
 
 
+class JarCompressionTests(unittest.TestCase):
+    def test_flags_oversized_or_extreme_compression_without_reading_payload(self):
+        ordinary = zipfile.ZipInfo('META-INF/mods.toml')
+        ordinary.file_size = 1200
+        ordinary.compress_size = 800
+        self.assertFalse(suspicious_jar_compression([ordinary]))
+
+        oversized = zipfile.ZipInfo('large.bin')
+        oversized.file_size = 513 * 1024 * 1024
+        oversized.compress_size = 500 * 1024 * 1024
+        self.assertTrue(suspicious_jar_compression([oversized]))
+
+        compressed = zipfile.ZipInfo('payload.bin')
+        compressed.file_size = 5 * 1024 * 1024
+        compressed.compress_size = 1000
+        self.assertTrue(suspicious_jar_compression([compressed]))
+
+    def test_report_includes_compression_warning_without_absolute_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            jar_path = mods / 'very-compressed.jar'
+            with zipfile.ZipFile(jar_path, 'w', zipfile.ZIP_DEFLATED) as jar:
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+                jar.writestr('data/payload.bin', b'0' * (5 * 1024 * 1024))
+            result = inspect_instance(root)
+            self.assertIn('very-compressed.jar', result['large_mods'])
+            report = format_instance_report(result)
+            self.assertIn('сильно сжатый JAR', report)
+            self.assertNotIn(str(root), report)
+            self.assertEqual(jar_path.stat().st_size > 0, True)
+
+
 class InstanceTests(unittest.TestCase):
     def test_missing_directory_is_not_created(self):
         with tempfile.TemporaryDirectory() as tmp:
