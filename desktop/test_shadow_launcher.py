@@ -1,6 +1,7 @@
 """Read-only Minecraft instance inspection tests."""
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from shadow_launcher import inspect_instance, duplicate_mod_names
@@ -78,11 +79,23 @@ class InstanceTests(unittest.TestCase):
             broken = folder / 'download.jar'
             broken.write_bytes(b'<html>Not Found</html>')
             valid = folder / 'valid.jar'
-            valid.write_bytes(b'PK\x03\x04rest')
+            with zipfile.ZipFile(valid, 'w') as jar:
+                jar.writestr('META-INF/MANIFEST.MF', 'Manifest-Version: 1.0')
             report = inspect_instance(root)
             self.assertEqual(report['invalid_mods'], ['download.jar'])
             self.assertEqual(broken.read_bytes(), b'<html>Not Found</html>')
-            self.assertEqual(valid.read_bytes(), b'PK\x03\x04rest')
+            self.assertTrue(zipfile.is_zipfile(valid))
+
+    def test_truncated_pk_header_is_reported_as_corrupt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / 'mods'
+            folder.mkdir()
+            partial = folder / 'partial.jar'
+            partial.write_bytes(b'PK\x03\x04unfinished')
+            report = inspect_instance(root)
+            self.assertEqual(report['invalid_mods'], ['partial.jar'])
+            self.assertEqual(partial.read_bytes(), b'PK\x03\x04unfinished')
 
     def test_zero_byte_jar_warning_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp:
