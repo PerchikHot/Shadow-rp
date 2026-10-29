@@ -24,6 +24,10 @@ class ReportExportTests(unittest.TestCase):
             self.assertEqual(target.read_text(encoding="utf-8").strip(),
                              format_instance_report(report))
             self.assertEqual(jar.read_bytes(), before)
+            with self.assertRaises(FileExistsError):
+                save_report_text(target, report)
+            self.assertEqual(target.read_text(encoding="utf-8").strip(),
+                             format_instance_report(report))
 
 
 class DisabledModTests(unittest.TestCase):
