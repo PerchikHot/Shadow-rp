@@ -8,6 +8,30 @@ from pathlib import Path
 from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class DisabledModTests(unittest.TestCase):
+    def test_disabled_jar_is_reported_but_not_scanned_as_active(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            versioned = mods / "1.20.1"
+            versioned.mkdir(parents=True)
+            disabled = mods / "addon.jar.disabled"
+            disabled.write_bytes(b"not a jar")
+            other = versioned / "old.jar.bak"
+            other.write_bytes(b"backup")
+            active = mods / "active.jar"
+            with zipfile.ZipFile(active, "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            report = inspect_instance(root)
+            self.assertEqual(report["mods"], ["active.jar"])
+            self.assertEqual(report["disabled_mods"],
+                             ["1.20.1/old.jar.bak", "addon.jar.disabled"])
+            self.assertIn("Отключённые JAR", format_instance_report(report))
+            self.assertNotIn("addon.jar.disabled", report["invalid_mods"])
+            self.assertEqual(disabled.read_bytes(), b"not a jar")
+            self.assertEqual(other.read_bytes(), b"backup")
+
+
 class LinkedInstanceRootTests(unittest.TestCase):
     def test_symlinked_instance_root_is_not_scanned(self):
         with tempfile.TemporaryDirectory() as tmp:
