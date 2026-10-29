@@ -36,7 +36,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -60,14 +60,25 @@ def inspect_instance(folder: Path) -> dict:
         # JARs must have a valid ZIP central directory. A PK header alone
         # can also belong to a truncated download; inspect without extracting.
         invalid_mods = []
+        fabric_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
-            if not zipfile.is_zipfile(mods_dir / name):
+            jar_path = mods_dir / name
+            if not zipfile.is_zipfile(jar_path):
+                invalid_mods.append(name)
+                continue
+            # Reading ZIP metadata does not execute or extract mod contents.
+            try:
+                with zipfile.ZipFile(jar_path) as jar:
+                    members = set(jar.namelist())
+                    if "fabric.mod.json" in members and "META-INF/mods.toml" not in members:
+                        fabric_mods.append(name)
+            except zipfile.BadZipFile:
                 invalid_mods.append(name)
     except OSError as exc:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "duplicates": [],
                 "message": f"Не удалось прочитать файлы: {exc}"}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -75,7 +86,7 @@ def inspect_instance(folder: Path) -> dict:
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "message": message}
+            "fabric_mods": fabric_mods, "message": message}
 
 
 class ShadowCompanion(tk.Tk):
@@ -144,6 +155,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("empty_mods") else "")
             + ("\nВнимание: повреждённые или не-ZIP JAR: " + ", ".join(report["invalid_mods"])
                if report.get("invalid_mods") else "")
+            + ("\nВозможно несовместимые Fabric-моды для Forge: " + ", ".join(report["fabric_mods"])
+               if report.get("fabric_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
