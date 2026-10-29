@@ -128,7 +128,7 @@ def inspect_instance(folder: Path) -> dict:
                 "message": "Папка Minecraft является ссылкой: внешние файлы не проверялись."}
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [], "disabled_mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "unreadable_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -170,14 +170,14 @@ def inspect_instance(folder: Path) -> dict:
         unsupported_compression_mods = []
         duplicate_members = []
         encrypted_mods = []
+        unreadable_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
             jar_path = mods_dir / name
-            if not zipfile.is_zipfile(jar_path):
-                invalid_mods.append(name)
-                continue
-            # Reading ZIP metadata does not execute or extract mod contents.
+            # Opening the JAR once avoids duplicate disk reads. Bad ZIP
+            # archives and permission errors are reported separately so one
+            # unreadable mod cannot hide diagnostics for the other mods.
             try:
                 with zipfile.ZipFile(jar_path) as jar:
                     member_names = jar.namelist()
@@ -211,9 +211,11 @@ def inspect_instance(folder: Path) -> dict:
                         unknown_mods.append(name)
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
+            except OSError:
+                unreadable_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [], "disabled_mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "unreadable_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -225,7 +227,7 @@ def inspect_instance(folder: Path) -> dict:
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
             "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
-            "message": message}
+            "unreadable_mods": unreadable_mods, "message": message}
 
 
 def format_instance_report(report: dict) -> str:
@@ -264,6 +266,7 @@ def format_instance_report(report: dict) -> str:
         ("unsupported_compression_mods", "JAR с неподдерживаемым Java сжатием (BZIP2/LZMA)"),
         ("duplicate_members", "Повторяющиеся или неоднозначные пути внутри JAR (проверь вручную)"),
         ("encrypted_mods", "Зашифрованные записи JAR несовместимы с обычной загрузкой Forge"),
+        ("unreadable_mods", "Нет доступа к JAR (остальные моды проверены)"),
     )
     for key, label in warnings:
         if report.get(key):

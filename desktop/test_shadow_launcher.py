@@ -8,6 +8,31 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class UnreadableModTests(unittest.TestCase):
+    def test_one_unreadable_jar_does_not_hide_other_mods(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            for name in ("working.jar", "blocked.jar"):
+                with zipfile.ZipFile(mods / name, "w") as jar:
+                    jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            original = zipfile.ZipFile
+
+            def open_jar(path, *args, **kwargs):
+                if str(path).endswith("blocked.jar"):
+                    raise PermissionError("simulated access denied")
+                return original(path, *args, **kwargs)
+
+            with patch("shadow_launcher.zipfile.ZipFile", side_effect=open_jar):
+                report = inspect_instance(root)
+            self.assertEqual(report["unreadable_mods"], ["blocked.jar"])
+            self.assertNotIn("working.jar", report["invalid_mods"])
+            self.assertEqual(len(report["mods"]), 2)
+            self.assertIn("Нет доступа к JAR", format_instance_report(report))
+
+
 class ReportExportTests(unittest.TestCase):
     def test_export_is_utf8_local_and_does_not_touch_mod_files(self):
         with tempfile.TemporaryDirectory() as tmp:
