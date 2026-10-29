@@ -115,6 +115,24 @@ class InstanceTests(unittest.TestCase):
             with zipfile.ZipFile(fabric) as jar:
                 self.assertIn("fabric.mod.json", jar.namelist())
 
+    def test_neoforge_only_metadata_is_flagged_without_touching_mods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            neo = mods / "neoforge_only.jar"
+            dual = mods / "dual_loader.jar"
+            with zipfile.ZipFile(neo, "w") as jar:
+                jar.writestr("META-INF/neoforge.mods.toml", 'modLoader="javafml"')
+            with zipfile.ZipFile(dual, "w") as jar:
+                jar.writestr("META-INF/neoforge.mods.toml", 'modLoader="javafml"')
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            original = neo.read_bytes()
+            report = inspect_instance(root)
+            self.assertEqual(report["neoforge_mods"], ["neoforge_only.jar"])
+            self.assertEqual(report["invalid_mods"], [])
+            self.assertEqual(neo.read_bytes(), original)
+
     def test_zero_byte_jar_warning_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
