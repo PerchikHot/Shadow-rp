@@ -1,10 +1,40 @@
 """Read-only Minecraft instance inspection tests."""
 import tempfile
+import warnings
 import unittest
 import zipfile
 from pathlib import Path
 
 from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression
+
+
+class DuplicateJarMemberTests(unittest.TestCase):
+    def test_warns_about_duplicate_zip_members_without_modifying_jar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            suspect = mods / "duplicate-entries.jar"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(suspect, "w") as jar:
+                    jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+                    jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            original = suspect.read_bytes()
+            result = inspect_instance(root)
+            self.assertEqual(result["duplicate_members"], ["duplicate-entries.jar"])
+            self.assertIn("Повторяющиеся пути внутри JAR", format_instance_report(result))
+            self.assertEqual(suspect.read_bytes(), original)
+
+    def test_distinct_zip_members_do_not_trigger_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            with zipfile.ZipFile(mods / "ordinary.jar", "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+                jar.writestr("assets/icon.png", b"test")
+            self.assertEqual(inspect_instance(root)["duplicate_members"], [])
 
 
 class JarCompressionTests(unittest.TestCase):

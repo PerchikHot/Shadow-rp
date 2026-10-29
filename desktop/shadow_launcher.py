@@ -74,7 +74,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "duplicate_members": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -109,6 +109,7 @@ def inspect_instance(folder: Path) -> dict:
         unsafe_mods = []
         unknown_mods = []
         large_mods = []
+        duplicate_members = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -119,7 +120,12 @@ def inspect_instance(folder: Path) -> dict:
             # Reading ZIP metadata does not execute or extract mod contents.
             try:
                 with zipfile.ZipFile(jar_path) as jar:
-                    members = set(jar.namelist())
+                    member_names = jar.namelist()
+                    members = set(member_names)
+                    # Duplicate ZIP paths can make different readers choose
+                    # different payloads. Warn without extracting or editing.
+                    if len(member_names) != len(members):
+                        duplicate_members.append(name)
                     if suspicious_jar_compression(jar.infolist()):
                         large_mods.append(name)
                     if unsafe_jar_members(list(members)):
@@ -143,7 +149,7 @@ def inspect_instance(folder: Path) -> dict:
                 invalid_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "duplicate_members": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -152,7 +158,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods": mods, "mods_folder_exists": mods_folder_exists,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods,
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "duplicate_members": duplicate_members,
             "message": message}
 
 
@@ -181,6 +187,7 @@ def format_instance_report(report: dict) -> str:
         ("unsafe_mods", "Подозрительные пути внутри JAR"),
         ("unknown_mods", "JAR без распознанных метаданных мода (проверь вручную)"),
         ("large_mods", "Подозрительно большой или сильно сжатый JAR (проверь вручную)"),
+        ("duplicate_members", "Повторяющиеся пути внутри JAR (проверь вручную)"),
     )
     for key, label in warnings:
         if report.get(key):
