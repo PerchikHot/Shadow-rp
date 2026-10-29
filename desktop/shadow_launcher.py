@@ -41,14 +41,28 @@ def forge_1201_versions(versions: list[str]) -> list[str]:
 
 
 def unsafe_jar_members(names: list[str]) -> bool:
-    """Warn about traversal/absolute ZIP entries without extracting a mod."""
+    """Warn about ambiguous or unsafe ZIP paths without extracting a mod.
+
+    Windows reserved devices, alternate data streams and trailing dots/spaces
+    can resolve differently from the names stored in the JAR central directory.
+    """
+    reserved = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$)", re.I)
+    invalid = re.compile(r'[\\x00-\\x1f<>:"|?*]')
     for name in names:
         normalized = name.replace("\\", "/")
         parts = normalized.split("/")
-        if (normalized.startswith("/") or
-                re.match(r"^[A-Za-z]:", normalized) or
-                any(part == ".." for part in parts)):
+        if (not normalized or normalized.startswith("/") or
+                re.match(r"^[A-Za-z]:", normalized)):
             return True
+        for index, part in enumerate(parts):
+            if not part:
+                # A single final slash denotes a normal directory entry.
+                if index != len(parts) - 1:
+                    return True
+                continue
+            if (part in (".", "..") or part.rstrip(" .") != part or
+                    invalid.search(part) or reserved.match(part)):
+                return True
     return False
 
 
