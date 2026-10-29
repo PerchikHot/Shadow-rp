@@ -52,6 +52,24 @@ def unsafe_jar_members(names: list[str]) -> bool:
     return False
 
 
+def suspicious_jar_compression(infos: list[zipfile.ZipInfo]) -> bool:
+    """Flag unusually large/unbalanced JAR metadata without decompressing it.
+
+    This is an advisory warning, not proof of a malicious archive.
+    """
+    total = 0
+    for info in infos:
+        if info.is_dir():
+            continue
+        total += info.file_size
+        if total > 512 * 1024 * 1024:
+            return True
+        if (info.file_size >= 1024 * 1024 and
+                info.file_size > max(info.compress_size, 1) * 1000):
+            return True
+    return False
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
