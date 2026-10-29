@@ -227,6 +227,16 @@ class DiagnosticReportTests(unittest.TestCase):
             self.assertNotIn(str(root), report)
             self.assertEqual(bad.read_bytes(), b'not a jar')
 
+    def test_missing_mods_folder_has_distinct_hint_without_creating_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'versions' / '1.20.1-forge-47.3.0').mkdir(parents=True)
+            report = inspect_instance(root)
+            self.assertTrue(report['forge'])
+            self.assertFalse(report['mods_folder_exists'])
+            self.assertIn('Папка mods отсутствует', format_instance_report(report))
+            self.assertFalse((root / 'mods').exists())
+
     def test_empty_mod_folder_has_actionable_read_only_hint(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
