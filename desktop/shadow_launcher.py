@@ -99,6 +99,26 @@ def inspect_instance(folder: Path) -> dict:
             "message": message}
 
 
+def format_instance_report(report: dict) -> str:
+    """Share a local, read-only diagnostic summary without absolute paths."""
+    lines = ["Shadow RP — диагностика Forge 1.20.1", report["message"]]
+    if not report.get("exists"):
+        return "\n".join(lines)
+    lines.append(f"Версий Minecraft: {len(report['versions'])}")
+    lines.append(f"JAR-модов: {len(report['mods'])}")
+    warnings = (
+        ("duplicates", "Повторяющиеся JAR"),
+        ("empty_mods", "Пустые JAR"),
+        ("invalid_mods", "Повреждённые JAR"),
+        ("fabric_mods", "Возможно несовместимые Fabric"),
+        ("neoforge_mods", "Возможно несовместимые NeoForge"),
+    )
+    for key, label in warnings:
+        if report.get(key):
+            lines.append(f"{label}: {', '.join(report[key])}")
+    return "\n".join(lines)
+
+
 class ShadowCompanion(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -140,6 +160,7 @@ class ShadowCompanion(tk.Tk):
         self.mods.pack(fill="both", expand=True, padx=24)
         controls = tk.Frame(self, bg=BG)
         controls.pack(fill="x", padx=24, pady=14)
+        self._button(controls, "Скопировать отчёт", self.copy_report).pack(side="left", padx=4)
         self._button(controls, "Открыть папку mods", self.open_mods).pack(side="left", padx=4)
         self._button(controls, "Открыть Minecraft Launcher", self.open_launcher).pack(side="left", padx=4)
         tk.Label(self, text="Мод Shadow RP пока не собран. Установка и синхронизация не реализованы.",
@@ -154,6 +175,7 @@ class ShadowCompanion(tk.Tk):
 
     def refresh(self):
         report = inspect_instance(Path(self.folder.get()).expanduser())
+        self.last_report = report
         self.status.config(text=report["message"])
         self.details.config(text=(
             f"Версий Minecraft: {len(report['versions'])}  •  "
@@ -173,6 +195,12 @@ class ShadowCompanion(tk.Tk):
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
             self.mods.insert(tk.END, name)
+
+    def copy_report(self):
+        """Copy only the diagnostic summary; never upload local mod data."""
+        self.clipboard_clear()
+        self.clipboard_append(format_instance_report(self.last_report))
+        self.status.config(text="Отчёт скопирован в буфер обмена")
 
     def open_mods(self):
         folder = Path(self.folder.get()).expanduser() / "mods"

@@ -4,7 +4,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from shadow_launcher import inspect_instance, duplicate_mod_names
+from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names
 
 
 class InstanceTests(unittest.TestCase):
@@ -177,6 +177,28 @@ class InstanceTests(unittest.TestCase):
             self.assertEqual(report["empty_mods"], ["1.20.1/unfinished.jar"])
             self.assertEqual(empty.read_bytes(), b"")
             self.assertEqual(valid.read_bytes(), b"valid")
+
+
+
+class DiagnosticReportTests(unittest.TestCase):
+    def test_report_contains_warnings_but_not_absolute_instance_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            bad = mods / 'broken.jar'
+            bad.write_bytes(b'not a jar')
+            report = format_instance_report(inspect_instance(root))
+            self.assertIn('Повреждённые JAR: broken.jar', report)
+            self.assertIn('JAR-модов: 1', report)
+            self.assertNotIn(str(root), report)
+            self.assertEqual(bad.read_bytes(), b'not a jar')
+
+    def test_missing_instance_has_clear_message(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = format_instance_report(inspect_instance(Path(tmp) / 'missing'))
+            self.assertIn('Папка Minecraft не найдена', report)
+            self.assertNotIn('JAR-модов:', report)
 
 
 if __name__ == "__main__":
