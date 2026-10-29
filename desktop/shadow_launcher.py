@@ -33,6 +33,19 @@ def duplicate_mod_names(mods: list[str]) -> list[str]:
 
 
 
+def disabled_mod_names(mods_dir: Path) -> list[str]:
+    """Show disabled JARs without treating them as active Forge mods."""
+    disabled: list[str] = []
+    for folder, prefix in ((mods_dir, ""), (mods_dir / "1.20.1", "1.20.1/")):
+        if not folder.is_dir() or folder.is_symlink():
+            continue
+        for path in folder.iterdir():
+            if (path.is_file() and not path.is_symlink() and
+                    path.name.casefold().endswith((".jar.disabled", ".jar.off", ".jar.bak"))):
+                disabled.append(prefix + path.name)
+    return sorted(disabled, key=str.casefold)
+
+
 def forge_1201_versions(versions: list[str]) -> list[str]:
     """Find Forge 1.20.1 without confusing 1.20.10 or 1.20.1.1."""
     return [version for version in versions
@@ -114,7 +127,7 @@ def inspect_instance(folder: Path) -> dict:
                 "versions": [], "mods": [],
                 "message": "Папка Minecraft является ссылкой: внешние файлы не проверялись."}
     if not folder.is_dir():
-        return {"exists": False, "forge": False, "versions": [], "mods": [],
+        return {"exists": False, "forge": False, "versions": [], "mods": [], "disabled_mods": [],
                 "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
@@ -126,6 +139,7 @@ def inspect_instance(folder: Path) -> dict:
         linked_mods = mods_dir.is_symlink()
         mods_folder_exists = mods_dir.is_dir() and not linked_mods
         mods = []
+        disabled_mods = disabled_mod_names(mods_dir) if mods_folder_exists else []
         # Linked folders/files may point outside .minecraft and must not be
         # inspected without the user's explicit selection of that location.
         if mods_dir.is_dir() and not mods_dir.is_symlink():
@@ -196,14 +210,15 @@ def inspect_instance(folder: Path) -> dict:
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
     except OSError:
-        return {"exists": True, "forge": False, "versions": [], "mods": [],
+        return {"exists": True, "forge": False, "versions": [], "mods": [], "disabled_mods": [],
                 "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "large_mods": [], "unsupported_compression_mods": [], "duplicate_members": [], "encrypted_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
-            "mods": mods, "mods_folder_exists": mods_folder_exists,
+            "mods": mods, "disabled_mods": disabled_mods,
+            "mods_folder_exists": mods_folder_exists,
             "linked_mods": linked_mods,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
@@ -221,6 +236,9 @@ def format_instance_report(report: dict) -> str:
     if matching:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
+    if report.get("disabled_mods"):
+        lines.append("Отключённые JAR (не загружаются Forge): " +
+                     ", ".join(report["disabled_mods"]))
     if not report['mods']:
         if report.get("linked_mods"):
             lines.append("Папка mods является ссылкой: внешний каталог не проверялся")
