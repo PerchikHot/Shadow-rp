@@ -85,10 +85,10 @@ def inspect_instance(folder: Path) -> dict:
                         neoforge_mods.append(name)
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
-    except OSError as exc:
+    except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
                 "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "duplicates": [],
-                "message": f"Не удалось прочитать файлы: {exc}"}
+                "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = any("forge" in v.lower() and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", v) for v in versions)
     message = ("Forge 1.20.1 обнаружен" if forge else
                "Forge 1.20.1 не найден среди установленных версий")
@@ -106,6 +106,8 @@ def format_instance_report(report: dict) -> str:
         return "\n".join(lines)
     lines.append(f"Версий Minecraft: {len(report['versions'])}")
     lines.append(f"JAR-модов: {len(report['mods'])}")
+    if not report['mods']:
+        lines.append("Моды не найдены: проверь папку mods и mods/1.20.1")
     warnings = (
         ("duplicates", "Повторяющиеся JAR"),
         ("empty_mods", "Пустые JAR"),
