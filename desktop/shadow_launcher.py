@@ -40,18 +40,22 @@ def inspect_instance(folder: Path) -> dict:
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
-        versions = sorted(p.name for p in versions_dir.iterdir() if p.is_dir()) if versions_dir.is_dir() else []
+        # Do not traverse linked version folders outside the selected instance.
+        versions = sorted(p.name for p in versions_dir.iterdir()
+                          if p.is_dir() and not p.is_symlink()) if versions_dir.is_dir() and not versions_dir.is_symlink() else []
         mods_dir = folder / "mods"
         mods = []
-        if mods_dir.is_dir():
+        # Linked folders/files may point outside .minecraft and must not be
+        # inspected without the user's explicit selection of that location.
+        if mods_dir.is_dir() and not mods_dir.is_symlink():
             mods.extend(p.name for p in mods_dir.iterdir()
-                        if p.is_file() and p.suffix.lower() == ".jar")
+                        if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             # Some mod managers keep Forge 1.20.1 JARs in a version folder.
             # Inspect it without changing the user's mod installation.
             versioned = mods_dir / "1.20.1"
-            if versioned.is_dir():
+            if versioned.is_dir() and not versioned.is_symlink():
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
-                            if p.is_file() and p.suffix.lower() == ".jar")
+                            if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             mods.sort(key=str.lower)
         # Empty JARs are not valid mods and may indicate interrupted downloads.
         # Only inspect file sizes; never delete or modify user files.
