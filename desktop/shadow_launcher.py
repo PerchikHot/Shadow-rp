@@ -264,6 +264,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("quilt_mods") else "")
             + ("\nJAR без распознанных метаданных мода: " + ", ".join(report["unknown_mods"])
                if report.get("unknown_mods") else "")
+            + ("\nПроверь размер/сжатие JAR: " + ", ".join(report["large_mods"])
+               if report.get("large_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
