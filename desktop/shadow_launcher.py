@@ -313,6 +313,7 @@ class ShadowCompanion(tk.Tk):
         controls = tk.Frame(self, bg=BG)
         controls.pack(fill="x", padx=24, pady=14)
         self._button(controls, "Скопировать отчёт", self.copy_report).pack(side="left", padx=4)
+        self._button(controls, "Сохранить .txt", self.save_report).pack(side="left", padx=4)
         self._button(controls, "Открыть папку mods", self.open_mods).pack(side="left", padx=4)
         self._button(controls, "Открыть Minecraft Launcher", self.open_launcher).pack(side="left", padx=4)
         tk.Label(self, text="Мод Shadow RP пока не собран. Установка и синхронизация не реализованы.",
