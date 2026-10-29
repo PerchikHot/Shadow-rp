@@ -5,10 +5,38 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression
+from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
 class DuplicateJarMemberTests(unittest.TestCase):
+    def test_case_and_separator_collisions_are_reported(self):
+        self.assertTrue(ambiguous_jar_members([
+            "assets/Logo.PNG", "assets/logo.png",
+        ]))
+        self.assertTrue(ambiguous_jar_members([
+            "assets\\icon.png", "assets/icon.png",
+        ]))
+        self.assertFalse(ambiguous_jar_members([
+            "assets/one.png", "assets/two.png",
+        ]))
+
+    def test_windows_case_collision_in_real_jar(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar_path = mods / "case-collision.jar"
+            with zipfile.ZipFile(jar_path, "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+                jar.writestr("assets/ICON.png", b"a")
+                jar.writestr("assets/icon.png", b"b")
+            original = jar_path.read_bytes()
+            result = inspect_instance(root)
+            self.assertIn("case-collision.jar", result["duplicate_members"])
+            self.assertEqual(jar_path.read_bytes(), original)
+            self.assertNotIn(str(root), format_instance_report(result))
+
+
     def test_warns_about_duplicate_zip_members_without_modifying_jar(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -23,7 +51,7 @@ class DuplicateJarMemberTests(unittest.TestCase):
             original = suspect.read_bytes()
             result = inspect_instance(root)
             self.assertEqual(result["duplicate_members"], ["duplicate-entries.jar"])
-            self.assertIn("Повторяющиеся пути внутри JAR", format_instance_report(result))
+            self.assertIn("Повторяющиеся или неоднозначные пути внутри JAR", format_instance_report(result))
             self.assertEqual(suspect.read_bytes(), original)
 
     def test_distinct_zip_members_do_not_trigger_warning(self):
