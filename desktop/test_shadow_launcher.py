@@ -4,7 +4,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions
+from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression
 
 
 class InstanceTests(unittest.TestCase):
