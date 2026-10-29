@@ -8,6 +8,24 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class ReportExportTests(unittest.TestCase):
+    def test_export_is_utf8_local_and_does_not_touch_mod_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar = mods / "тест.jar"
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            before = jar.read_bytes()
+            report = inspect_instance(root)
+            target = root / "diagnostics.txt"
+            save_report_text(target, report)
+            self.assertEqual(target.read_text(encoding="utf-8").strip(),
+                             format_instance_report(report))
+            self.assertEqual(jar.read_bytes(), before)
+
+
 class DisabledModTests(unittest.TestCase):
     def test_disabled_jar_is_reported_but_not_scanned_as_active(self):
         with tempfile.TemporaryDirectory() as tmp:
