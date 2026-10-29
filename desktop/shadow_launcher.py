@@ -56,7 +56,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -89,6 +89,7 @@ def inspect_instance(folder: Path) -> dict:
         neoforge_mods = []
         quilt_mods = []
         unsafe_mods = []
+        unknown_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -110,11 +111,18 @@ def inspect_instance(folder: Path) -> dict:
                         neoforge_mods.append(name)
                     if "quilt.mod.json" in members and "META-INF/mods.toml" not in members:
                         quilt_mods.append(name)
+                    # A readable ZIP is not necessarily a Forge mod. Keep this
+                    # advisory only: legacy coremods may use other descriptors.
+                    descriptors = {"META-INF/mods.toml", "fabric.mod.json",
+                                   "quilt.mod.json", "META-INF/neoforge.mods.toml",
+                                   "mcmod.info"}
+                    if not members.intersection(descriptors):
+                        unknown_mods.append(name)
             except zipfile.BadZipFile:
                 invalid_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "unknown_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -123,7 +131,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods": mods, "mods_folder_exists": mods_folder_exists,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods,
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods,
             "message": message}
 
 
@@ -150,6 +158,7 @@ def format_instance_report(report: dict) -> str:
         ("neoforge_mods", "Возможно несовместимые NeoForge"),
         ("quilt_mods", "Возможно несовместимые Quilt"),
         ("unsafe_mods", "Подозрительные пути внутри JAR"),
+        ("unknown_mods", "JAR без распознанных метаданных мода (проверь вручную)"),
     )
     for key, label in warnings:
         if report.get(key):
@@ -231,6 +240,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("neoforge_mods") else "")
             + ("\nВозможно несовместимые Quilt-моды для Forge: " + ", ".join(report["quilt_mods"])
                if report.get("quilt_mods") else "")
+            + ("\nJAR без распознанных метаданных мода: " + ", ".join(report["unknown_mods"])
+               if report.get("unknown_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
