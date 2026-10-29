@@ -213,6 +213,35 @@ class InstanceTests(unittest.TestCase):
 
 
 
+class UnknownModDescriptorTests(unittest.TestCase):
+    def test_valid_zip_without_mod_descriptor_gets_advisory_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            unknown = mods / 'resources.jar'
+            forge = mods / 'forge.jar'
+            legacy = mods / 'legacy.jar'
+            with zipfile.ZipFile(unknown, 'w') as jar:
+                jar.writestr('assets/example/texture.png', b'pixels')
+            with zipfile.ZipFile(forge, 'w') as jar:
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+            with zipfile.ZipFile(legacy, 'w') as jar:
+                jar.writestr('mcmod.info', '{}')
+            original = unknown.read_bytes()
+            result = inspect_instance(root)
+            self.assertEqual(result['unknown_mods'], ['resources.jar'])
+            self.assertIn('JAR без распознанных метаданных мода',
+                          format_instance_report(result))
+            self.assertEqual(result['invalid_mods'], [])
+            self.assertEqual(unknown.read_bytes(), original)
+
+    def test_missing_folder_has_no_unknown_mods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = inspect_instance(Path(tmp) / 'missing')
+            self.assertEqual(result['unknown_mods'], [])
+
+
 class UnsafeJarPathTests(unittest.TestCase):
     def test_warns_about_traversal_without_extracting_or_editing(self):
         with tempfile.TemporaryDirectory() as tmp:
