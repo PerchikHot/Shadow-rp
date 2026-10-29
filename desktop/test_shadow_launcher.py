@@ -8,6 +8,29 @@ from pathlib import Path
 from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class LinkedModsFolderTests(unittest.TestCase):
+    def test_symlinked_mods_folder_is_not_scanned_or_misreported_as_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            external = root / 'external'
+            external.mkdir()
+            with zipfile.ZipFile(external / 'private.jar', 'w') as jar:
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+            instance = root / 'instance'
+            instance.mkdir()
+            try:
+                (instance / 'mods').symlink_to(external, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest('Directory symlinks unavailable on this runner')
+            result = inspect_instance(instance)
+            self.assertTrue(result['linked_mods'])
+            self.assertEqual(result['mods'], [])
+            report = format_instance_report(result)
+            self.assertIn('является ссылкой', report)
+            self.assertNotIn('Папка mods отсутствует', report)
+            self.assertNotIn(str(external), report)
+
+
 class DuplicateJarMemberTests(unittest.TestCase):
     def test_case_and_separator_collisions_are_reported(self):
         self.assertTrue(ambiguous_jar_members([
