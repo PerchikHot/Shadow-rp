@@ -5,7 +5,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
+from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
 class DisabledModTests(unittest.TestCase):
