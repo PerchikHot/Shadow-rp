@@ -70,6 +70,20 @@ class InstanceTests(unittest.TestCase):
             self.assertFalse(inspect_instance(root)["forge"])
 
 
+    def test_non_zip_jar_warning_preserves_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / 'mods'
+            folder.mkdir()
+            broken = folder / 'download.jar'
+            broken.write_bytes(b'<html>Not Found</html>')
+            valid = folder / 'valid.jar'
+            valid.write_bytes(b'PK\x03\x04rest')
+            report = inspect_instance(root)
+            self.assertEqual(report['invalid_mods'], ['download.jar'])
+            self.assertEqual(broken.read_bytes(), b'<html>Not Found</html>')
+            self.assertEqual(valid.read_bytes(), b'PK\x03\x04rest')
+
     def test_zero_byte_jar_warning_is_read_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
