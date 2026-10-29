@@ -117,7 +117,8 @@ def inspect_instance(folder: Path) -> dict:
         versions = sorted(p.name for p in versions_dir.iterdir()
                           if p.is_dir() and not p.is_symlink()) if versions_dir.is_dir() and not versions_dir.is_symlink() else []
         mods_dir = folder / "mods"
-        mods_folder_exists = mods_dir.is_dir() and not mods_dir.is_symlink()
+        linked_mods = mods_dir.is_symlink()
+        mods_folder_exists = mods_dir.is_dir() and not linked_mods
         mods = []
         # Linked folders/files may point outside .minecraft and must not be
         # inspected without the user's explicit selection of that location.
@@ -197,6 +198,7 @@ def inspect_instance(folder: Path) -> dict:
                "Forge 1.20.1 не найден среди установленных версий")
     return {"exists": True, "forge": forge, "versions": versions,
             "mods": mods, "mods_folder_exists": mods_folder_exists,
+            "linked_mods": linked_mods,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
             "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
@@ -214,7 +216,9 @@ def format_instance_report(report: dict) -> str:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
     if not report['mods']:
-        if not report.get("mods_folder_exists"):
+        if report.get("linked_mods"):
+            lines.append("Папка mods является ссылкой: внешний каталог не проверялся")
+        elif not report.get("mods_folder_exists"):
             lines.append("Папка mods отсутствует: проверь выбранную установку Minecraft")
         else:
             lines.append("Моды не найдены: проверь папку mods и mods/1.20.1")
