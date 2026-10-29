@@ -46,8 +46,8 @@ def unsafe_jar_members(names: list[str]) -> bool:
     Windows reserved devices, alternate data streams and trailing dots/spaces
     can resolve differently from the names stored in the JAR central directory.
     """
-    reserved = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$)", re.I)
-    invalid = re.compile(r'[\\x00-\\x1f<>:"|?*]')
+    reserved = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)", re.I)
+    invalid = re.compile(r'[\x00-\x1f<>:"|?*]')
     for name in names:
         normalized = name.replace("\\", "/")
         parts = normalized.split("/")
