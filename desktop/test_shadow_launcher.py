@@ -323,6 +323,21 @@ class UnsafeJarPathTests(unittest.TestCase):
             self.assertFalse((root / "outside.txt").exists())
             self.assertEqual(jar.read_bytes(), original)
 
+    def test_windows_reserved_and_stream_paths_are_reported_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar = mods / "windows-ambiguous.jar"
+            with zipfile.ZipFile(jar, "w") as archive:
+                archive.writestr("META-INF/mods.toml", "")
+                archive.writestr("assets/CON.txt", "reserved device")
+                archive.writestr("assets/file.txt:stream", "alternate stream")
+            original = jar.read_bytes()
+            result = inspect_instance(root)
+            self.assertEqual(result["unsafe_mods"], ["windows-ambiguous.jar"])
+            self.assertEqual(jar.read_bytes(), original)
+
     def test_normal_jar_paths_are_not_flagged(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
