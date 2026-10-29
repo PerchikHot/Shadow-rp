@@ -99,6 +99,33 @@ class JarCompressionTests(unittest.TestCase):
             self.assertEqual(jar_path.stat().st_size > 0, True)
 
 
+class UnsupportedJarCompressionTests(unittest.TestCase):
+    def test_java_supported_methods_and_unsupported_methods(self):
+        from shadow_launcher import unsupported_jar_compression
+        plain = zipfile.ZipInfo('assets/plain.txt')
+        plain.compress_type = zipfile.ZIP_STORED
+        packed = zipfile.ZipInfo('assets/packed.txt')
+        packed.compress_type = zipfile.ZIP_DEFLATED
+        bzip = zipfile.ZipInfo('assets/bzip.txt')
+        bzip.compress_type = zipfile.ZIP_BZIP2
+        self.assertFalse(unsupported_jar_compression([plain, packed]))
+        self.assertTrue(unsupported_jar_compression([plain, bzip]))
+
+    def test_bzip2_jar_is_reported_without_extracting_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            jar_path = mods / 'bzip2.jar'
+            with zipfile.ZipFile(jar_path, 'w', compression=zipfile.ZIP_BZIP2) as jar:
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+            original = jar_path.read_bytes()
+            report = inspect_instance(root)
+            self.assertEqual(report['unsupported_compression_mods'], ['bzip2.jar'])
+            self.assertIn('неподдерживаемым Java сжатием', format_instance_report(report))
+            self.assertEqual(jar_path.read_bytes(), original)
+
+
 class InstanceTests(unittest.TestCase):
     def test_missing_directory_is_not_created(self):
         with tempfile.TemporaryDirectory() as tmp:
