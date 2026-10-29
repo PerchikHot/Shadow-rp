@@ -4,7 +4,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names
+from shadow_launcher import inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions
 
 
 class InstanceTests(unittest.TestCase):
@@ -94,6 +94,21 @@ class InstanceTests(unittest.TestCase):
             (root / "versions" / "1.20.10-forge-47.3.0").mkdir(parents=True)
             (root / "versions" / "1.20.1.1-forge-47.3.0").mkdir(parents=True)
             self.assertFalse(inspect_instance(root)["forge"])
+
+    def test_forge_version_report_lists_matching_installations_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            versions = root / "versions"
+            for name in ("1.20.1-forge-47.3.0", "forge-1.20.1-47.4.0",
+                         "1.20.10-forge-47.3.0", "1.20.1.1-forge-47.3.0"):
+                (versions / name).mkdir(parents=True)
+            result = inspect_instance(root)
+            matching = forge_1201_versions(result["versions"])
+            self.assertEqual(matching, ["1.20.1-forge-47.3.0", "forge-1.20.1-47.4.0"])
+            summary = format_instance_report(result)
+            self.assertIn("Forge 1.20.1: 1.20.1-forge-47.3.0, forge-1.20.1-47.4.0", summary)
+            self.assertNotIn("1.20.10-forge", summary)
+            self.assertNotIn(str(root), summary)
 
     def test_other_versions_do_not_count_as_forge_1201(self):
         with tempfile.TemporaryDirectory() as tmp:
