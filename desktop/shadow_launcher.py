@@ -40,11 +40,23 @@ def forge_1201_versions(versions: list[str]) -> list[str]:
             and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", version)]
 
 
+def unsafe_jar_members(names: list[str]) -> bool:
+    """Warn about traversal/absolute ZIP entries without extracting a mod."""
+    for name in names:
+        normalized = name.replace("\\", "/")
+        parts = normalized.split("/")
+        if (normalized.startswith("/") or
+                re.match(r"^[A-Za-z]:", normalized) or
+                any(part == ".." for part in parts)):
+            return True
+    return False
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     if not folder.is_dir():
         return {"exists": False, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "duplicates": [],
                 "message": "Папка Minecraft не найдена."}
     try:
         versions_dir = folder / "versions"
@@ -76,6 +88,7 @@ def inspect_instance(folder: Path) -> dict:
         fabric_mods = []
         neoforge_mods = []
         quilt_mods = []
+        unsafe_mods = []
         for name in mods:
             if name in empty_mods:
                 continue
@@ -87,6 +100,8 @@ def inspect_instance(folder: Path) -> dict:
             try:
                 with zipfile.ZipFile(jar_path) as jar:
                     members = set(jar.namelist())
+                    if unsafe_jar_members(list(members)):
+                        unsafe_mods.append(name)
                     if "fabric.mod.json" in members and "META-INF/mods.toml" not in members:
                         fabric_mods.append(name)
                     # NeoForge uses a different mod descriptor. Warn only when
@@ -99,7 +114,7 @@ def inspect_instance(folder: Path) -> dict:
                 invalid_mods.append(name)
     except OSError:
         return {"exists": True, "forge": False, "versions": [], "mods": [],
-                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "duplicates": [],
+                "empty_mods": [], "invalid_mods": [], "fabric_mods": [], "neoforge_mods": [], "quilt_mods": [], "unsafe_mods": [], "duplicates": [],
                 "message": "Не удалось прочитать файлы Minecraft (нет доступа или ошибка диска)."}
     forge = bool(forge_1201_versions(versions))
     message = ("Forge 1.20.1 обнаружен" if forge else
@@ -108,7 +123,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods": mods, "mods_folder_exists": mods_folder_exists,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods,
+            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods,
             "message": message}
 
 
@@ -134,6 +149,7 @@ def format_instance_report(report: dict) -> str:
         ("fabric_mods", "Возможно несовместимые Fabric"),
         ("neoforge_mods", "Возможно несовместимые NeoForge"),
         ("quilt_mods", "Возможно несовместимые Quilt"),
+        ("unsafe_mods", "Подозрительные пути внутри JAR"),
     )
     for key, label in warnings:
         if report.get(key):
