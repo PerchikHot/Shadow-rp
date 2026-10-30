@@ -638,5 +638,22 @@ class DiagnosticReportTests(unittest.TestCase):
             self.assertNotIn('JAR-модов:', report)
 
 
+
+class EmptyJarArchiveTests(unittest.TestCase):
+    def test_empty_zip_is_reported_without_modifying_archive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            jar = mods / "empty.jar"
+            with zipfile.ZipFile(jar, "w"):
+                pass
+            original = jar.read_bytes()
+            report = inspect_instance(root)
+            self.assertEqual(report["empty_archives"], ["empty.jar"])
+            self.assertNotIn("empty.jar", report["invalid_mods"])
+            self.assertIn("JAR без файлов внутри", format_instance_report(report))
+            self.assertEqual(jar.read_bytes(), original)
+
 if __name__ == "__main__":
     unittest.main()
