@@ -26,6 +26,18 @@ class MinecraftVersionHintTests(unittest.TestCase):
         self.assertEqual(len(mods), 6)
 
 
+class ModFolderSummaryTests(unittest.TestCase):
+    def test_summary_counts_root_and_versioned_mods_separately(self):
+        report = {
+            "exists": True, "message": "Forge 1.20.1 обнаружен",
+            "versions": ["1.20.1-forge-47.3.0"],
+            "mods": ["one.jar", "two.jar", "1.20.1/three.jar"],
+        }
+        summary = format_instance_report(report)
+        self.assertIn("Размещение JAR: mods/ — 2, mods/1.20.1/ — 1", summary)
+        self.assertIn("JAR-модов: 3", summary)
+
+
 class CopyModNameTests(unittest.TestCase):
     def test_copy_selected_mod_uses_only_display_name(self):
         from shadow_launcher import ShadowCompanion
