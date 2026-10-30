@@ -264,7 +264,8 @@ def format_instance_report(report: dict) -> str:
         lines.append(f"JAR с Forge mods.toml: {len(report.get('forge_mods', []))}")
     if report["mods"]:
         size = f"{report.get('mods_bytes', 0):,}".replace(",", " ")
-        lines.append(f"Размер активных JAR: {size} байт")
+        suffix = " (неполный подсчёт: часть JAR недоступна)" if report.get("unreadable_mods") else ""
+        lines.append(f"Размер активных JAR: {size} байт{suffix}")
     if report.get("disabled_mods"):
         lines.append("Отключённые JAR (не загружаются Forge): " +
                      ", ".join(report["disabled_mods"]))
