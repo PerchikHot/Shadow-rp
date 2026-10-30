@@ -36,5 +36,10 @@
   "message.shadowrp.rank_complete": "Chapter one complete! You are a Garden Defender. Reward: 125 XP and 1 diamond.",
   "message.shadowrp.rank_done": "Garden Keeper: you already earned the Garden Defender rank. Chapter one is complete.",
   "message.shadowrp.status_rank_ready": "Faction: %s. Scouting complete. Return to the Keeper for your rank.",
-  "message.shadowrp.status_rank": "Faction: %s. Garden Defender rank earned. Chapter one complete."
+  "message.shadowrp.status_rank": "Faction: %s. Garden Defender rank earned. Chapter one complete.",
+  "message.shadowrp.journal_complete": "Garden Defender: chapter one completed. Await the next chapter.",
+  "message.shadowrp.journal_trial": "Current objective: defeat hostile mobs (%s/3).",
+  "message.shadowrp.journal_supplies": "Garden Keeper supplies: wheat %s/8, oak logs %s/4. Right-click the Keeper to deliver.",
+  "message.shadowrp.journal_scout_shadow": "Garden of Shadows scouting: skeletons defeated %s/5.",
+  "message.shadowrp.journal_scout_light": "Garden of Light scouting: zombies defeated %s/5."
 }
