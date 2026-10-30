@@ -181,6 +181,7 @@ def inspect_instance(folder: Path) -> dict:
         quilt_mods = []
         unsafe_mods = []
         unknown_mods = []
+        empty_archives = []
         large_mods = []
         unsupported_compression_mods = []
         duplicate_members = []
@@ -196,6 +197,8 @@ def inspect_instance(folder: Path) -> dict:
                 with zipfile.ZipFile(jar_path) as jar:
                     member_names = jar.namelist()
                     members = set(member_names)
+                    if not member_names:
+                        empty_archives.append(name)
                     # Duplicate ZIP paths can make different readers choose
                     # different payloads. Warn without extracting or editing.
                     if ambiguous_jar_members(member_names):
@@ -243,7 +246,7 @@ def inspect_instance(folder: Path) -> dict:
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
             "fabric_mods": fabric_mods, "forge_mods": forge_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
-            "unreadable_mods": unreadable_mods, "message": message}
+            "unreadable_mods": unreadable_mods, "empty_archives": empty_archives, "message": message}
 
 
 def format_instance_report(report: dict) -> str:
@@ -276,6 +279,7 @@ def format_instance_report(report: dict) -> str:
         ("duplicates", "Повторяющиеся JAR"),
         ("empty_mods", "Пустые JAR"),
         ("invalid_mods", "Повреждённые JAR"),
+        ("empty_archives", "JAR без файлов внутри (проверь загрузку)"),
         ("fabric_mods", "Возможно несовместимые Fabric"),
         ("neoforge_mods", "Возможно несовместимые NeoForge"),
         ("quilt_mods", "Возможно несовместимые Quilt"),
