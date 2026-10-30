@@ -33,6 +33,31 @@ class UnreadableModTests(unittest.TestCase):
             self.assertIn("Нет доступа к JAR", format_instance_report(report))
 
 
+class PartialModSizeReportTests(unittest.TestCase):
+    def test_unreadable_jar_size_is_explicitly_marked_incomplete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            with zipfile.ZipFile(mods / "good.jar", "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            with zipfile.ZipFile(mods / "locked.jar", "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            from unittest.mock import patch
+            original_stat = Path.stat
+
+            def stat_with_failure(path, *args, **kwargs):
+                if path.name == "locked.jar":
+                    raise PermissionError("locked")
+                return original_stat(path, *args, **kwargs)
+
+            with patch.object(Path, "stat", stat_with_failure):
+                report = inspect_instance(root)
+            output = format_instance_report(report)
+            self.assertIn("неполный подсчёт", output)
+            self.assertIn("locked.jar", output)
+
+
 class ReportExportTests(unittest.TestCase):
     def test_export_is_utf8_local_and_does_not_touch_mod_files(self):
         with tempfile.TemporaryDirectory() as tmp:
