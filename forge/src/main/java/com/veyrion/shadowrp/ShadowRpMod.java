@@ -6,6 +6,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -71,6 +75,58 @@ public final class ShadowRpMod {
         }
         root.then(faction);
 
+        // A persistent, named village guide gives the prologue a visible NPC.
+        // Reusing nearby guides avoids spawning an unlimited number by mistake.
+        root.then(Commands.literal("guide").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
+                context.getSource().sendFailure(Component.translatable("message.shadowrp.guide_requires_faction"));
+                return 0;
+            }
+            boolean existing = !player.serverLevel().getEntitiesOfClass(
+                Villager.class, player.getBoundingBox().inflate(32.0),
+                villager -> villager.getTags().contains("shadowrp_guide")).isEmpty();
+            if (existing) {
+                context.getSource().sendSuccess(() -> Component.translatable("message.shadowrp.guide_nearby"), false);
+                return 1;
+            }
+            Villager guide = EntityType.VILLAGER.create(player.serverLevel());
+            if (guide == null) return 0;
+            guide.moveTo(player.getX() + 2.0, player.getY(), player.getZ() + 2.0,
+                player.getYRot(), 0.0F);
+            guide.addTag("shadowrp_guide");
+            guide.setCustomName(Component.translatable("entity.shadowrp.guide"));
+            guide.setCustomNameVisible(true);
+            guide.setPersistenceRequired();
+            if (!player.serverLevel().addFreshEntity(guide)) return 0;
+            context.getSource().sendSuccess(() -> Component.translatable(
+                state.getBoolean("trial_complete") ? "message.shadowrp.guide_oath" :
+                "message.shadowrp.guide_trial"), false);
+            return 1;
+        }));
+
+        // A one-time chapter completion reward is persisted server-side.
+        // It cannot be repeatedly claimed after relogging or dying.
+        root.then(Commands.literal("oath").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            if (!state.getBoolean("trial_complete")) {
+                context.getSource().sendFailure(Component.translatable("message.shadowrp.oath_locked"));
+                return 0;
+            }
+            if (state.getBoolean("oath_complete")) {
+                context.getSource().sendSuccess(() -> Component.translatable("message.shadowrp.oath_done"), false);
+                return 0;
+            }
+            state.putBoolean("oath_complete", true);
+            save(player, state);
+            ItemStack reward = new ItemStack(Items.EMERALD, 1);
+            if (!player.getInventory().add(reward)) player.drop(reward, false);
+            context.getSource().sendSuccess(() -> Component.translatable("message.shadowrp.oath_complete"), false);
+            return 1;
+        }));
+
         root.then(Commands.literal("status").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
@@ -79,6 +135,8 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("oath_complete")) {
+                message = Component.translatable("message.shadowrp.status_oath", state.getString("faction"));
             } else if (state.getBoolean("trial_complete")) {
                 message = Component.translatable("message.shadowrp.status_done", state.getString("faction"));
             } else {
