@@ -8,6 +8,24 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class MinecraftVersionHintTests(unittest.TestCase):
+    def test_filename_hints_warn_without_claiming_incompatibility(self):
+        from shadow_launcher import other_minecraft_version_jars, count_flagged_mods
+        mods = [
+            "mod-1.20.1.jar",
+            "1.20.1/multiversion-1.19.4-1.20.1.jar",
+            "mod-1.20.jar",
+            "mod-1.19.4.jar",
+            "1.20.1/other-1.21.1.jar",
+            "version-2.1.0.jar",
+        ]
+        hints = other_minecraft_version_jars(mods)
+        self.assertEqual(hints, ["mod-1.19.4.jar", "1.20.1/other-1.21.1.jar"])
+        report = {"mods": mods, "version_hints": hints}
+        self.assertEqual(count_flagged_mods(report), 2)
+        self.assertEqual(len(mods), 6)
+
+
 class CopyModNameTests(unittest.TestCase):
     def test_copy_selected_mod_uses_only_display_name(self):
         from shadow_launcher import ShadowCompanion
