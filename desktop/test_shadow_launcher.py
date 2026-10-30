@@ -8,6 +8,38 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class CopyModNameTests(unittest.TestCase):
+    def test_copy_selected_mod_uses_only_display_name(self):
+        from shadow_launcher import ShadowCompanion
+
+        class FakeMods:
+            def curselection(self):
+                return (0,)
+
+            def get(self, index):
+                return "example.jar"
+
+        class FakeStatus:
+            def config(self, **kwargs):
+                self.message = kwargs["text"]
+
+        class FakeCompanion:
+            mods = FakeMods()
+            status = FakeStatus()
+            clipboard = None
+
+            def clipboard_clear(self):
+                self.clipboard = None
+
+            def clipboard_append(self, text):
+                self.clipboard = text
+
+        fake = FakeCompanion()
+        ShadowCompanion.copy_selected_mod(fake)
+        self.assertEqual(fake.clipboard, "example.jar")
+        self.assertEqual(fake.status.message, "Имя мода скопировано")
+
+
 class FlaggedModSummaryTests(unittest.TestCase):
     def test_counts_distinct_active_jars_not_warning_categories(self):
         from shadow_launcher import count_flagged_mods
