@@ -154,7 +154,7 @@ def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     # A symlinked instance root may escape the directory the user selected.
     # Do not inspect an external Minecraft tree implicitly.
-    if folder.is_symlink():
+    if folder.is_symlink() or getattr(folder, "is_junction", lambda: False)():
         return {"exists": True, "linked_instance": True, "forge": False,
                 "versions": [], "mods": [],
                 "message": "Папка Minecraft является ссылкой: внешние файлы не проверялись."}
@@ -166,21 +166,21 @@ def inspect_instance(folder: Path) -> dict:
         versions_dir = folder / "versions"
         # Do not traverse linked version folders outside the selected instance.
         versions = sorted(p.name for p in versions_dir.iterdir()
-                          if p.is_dir() and not p.is_symlink()) if versions_dir.is_dir() and not versions_dir.is_symlink() else []
+                          if p.is_dir() and not p.is_symlink() and not getattr(p, "is_junction", lambda: False)()) if versions_dir.is_dir() and not versions_dir.is_symlink() and not getattr(versions_dir, "is_junction", lambda: False)() else []
         mods_dir = folder / "mods"
-        linked_mods = mods_dir.is_symlink()
+        linked_mods = mods_dir.is_symlink() or getattr(mods_dir, "is_junction", lambda: False)()
         mods_folder_exists = mods_dir.is_dir() and not linked_mods
         mods = []
         disabled_mods = disabled_mod_names(mods_dir) if mods_folder_exists else []
         # Linked folders/files may point outside .minecraft and must not be
         # inspected without the user's explicit selection of that location.
-        if mods_dir.is_dir() and not mods_dir.is_symlink():
+        if mods_folder_exists:
             mods.extend(p.name for p in mods_dir.iterdir()
                         if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             # Some mod managers keep Forge 1.20.1 JARs in a version folder.
             # Inspect it without changing the user's mod installation.
             versioned = mods_dir / "1.20.1"
-            if versioned.is_dir() and not versioned.is_symlink():
+            if versioned.is_dir() and not versioned.is_symlink() and not getattr(versioned, "is_junction", lambda: False)():
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
                             if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             mods.sort(key=str.lower)
