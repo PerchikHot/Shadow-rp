@@ -100,6 +100,22 @@ class InaccessibleModSizeTests(unittest.TestCase):
             self.assertEqual((mods / "blocked.jar").read_bytes(), b"private")
 
 
+class ForgeDescriptorCountTests(unittest.TestCase):
+    def test_reports_forge_metadata_count_without_claiming_compatibility(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            with zipfile.ZipFile(mods / "forge.jar", "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            with zipfile.ZipFile(mods / "fabric.jar", "w") as jar:
+                jar.writestr("fabric.mod.json", '{"id":"test"}')
+            report = inspect_instance(root)
+            self.assertEqual(report["forge_mods"], ["forge.jar"])
+            self.assertIn("JAR с Forge mods.toml: 1", format_instance_report(report))
+            self.assertEqual(len(report["mods"]), 2)
+
+
 class DisabledModTests(unittest.TestCase):
     def test_disabled_jar_is_reported_but_not_scanned_as_active(self):
         with tempfile.TemporaryDirectory() as tmp:
