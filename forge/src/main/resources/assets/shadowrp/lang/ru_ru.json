@@ -36,5 +36,10 @@
   "message.shadowrp.rank_complete": "Первая глава завершена! Ты — Защитник Сада. Награда: 125 опыта и 1 алмаз.",
   "message.shadowrp.rank_done": "Хранитель Сада: ты уже получил звание Защитника. Первая глава завершена.",
   "message.shadowrp.status_rank_ready": "Фракция: %s. Разведка завершена. Вернись к Хранителю за званием.",
-  "message.shadowrp.status_rank": "Фракция: %s. Звание Защитника Сада получено. Первая глава завершена."
+  "message.shadowrp.status_rank": "Фракция: %s. Звание Защитника Сада получено. Первая глава завершена.",
+  "message.shadowrp.journal_complete": "Защитник Сада: первая глава завершена. Ожидай продолжения.",
+  "message.shadowrp.journal_trial": "Текущая цель: победи враждебных мобов (%s/3).",
+  "message.shadowrp.journal_supplies": "Припасы Хранителю: пшеница %s/8, дубовые брёвна %s/4. Передай их Хранителю.",
+  "message.shadowrp.journal_scout_shadow": "Разведка Сада Теней: побеждено скелетов %s/5.",
+  "message.shadowrp.journal_scout_light": "Разведка Сада Света: побеждено зомби %s/5."
 }
