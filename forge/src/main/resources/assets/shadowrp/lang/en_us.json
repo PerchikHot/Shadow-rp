@@ -24,5 +24,11 @@
   "message.shadowrp.supplies_complete": "Supplies delivered! You received 75 XP and 2 emeralds. Your first faction assignment is complete.",
   "message.shadowrp.supplies_done": "Garden Keeper: your supplies have been delivered. Assignment complete.",
   "message.shadowrp.status_supplies": "Faction: %s. Oath complete. Keeper assignment: bring 8 wheat and 4 oak logs.",
-  "message.shadowrp.status_supplies_done": "Faction: %s. Prologue and first Keeper assignment complete."
+  "message.shadowrp.status_supplies_done": "Faction: %s. Prologue and first Keeper assignment complete.",
+  "message.shadowrp.scout_request": "Garden Keeper: new assignment. Garden of Shadows: defeat 5 skeletons; Garden of Light: defeat 5 zombies.",
+  "message.shadowrp.scout_progress": "Faction scouting: %s/5 targets.",
+  "message.shadowrp.scout_complete": "Scouting complete! You earned 100 XP and 3 emeralds.",
+  "message.shadowrp.scout_done": "Garden Keeper: scouting complete. Your faction recognizes your contribution.",
+  "message.shadowrp.status_scout": "Faction: %s. Scouting: %s/5. Shadows hunt skeletons; Light hunts zombies.",
+  "message.shadowrp.status_scout_done": "Faction: %s. Prologue, supplies and scouting completed."
 }
