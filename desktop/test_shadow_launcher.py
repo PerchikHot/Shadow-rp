@@ -9,6 +9,26 @@ from shadow_launcher import save_report_text, inspect_instance, format_instance_
 
 
 
+class CompanionShortcutTests(unittest.TestCase):
+    def test_shortcuts_call_read_only_actions_and_stop_key_propagation(self):
+        from shadow_launcher import ShadowCompanion
+
+        class FakeCompanion:
+            calls = []
+            def refresh(self):
+                self.calls.append("refresh")
+            def browse(self):
+                self.calls.append("browse")
+            def copy_report(self):
+                self.calls.append("copy")
+
+        fake = FakeCompanion()
+        self.assertEqual(ShadowCompanion._shortcut_refresh(fake), "break")
+        self.assertEqual(ShadowCompanion._shortcut_browse(fake), "break")
+        self.assertEqual(ShadowCompanion._shortcut_copy_report(fake), "break")
+        self.assertEqual(fake.calls, ["refresh", "browse", "copy"])
+
+
 class JarSizeReportTests(unittest.TestCase):
     def test_report_shows_mib_and_exact_bytes_without_file_changes(self):
         report = {
