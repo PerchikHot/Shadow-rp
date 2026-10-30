@@ -176,6 +176,7 @@ def inspect_instance(folder: Path) -> dict:
         # can also belong to a truncated download; inspect without extracting.
         invalid_mods = []
         fabric_mods = []
+        forge_mods = []
         neoforge_mods = []
         quilt_mods = []
         unsafe_mods = []
@@ -207,6 +208,8 @@ def inspect_instance(folder: Path) -> dict:
                         encrypted_mods.append(name)
                     if unsafe_jar_members(list(members)):
                         unsafe_mods.append(name)
+                    if "META-INF/mods.toml" in members:
+                        forge_mods.append(name)
                     if "fabric.mod.json" in members and "META-INF/mods.toml" not in members:
                         fabric_mods.append(name)
                     # NeoForge uses a different mod descriptor. Warn only when
@@ -239,7 +242,7 @@ def inspect_instance(folder: Path) -> dict:
             "linked_mods": linked_mods,
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
-            "fabric_mods": fabric_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
+            "fabric_mods": fabric_mods, "forge_mods": forge_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
             "unreadable_mods": unreadable_mods, "message": message}
 
 
@@ -253,6 +256,9 @@ def format_instance_report(report: dict) -> str:
     if matching:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
+    if report["mods"]:
+        # Metadata presence is advisory, not proof of Forge 1.20.1 compatibility.
+        lines.append(f"JAR с Forge mods.toml: {len(report.get('forge_mods', []))}")
     if report["mods"]:
         size = f"{report.get('mods_bytes', 0):,}".replace(",", " ")
         lines.append(f"Размер активных JAR: {size} байт")
