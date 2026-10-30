@@ -56,6 +56,41 @@ class NewerMinecraftVersionHintTests(unittest.TestCase):
                          ["modern-1.23.1.jar", "1.20.1/experimental-1.29.jar"])
 
 
+class WindowsJunctionInspectionTests(unittest.TestCase):
+    def test_junction_like_mods_folder_is_not_traversed(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            (mods / "hidden.jar").write_bytes(b"not a real mod")
+            original = Path.is_junction
+
+            def simulated_junction(path):
+                return path == mods or original(path)
+
+            with patch.object(Path, "is_junction", new=simulated_junction):
+                report = inspect_instance(root)
+            self.assertTrue(report["linked_mods"])
+            self.assertEqual(report["mods"], [])
+            self.assertIn("внешний каталог не проверялся",
+                          format_instance_report(report))
+
+    def test_junction_like_instance_root_is_rejected(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            original = Path.is_junction
+
+            def simulated_junction(path):
+                return path == root or original(path)
+
+            with patch.object(Path, "is_junction", new=simulated_junction):
+                report = inspect_instance(root)
+            self.assertTrue(report["linked_instance"])
+            self.assertEqual(report["mods"], [])
+
+
 class ModFolderSummaryTests(unittest.TestCase):
     def test_summary_counts_root_and_versioned_mods_separately(self):
         report = {
