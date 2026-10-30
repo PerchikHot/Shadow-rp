@@ -39,10 +39,17 @@ def disabled_mod_names(mods_dir: Path) -> list[str]:
     for folder, prefix in ((mods_dir, ""), (mods_dir / "1.20.1", "1.20.1/")):
         if not folder.is_dir() or folder.is_symlink():
             continue
-        for path in folder.iterdir():
-            if (path.is_file() and not path.is_symlink() and
-                    path.name.casefold().endswith((".jar.disabled", ".jar.off", ".jar.bak"))):
-                disabled.append(prefix + path.name)
+        try:
+            for path in folder.iterdir():
+                try:
+                    if (path.is_file() and not path.is_symlink() and
+                            path.name.casefold().endswith((".jar.disabled", ".jar.off", ".jar.bak"))):
+                        disabled.append(prefix + path.name)
+                except OSError:
+                    # One locked/vanished file must not hide other disabled mods.
+                    continue
+        except OSError:
+            continue
     return sorted(disabled, key=str.casefold)
 
 
@@ -150,6 +157,14 @@ def scan_mod_sizes(mods_dir: Path, mods: list[str]) -> tuple[int, list[str], lis
     return total, empty, unreadable
 
 
+def is_regular_jar(path: Path) -> bool:
+    """Ignore a locked/removed entry without losing the rest of the mod list."""
+    try:
+        return path.is_file() and not path.is_symlink() and path.suffix.lower() == ".jar"
+    except OSError:
+        return False
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     # A symlinked instance root may escape the directory the user selected.
@@ -176,13 +191,13 @@ def inspect_instance(folder: Path) -> dict:
         # inspected without the user's explicit selection of that location.
         if mods_folder_exists:
             mods.extend(p.name for p in mods_dir.iterdir()
-                        if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
+                        if is_regular_jar(p))
             # Some mod managers keep Forge 1.20.1 JARs in a version folder.
             # Inspect it without changing the user's mod installation.
             versioned = mods_dir / "1.20.1"
             if versioned.is_dir() and not versioned.is_symlink() and not getattr(versioned, "is_junction", lambda: False)():
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
-                            if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
+                            if is_regular_jar(p))
             mods.sort(key=str.lower)
         # Metadata access can fail independently for one file (locked, removed,
         # or permission denied). Continue scanning all other mods.
@@ -315,6 +330,7 @@ def format_instance_report(report: dict) -> str:
         suffix = " (неполный подсчёт: часть JAR недоступна)" if report.get("unreadable_mods") else ""
         lines.append(f"Размер активных JAR: {size} байт{suffix}")
     if report.get("disabled_mods"):
+        lines.append(f"Отключённых JAR: {len(report['disabled_mods'])}")
         lines.append("Отключённые JAR (не загружаются Forge): " +
                      ", ".join(report["disabled_mods"]))
     if not report['mods']:
