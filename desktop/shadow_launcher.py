@@ -280,6 +280,9 @@ def format_instance_report(report: dict) -> str:
     lines.append(f"JAR-модов: {len(report['mods'])}")
     if report["mods"]:
         lines.append(f"JAR с замечаниями (уникальных): {count_flagged_mods(report)}")
+        # Quick readiness overview; metadata checks are advisory, not proof
+        # that a mod will run on this Forge version.
+        lines.append(f"JAR без замечаний проверки: {len(report['mods']) - count_flagged_mods(report)}")
     if report["mods"]:
         # Metadata presence is advisory, not proof of Forge 1.20.1 compatibility.
         lines.append(f"JAR с Forge mods.toml: {len(report.get('forge_mods', []))}")
