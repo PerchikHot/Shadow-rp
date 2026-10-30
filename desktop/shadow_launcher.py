@@ -246,7 +246,8 @@ def inspect_instance(folder: Path) -> dict:
             "duplicates": duplicate_mod_names(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
             "fabric_mods": fabric_mods, "forge_mods": forge_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
-            "unreadable_mods": unreadable_mods, "empty_archives": empty_archives, "message": message}
+            "unreadable_mods": sorted(set(unreadable_mods)),
+            "empty_archives": empty_archives, "message": message}
 
 
 def count_flagged_mods(report: dict) -> int:
