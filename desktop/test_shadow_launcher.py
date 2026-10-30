@@ -55,6 +55,8 @@ class FlaggedModSummaryTests(unittest.TestCase):
         self.assertEqual(count_flagged_mods(report), 2)
         self.assertIn("JAR с замечаниями (уникальных): 2",
                       format_instance_report(report))
+        self.assertIn("JAR без замечаний проверки: 1",
+                      format_instance_report(report))
         self.assertEqual(report["mods"], ["a.jar", "b.jar", "c.jar"])
 
 
