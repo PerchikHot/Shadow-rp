@@ -25,6 +25,39 @@ class ModsFolderLinkSafetyTests(unittest.TestCase):
             self.assertFalse(is_local_mods_directory(link))
 
 
+class UnreadableModEntryTests(unittest.TestCase):
+    def test_locked_disabled_file_does_not_hide_healthy_jar(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            locked = mods / "locked.jar.disabled"
+            locked.write_bytes(b"placeholder")
+            healthy = mods / "healthy.jar"
+            with zipfile.ZipFile(healthy, "w") as jar:
+                jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            original = Path.is_file
+
+            def maybe_locked(path):
+                if path == locked:
+                    raise PermissionError("file locked")
+                return original(path)
+
+            with patch.object(Path, "is_file", new=maybe_locked):
+                report = inspect_instance(root)
+            self.assertIn("healthy.jar", report["mods"])
+            self.assertNotIn("locked.jar.disabled", report["disabled_mods"])
+            self.assertIn("healthy.jar", report["forge_mods"])
+
+    def test_disabled_mod_count_is_visible_without_modifying_files(self):
+        report = {"exists": True, "message": "Проверка", "versions": [],
+                  "mods": [], "disabled_mods": ["a.jar.disabled", "b.jar.bak"]}
+        output = format_instance_report(report)
+        self.assertIn("Отключённых JAR: 2", output)
+        self.assertIn("a.jar.disabled", output)
+
+
 class MinecraftVersionHintTests(unittest.TestCase):
     def test_filename_hints_warn_without_claiming_incompatibility(self):
         from shadow_launcher import other_minecraft_version_jars, count_flagged_mods
