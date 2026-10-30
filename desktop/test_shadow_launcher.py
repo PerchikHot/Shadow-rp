@@ -43,15 +43,11 @@ class PartialModSizeReportTests(unittest.TestCase):
                 jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
             with zipfile.ZipFile(mods / "locked.jar", "w") as jar:
                 jar.writestr("META-INF/mods.toml", 'modLoader="javafml"')
+            # Patch only the metadata scan; patching Path.stat globally also
+            # breaks Path.is_dir() and makes the entire instance unreadable.
             from unittest.mock import patch
-            original_stat = Path.stat
-
-            def stat_with_failure(path, *args, **kwargs):
-                if path.name == "locked.jar":
-                    raise PermissionError("locked")
-                return original_stat(path, *args, **kwargs)
-
-            with patch.object(Path, "stat", stat_with_failure):
+            with patch("shadow_launcher.scan_mod_sizes",
+                       return_value=(100, [], ["locked.jar"])):
                 report = inspect_instance(root)
             output = format_instance_report(report)
             self.assertIn("неполный подсчёт", output)
