@@ -295,6 +295,9 @@ def format_instance_report(report: dict) -> str:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
     if report["mods"]:
+        nested = sum(name.startswith("1.20.1/") for name in report["mods"])
+        lines.append(f"Размещение JAR: mods/ — {len(report['mods']) - nested}, mods/1.20.1/ — {nested}")
+    if report["mods"]:
         lines.append(f"JAR с замечаниями (уникальных): {count_flagged_mods(report)}")
         # Quick readiness overview; metadata checks are advisory, not proof
         # that a mod will run on this Forge version.
