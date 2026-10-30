@@ -8,6 +8,26 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+
+class JarSizeReportTests(unittest.TestCase):
+    def test_report_shows_mib_and_exact_bytes_without_file_changes(self):
+        report = {
+            "exists": True, "message": "Forge 1.20.1 обнаружен",
+            "versions": [], "mods": ["sample.jar"], "mods_bytes": 1572864,
+        }
+        summary = format_instance_report(report)
+        self.assertIn("1 572 864 байт", summary)
+        self.assertIn("1,5 МиБ", summary)
+
+    def test_unreadable_files_keep_incomplete_size_warning(self):
+        report = {
+            "exists": True, "message": "Проверка", "versions": [],
+            "mods": ["missing.jar"], "mods_bytes": 0,
+            "unreadable_mods": ["missing.jar"],
+        }
+        self.assertIn("неполный подсчёт", format_instance_report(report))
+
+
 class ModsFolderLinkSafetyTests(unittest.TestCase):
     def test_local_folder_allowed_but_linked_folder_not_offered(self):
         from shadow_launcher import is_local_mods_directory
