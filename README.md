@@ -24,9 +24,25 @@ compiles a JAR with Java 17 and Forge 47.3.0. Do not install the JAR until the
 Forge CI build passes. In-game compatibility and multiplayer testing are still
 required.
 
-After installing the JAR into a compatible Forge 1.20.1 instance, use
-`/shadowrp start`, then `/shadowrp faction shadow` or
-`/shadowrp faction light`. Defeat three hostile mobs to finish the first
-trial and receive 50 experience points. Progress is saved server-side per
-player and copied on respawn. `/shadowrp status` shows progress. NPCs,
-dimensions and later quests are **not yet implemented**.
+After installing the JAR into a compatible Forge 1.20.1 instance, the
+**experimental first chapter** can be played as follows:
+
+1. Run `/shadowrp start` and choose `/shadowrp faction shadow` or
+   `/shadowrp faction light`.
+2. Defeat three hostile mobs, then use `/shadowrp guide` to summon the
+   persistent Garden Keeper and `/shadowrp oath` to take the faction oath.
+3. Bring the Keeper **8 wheat and 4 oak logs** and right-click to deliver.
+4. For the Garden of Shadows, defeat **5 skeletons**; for the Garden of
+   Light, defeat **5 zombies**. Return to the Keeper for the Defender rank.
+
+`/shadowrp journal` displays the next objective, live inventory counts for
+the supply quest, and scouting progress. `/shadowrp status` gives a short
+summary. Progress is stored server-side per player and copied on respawn;
+rewards are intended to be one-time. After the oath, faction switching is
+blocked. The guide is a persistent named villager, **not** a custom NPC model.
+
+**Important limitations:** GitHub Actions compiles the Forge JAR, but the
+chapter has not been playtested in a running Minecraft client or on a
+multiplayer server. New dimensions, faction bases, custom character models
+and full story chapters are not yet implemented. The Android APK is a
+separate companion, not an Android build of the Forge mod.
