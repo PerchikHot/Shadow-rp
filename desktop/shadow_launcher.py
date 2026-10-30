@@ -67,7 +67,7 @@ def other_minecraft_version_jars(mods: list[str]) -> list[str]:
     Do not flag a multi-version JAR if it also names the target 1.20.1.
     Generic '1.20' labels are ambiguous and are not treated as incompatible.
     """
-    pattern = re.compile(r"(?<![\d.])1\.(?:1[6-9]|2[0-9])(?:\.\d+)?(?![\d.])")
+    pattern = re.compile(r"(?<![\d.])1\.(?:[7-9]|1[0-9]|2[0-9])(?:\.\d+)?(?![\d.])")
     flagged = []
     for name in mods:
         versions = set(pattern.findall(Path(name).stem))
