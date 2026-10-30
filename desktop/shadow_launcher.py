@@ -331,9 +331,12 @@ def format_instance_report(report: dict) -> str:
         # Metadata presence is advisory, not proof of Forge 1.20.1 compatibility.
         lines.append(f"JAR с Forge mods.toml: {len(report.get('forge_mods', []))}")
     if report["mods"]:
-        size = f"{report.get('mods_bytes', 0):,}".replace(",", " ")
+        total_bytes = report.get("mods_bytes", 0)
+        size = f"{total_bytes:,}".replace(",", " ")
+        # Show a human-readable size without losing the exact byte count.
+        mebibytes = f"{total_bytes / (1024 * 1024):.1f}".replace(".", ",")
         suffix = " (неполный подсчёт: часть JAR недоступна)" if report.get("unreadable_mods") else ""
-        lines.append(f"Размер активных JAR: {size} байт{suffix}")
+        lines.append(f"Размер активных JAR: {size} байт (≈ {mebibytes} МиБ){suffix}")
     if report.get("linked_versioned_mods"):
         lines.append("Папка mods/1.20.1 является ссылкой: внешний каталог не проверялся")
     if report.get("disabled_mods"):
