@@ -362,6 +362,7 @@ class ShadowCompanion(tk.Tk):
         controls = tk.Frame(self, bg=BG)
         controls.pack(fill="x", padx=24, pady=14)
         self._button(controls, "Скопировать отчёт", self.copy_report).pack(side="left", padx=4)
+        self._button(controls, "Имя мода", self.copy_selected_mod).pack(side="left", padx=4)
         self._button(controls, "Сохранить .txt", self.save_report).pack(side="left", padx=4)
         self._button(controls, "Открыть папку mods", self.open_mods).pack(side="left", padx=4)
         self._button(controls, "Открыть Minecraft Launcher", self.open_launcher).pack(side="left", padx=4)
@@ -403,6 +404,16 @@ class ShadowCompanion(tk.Tk):
         self.mods.delete(0, tk.END)
         for name in report["mods"]:
             self.mods.insert(tk.END, name)
+
+    def copy_selected_mod(self):
+        """Copy only a selected JAR filename, never its contents or path."""
+        selection = self.mods.curselection()
+        if not selection:
+            self.status.config(text="Выбери мод в списке")
+            return
+        self.clipboard_clear()
+        self.clipboard_append(self.mods.get(selection[0]))
+        self.status.config(text="Имя мода скопировано")
 
     def copy_report(self):
         """Copy only the diagnostic summary; never upload local mod data."""
