@@ -6,9 +6,18 @@
   "message.shadowrp.faction_shadow": "You joined the Garden of Shadows. Trial: defeat three hostile mobs.",
   "message.shadowrp.faction_light": "You joined the Garden of Light. Trial: defeat three hostile mobs.",
   "message.shadowrp.progress": "Trial: %s/3 hostile mobs.",
-  "message.shadowrp.complete": "Trial complete! Gained 50 XP. More story is in development.",
+  "message.shadowrp.complete": "Trial complete! You earned 50 experience. Next: /shadowrp guide.",
   "message.shadowrp.status_new": "Prologue not started: /shadowrp start.",
   "message.shadowrp.status_faction": "Prologue started. Choose /shadowrp faction shadow or light.",
   "message.shadowrp.status_active": "Faction: %s. Trial: %s/3.",
-  "message.shadowrp.status_done": "Faction: %s. First trial complete."
+  "message.shadowrp.status_done": "Faction: %s. Trial complete. Find the Keeper with /shadowrp guide, then /shadowrp oath.",
+  "entity.shadowrp.guide": "Garden Keeper",
+  "message.shadowrp.guide_requires_faction": "Start the story and choose a faction first.",
+  "message.shadowrp.guide_nearby": "A Garden Keeper is already nearby.",
+  "message.shadowrp.guide_trial": "Garden Keeper: prove yourself by defeating three hostile mobs.",
+  "message.shadowrp.guide_oath": "Garden Keeper: your trial is complete. Use /shadowrp oath to finish the prologue.",
+  "message.shadowrp.oath_locked": "Finish the trial by defeating three hostile mobs first.",
+  "message.shadowrp.oath_done": "Your oath is already complete.",
+  "message.shadowrp.oath_complete": "Oath accepted! Prologue complete. Reward: one emerald.",
+  "message.shadowrp.status_oath": "Faction: %s. Prologue and oath complete."
 }
