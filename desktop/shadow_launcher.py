@@ -118,6 +118,23 @@ def encrypted_jar_members(infos: list[zipfile.ZipInfo]) -> bool:
     return any(info.flag_bits & 0x1 for info in infos if not info.is_dir())
 
 
+def scan_mod_sizes(mods_dir: Path, mods: list[str]) -> tuple[int, list[str], list[str]]:
+    """Read file metadata only; one inaccessible JAR must not hide other mods."""
+    total = 0
+    empty: list[str] = []
+    unreadable: list[str] = []
+    for name in mods:
+        try:
+            size = (mods_dir / name).stat().st_size
+        except OSError:
+            unreadable.append(name)
+            continue
+        total += size
+        if size == 0:
+            empty.append(name)
+    return total, empty, unreadable
+
+
 def inspect_instance(folder: Path) -> dict:
     """Read-only inspection of a Minecraft directory. Never writes to disk."""
     # A symlinked instance root may escape the directory the user selected.
@@ -152,12 +169,9 @@ def inspect_instance(folder: Path) -> dict:
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
                             if p.is_file() and not p.is_symlink() and p.suffix.lower() == ".jar")
             mods.sort(key=str.lower)
-        # A quick storage overview without reading or extracting JAR payloads.
-        mods_bytes = sum((mods_dir / name).stat().st_size for name in mods)
-        # Empty JARs are not valid mods and may indicate interrupted downloads.
-        # Only inspect file sizes; never delete or modify user files.
-        empty_mods = [name for name in mods
-                      if (mods_dir / name).stat().st_size == 0]
+        # Metadata access can fail independently for one file (locked, removed,
+        # or permission denied). Continue scanning all other mods.
+        mods_bytes, empty_mods, unreadable_mods = scan_mod_sizes(mods_dir, mods)
         # JARs must have a valid ZIP central directory. A PK header alone
         # can also belong to a truncated download; inspect without extracting.
         invalid_mods = []
@@ -170,9 +184,8 @@ def inspect_instance(folder: Path) -> dict:
         unsupported_compression_mods = []
         duplicate_members = []
         encrypted_mods = []
-        unreadable_mods = []
         for name in mods:
-            if name in empty_mods:
+            if name in empty_mods or name in unreadable_mods:
                 continue
             jar_path = mods_dir / name
             # Opening the JAR once avoids duplicate disk reads. Bad ZIP
