@@ -266,6 +266,11 @@ def inspect_instance(folder: Path) -> dict:
             "empty_archives": empty_archives, "message": message}
 
 
+def is_local_mods_directory(folder: Path) -> bool:
+    """Only offer opening a real local mods folder, never a linked target."""
+    return folder.is_dir() and not folder.is_symlink() and not getattr(folder, "is_junction", lambda: False)()
+
+
 def count_flagged_mods(report: dict) -> int:
     """Count distinct active JARs with advisory findings, not warning types."""
     active = set(report.get("mods", []))
@@ -411,7 +416,7 @@ class ShadowCompanion(tk.Tk):
         self.status.config(text=report["message"])
         self.details.config(text=(
             f"Версий Minecraft: {len(report['versions'])}  •  "
-            f"JAR-модов: {len(report['mods'])}\n"
+            f"JAR-модов: {len(report['mods'])}  •  С замечаниями: {count_flagged_mods(report)}\n"
             "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."
             + (f"\nВнимание: повторяющиеся JAR: {', '.join(report['duplicates'])}"
                if report.get("duplicates") else "")
@@ -469,8 +474,8 @@ class ShadowCompanion(tk.Tk):
 
     def open_mods(self):
         folder = Path(self.folder.get()).expanduser() / "mods"
-        if not folder.is_dir():
-            messagebox.showinfo("Shadow RP", "Папка mods не найдена. Файлы не изменены.")
+        if not is_local_mods_directory(folder):
+            messagebox.showinfo("Shadow RP", "Папка mods отсутствует или является ссылкой. Файлы не изменены.")
             return
         try:
             os.startfile(str(folder))
