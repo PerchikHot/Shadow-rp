@@ -389,7 +389,23 @@ class ShadowCompanion(tk.Tk):
         self.configure(bg=BG)
         self.folder = tk.StringVar(value=str(default_minecraft_dir()))
         self._build()
+        # Read-only keyboard actions for quick inspection on Windows.
+        self.bind_all("<Control-r>", self._shortcut_refresh)
+        self.bind_all("<Control-o>", self._shortcut_browse)
+        self.bind_all("<Control-Shift-C>", self._shortcut_copy_report)
         self.refresh()
+
+    def _shortcut_refresh(self, _event=None):
+        self.refresh()
+        return "break"
+
+    def _shortcut_browse(self, _event=None):
+        self.browse()
+        return "break"
+
+    def _shortcut_copy_report(self, _event=None):
+        self.copy_report()
+        return "break"
 
     def _button(self, parent, label, action):
         return tk.Button(parent, text=label, command=action, bg=PANEL, fg=TEXT,
@@ -426,6 +442,9 @@ class ShadowCompanion(tk.Tk):
         self._button(controls, "Сохранить .txt", self.save_report).pack(side="left", padx=4)
         self._button(controls, "Открыть папку mods", self.open_mods).pack(side="left", padx=4)
         self._button(controls, "Открыть Minecraft Launcher", self.open_launcher).pack(side="left", padx=4)
+        tk.Label(self, text="Ctrl+R — проверить  •  Ctrl+O — выбрать папку  •  Ctrl+Shift+C — скопировать отчёт",
+                 bg=BG, fg=BLUE, font=("Segoe UI", 10)).pack(
+                     anchor="w", padx=24, pady=(0, 8))
         tk.Label(self, text="Мод Shadow RP пока не собран. Установка и синхронизация не реализованы.",
                  bg=BG, fg="#a9bddd", font=("Segoe UI", 10)).pack(
                      anchor="w", padx=24, pady=(0, 16))
