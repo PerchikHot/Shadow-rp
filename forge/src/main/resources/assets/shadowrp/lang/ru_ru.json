@@ -24,5 +24,11 @@
   "message.shadowrp.supplies_complete": "Припасы приняты! Получено 75 опыта и 2 изумруда. Первое поручение фракции выполнено.",
   "message.shadowrp.supplies_done": "Хранитель Сада: припасы доставлены. Первое поручение выполнено.",
   "message.shadowrp.status_supplies": "Фракция: %s. Клятва дана. Поручение Хранителя: 8 пшеницы и 4 дубовых бревна.",
-  "message.shadowrp.status_supplies_done": "Фракция: %s. Пролог и первое поручение Хранителя завершены."
+  "message.shadowrp.status_supplies_done": "Фракция: %s. Пролог и первое поручение Хранителя завершены.",
+  "message.shadowrp.scout_request": "Хранитель Сада: новое поручение. Сад Теней — победи 5 скелетов; Сад Света — 5 зомби. Возвращайся после задания.",
+  "message.shadowrp.scout_progress": "Разведка фракции: %s/5 целей.",
+  "message.shadowrp.scout_complete": "Разведка завершена! Получено 100 опыта и 3 изумруда.",
+  "message.shadowrp.scout_done": "Хранитель Сада: разведка завершена, твой вклад в развитие фракции отмечен.",
+  "message.shadowrp.status_scout": "Фракция: %s. Разведка: %s/5. Тени — скелеты, Свет — зомби.",
+  "message.shadowrp.status_scout_done": "Фракция: %s. Пролог, припасы и разведка завершены."
 }
