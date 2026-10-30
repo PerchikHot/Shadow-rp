@@ -58,6 +58,19 @@ class FlaggedModSummaryTests(unittest.TestCase):
         self.assertEqual(report["mods"], ["a.jar", "b.jar", "c.jar"])
 
 
+class DuplicateJarWarningCountTests(unittest.TestCase):
+    def test_duplicate_basenames_count_both_active_copies(self):
+        from shadow_launcher import count_flagged_mods
+        report = {
+            'mods': ['same.jar', '1.20.1/SAME.jar', 'unique.jar'],
+            'duplicates': ['same.jar'],
+            'invalid_mods': ['unique.jar'],
+        }
+        self.assertEqual(count_flagged_mods(report), 3)
+        report['duplicates'] = []
+        self.assertEqual(count_flagged_mods(report), 1)
+
+
 class UnreadableModTests(unittest.TestCase):
     def test_one_unreadable_jar_does_not_hide_other_mods(self):
         from unittest.mock import patch
