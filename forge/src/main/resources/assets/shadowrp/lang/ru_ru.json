@@ -19,5 +19,10 @@
   "message.shadowrp.oath_locked": "Сначала заверши испытание: три враждебных моба.",
   "message.shadowrp.oath_done": "Клятва уже принесена. Пролог завершён.",
   "message.shadowrp.oath_complete": "Клятва принята! Пролог завершён. Награда: изумруд.",
-  "message.shadowrp.status_oath": "Фракция: %s. Пролог и клятва завершены."
+  "message.shadowrp.status_oath": "Фракция: %s. Пролог и клятва завершены.",
+  "message.shadowrp.supplies_request": "Хранитель Сада: принеси 8 пшеницы и 4 дубовых бревна. Возьми их в инвентарь и поговори со мной снова.",
+  "message.shadowrp.supplies_complete": "Припасы приняты! Получено 75 опыта и 2 изумруда. Первое поручение фракции выполнено.",
+  "message.shadowrp.supplies_done": "Хранитель Сада: припасы доставлены. Первое поручение выполнено.",
+  "message.shadowrp.status_supplies": "Фракция: %s. Клятва дана. Поручение Хранителя: 8 пшеницы и 4 дубовых бревна.",
+  "message.shadowrp.status_supplies_done": "Фракция: %s. Пролог и первое поручение Хранителя завершены."
 }
