@@ -1,0 +1,14 @@
+{
+  "message.shadowrp.welcome": "Shadow RP: use /shadowrp start to begin the story.",
+  "message.shadowrp.started": "Prologue started. Choose /shadowrp faction shadow or /shadowrp faction light.",
+  "message.shadowrp.already_started": "Prologue already started. See /shadowrp status.",
+  "message.shadowrp.choose_first": "First use /shadowrp start.",
+  "message.shadowrp.faction_shadow": "You joined the Garden of Shadows. Trial: defeat three hostile mobs.",
+  "message.shadowrp.faction_light": "You joined the Garden of Light. Trial: defeat three hostile mobs.",
+  "message.shadowrp.progress": "Trial: %s/3 hostile mobs.",
+  "message.shadowrp.complete": "Trial complete! Gained 50 XP. More story is in development.",
+  "message.shadowrp.status_new": "Prologue not started: /shadowrp start.",
+  "message.shadowrp.status_faction": "Prologue started. Choose /shadowrp faction shadow or light.",
+  "message.shadowrp.status_active": "Faction: %s. Trial: %s/3.",
+  "message.shadowrp.status_done": "Faction: %s. First trial complete."
+}

@@ -1,0 +1,14 @@
+{
+  "message.shadowrp.welcome": "Shadow RP: введи /shadowrp start, чтобы начать историю.",
+  "message.shadowrp.started": "Пролог начат. Выбери фракцию: /shadowrp faction shadow или /shadowrp faction light.",
+  "message.shadowrp.already_started": "Пролог уже начат. Проверь /shadowrp status.",
+  "message.shadowrp.choose_first": "Сначала введи /shadowrp start.",
+  "message.shadowrp.faction_shadow": "Ты присоединился к Саду Теней. Испытание: победи трёх враждебных мобов.",
+  "message.shadowrp.faction_light": "Ты присоединился к Саду Света. Испытание: победи трёх враждебных мобов.",
+  "message.shadowrp.progress": "Испытание: %s/3 враждебных мобов.",
+  "message.shadowrp.complete": "Испытание завершено! Получено 50 опыта. Продолжение истории в разработке.",
+  "message.shadowrp.status_new": "Пролог ещё не начат: /shadowrp start.",
+  "message.shadowrp.status_faction": "Пролог начат. Выбери фракцию: /shadowrp faction shadow или light.",
+  "message.shadowrp.status_active": "Фракция: %s. Испытание: %s/3.",
+  "message.shadowrp.status_done": "Фракция: %s. Первое испытание завершено."
+}
