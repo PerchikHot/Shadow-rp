@@ -53,6 +53,21 @@ def forge_1201_versions(versions: list[str]) -> list[str]:
             and re.search(r"(?<![\d.])1\.20\.1(?![\d.])", version)]
 
 
+def other_minecraft_version_jars(mods: list[str]) -> list[str]:
+    """Advisory only: filenames hinting at other Minecraft versions.
+
+    Do not flag a multi-version JAR if it also names the target 1.20.1.
+    Generic '1.20' labels are ambiguous and are not treated as incompatible.
+    """
+    pattern = re.compile(r"(?<![\\d.])1\\.(?:1[6-9]|2[0-2])(?:\\.\\d+)?(?![\\d.])")
+    flagged = []
+    for name in mods:
+        versions = set(pattern.findall(Path(name).stem))
+        if "1.20.1" not in versions and any(version != "1.20" for version in versions):
+            flagged.append(name)
+    return flagged
+
+
 def unsafe_jar_members(names: list[str]) -> bool:
     """Warn about ambiguous or unsafe ZIP paths without extracting a mod.
 
@@ -244,6 +259,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods_folder_exists": mods_folder_exists,
             "linked_mods": linked_mods,
             "duplicates": duplicate_mod_names(mods),
+            "version_hints": other_minecraft_version_jars(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
             "fabric_mods": fabric_mods, "forge_mods": forge_mods, "neoforge_mods": neoforge_mods, "quilt_mods": quilt_mods, "unsafe_mods": unsafe_mods, "unknown_mods": unknown_mods, "large_mods": large_mods, "unsupported_compression_mods": unsupported_compression_mods, "duplicate_members": duplicate_members, "encrypted_mods": encrypted_mods,
             "unreadable_mods": sorted(set(unreadable_mods)),
@@ -257,7 +273,7 @@ def count_flagged_mods(report: dict) -> int:
         "empty_mods", "invalid_mods", "empty_archives", "fabric_mods",
         "neoforge_mods", "quilt_mods", "unsafe_mods", "unknown_mods",
         "large_mods", "unsupported_compression_mods", "duplicate_members",
-        "encrypted_mods", "unreadable_mods",
+        "encrypted_mods", "unreadable_mods", "version_hints",
     )
     flagged = {name for category in categories for name in report.get(category, [])}
     # Duplicate basenames refer to every matching active JAR, including
@@ -302,6 +318,7 @@ def format_instance_report(report: dict) -> str:
             lines.append("Моды не найдены: проверь папку mods и mods/1.20.1")
     warnings = (
         ("duplicates", "Повторяющиеся JAR"),
+        ("version_hints", "Имя JAR указывает на другую версию Minecraft (проверь вручную)"),
         ("empty_mods", "Пустые JAR"),
         ("invalid_mods", "Повреждённые JAR"),
         ("empty_archives", "JAR без файлов внутри (проверь загрузку)"),
