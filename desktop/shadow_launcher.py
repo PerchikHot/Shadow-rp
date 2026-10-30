@@ -249,6 +249,19 @@ def inspect_instance(folder: Path) -> dict:
             "unreadable_mods": unreadable_mods, "empty_archives": empty_archives, "message": message}
 
 
+def count_flagged_mods(report: dict) -> int:
+    """Count distinct active JARs with advisory findings, not warning types."""
+    active = set(report.get("mods", []))
+    categories = (
+        "empty_mods", "invalid_mods", "empty_archives", "fabric_mods",
+        "neoforge_mods", "quilt_mods", "unsafe_mods", "unknown_mods",
+        "large_mods", "unsupported_compression_mods", "duplicate_members",
+        "encrypted_mods", "unreadable_mods",
+    )
+    flagged = {name for category in categories for name in report.get(category, [])}
+    return len(active & flagged)
+
+
 def format_instance_report(report: dict) -> str:
     """Share a local, read-only diagnostic summary without absolute paths."""
     lines = ["Shadow RP — диагностика Forge 1.20.1", report["message"]]
@@ -259,6 +272,8 @@ def format_instance_report(report: dict) -> str:
     if matching:
         lines.append("Forge 1.20.1: " + ", ".join(matching))
     lines.append(f"JAR-модов: {len(report['mods'])}")
+    if report["mods"]:
+        lines.append(f"JAR с замечаниями (уникальных): {count_flagged_mods(report)}")
     if report["mods"]:
         # Metadata presence is advisory, not proof of Forge 1.20.1 compatibility.
         lines.append(f"JAR с Forge mods.toml: {len(report.get('forge_mods', []))}")
