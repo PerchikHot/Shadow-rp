@@ -461,7 +461,8 @@ class ShadowCompanion(tk.Tk):
         self.status.config(text=report["message"])
         self.details.config(text=(
             f"Версий Minecraft: {len(report['versions'])}  •  "
-            f"JAR-модов: {len(report['mods'])}  •  С замечаниями: {count_flagged_mods(report)}\n"
+            f"JAR-модов: {len(report['mods'])}  •  С замечаниями: {count_flagged_mods(report)}  •  "
+            f"Отключено: {len(report.get('disabled_mods', []))}\n"
             "Проверяется только наличие папки Forge 1.20.1, не совместимость модов."
             + (f"\nВнимание: повторяющиеся JAR: {', '.join(report['duplicates'])}"
                if report.get("duplicates") else "")
