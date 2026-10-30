@@ -107,7 +107,8 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
-                state.getBoolean("supplies_complete") ? "message.shadowrp.supplies_done" :
+                state.getBoolean("scout_complete") ? "message.shadowrp.scout_done" :
+                state.getBoolean("supplies_complete") ? "message.shadowrp.scout_request" :
                 "message.shadowrp.supplies_request"), false);
             return 1;
         }));
@@ -141,8 +142,11 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("scout_complete")) {
+                message = Component.translatable("message.shadowrp.status_scout_done", state.getString("faction"));
             } else if (state.getBoolean("supplies_complete")) {
-                message = Component.translatable("message.shadowrp.status_supplies_done", state.getString("faction"));
+                message = Component.translatable("message.shadowrp.status_scout",
+                    state.getString("faction"), state.getInt("scout_kills"));
             } else if (state.getBoolean("oath_complete")) {
                 message = Component.translatable("message.shadowrp.status_supplies", state.getString("faction"));
             } else if (state.getBoolean("trial_complete")) {
@@ -181,8 +185,10 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("scout_complete")) {
+            message = "message.shadowrp.scout_done";
         } else if (state.getBoolean("supplies_complete")) {
-            message = "message.shadowrp.supplies_done";
+            message = "message.shadowrp.scout_request";
         } else if (countInventoryItem(player, Items.WHEAT) < 8
                 || countInventoryItem(player, Items.OAK_LOG) < 4) {
             message = "message.shadowrp.supplies_request";
@@ -245,10 +251,36 @@ public final class ShadowRpMod {
             return;
         }
         CompoundTag state = progress(player);
-        if (!state.getBoolean("started") || state.getString("faction").isEmpty()
-                || state.getBoolean("trial_complete")) {
+        if (!state.getBoolean("started") || state.getString("faction").isEmpty()) return;
+        // Chapter two: after delivering supplies, each Garden has its own
+        // hostile target. Count only direct player kills and reward once.
+        if (state.getBoolean("supplies_complete")) {
+            if (state.getBoolean("scout_complete")) return;
+            String faction = state.getString("faction");
+            boolean target = "shadow".equals(faction)
+                ? event.getEntity().getType() == EntityType.SKELETON
+                : event.getEntity().getType() == EntityType.ZOMBIE;
+            if (!target) return;
+            // Switching factions must not carry the previous target's kills.
+            if (!faction.equals(state.getString("scout_faction"))) {
+                state.putString("scout_faction", faction);
+                state.putInt("scout_kills", 0);
+            }
+            int count = Math.min(5, state.getInt("scout_kills") + 1);
+            state.putInt("scout_kills", count);
+            if (count == 5) {
+                state.putBoolean("scout_complete", true);
+                player.giveExperiencePoints(100);
+                ItemStack reward = new ItemStack(Items.EMERALD, 3);
+                if (!player.getInventory().add(reward)) player.drop(reward, false);
+                player.sendSystemMessage(Component.translatable("message.shadowrp.scout_complete"));
+            } else {
+                player.sendSystemMessage(Component.translatable("message.shadowrp.scout_progress", count));
+            }
+            save(player, state);
             return;
         }
+        if (state.getBoolean("trial_complete")) return;
         int kills = Math.min(3, state.getInt("trial_kills") + 1);
         state.putInt("trial_kills", kills);
         if (kills == 3) {
