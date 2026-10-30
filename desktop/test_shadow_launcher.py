@@ -8,6 +8,24 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class FlaggedModSummaryTests(unittest.TestCase):
+    def test_counts_distinct_active_jars_not_warning_categories(self):
+        from shadow_launcher import count_flagged_mods
+        report = {
+            "exists": True, "message": "Forge 1.20.1 обнаружен",
+            "versions": ["1.20.1-forge-47.3.0"],
+            "mods": ["a.jar", "b.jar", "c.jar"],
+            "invalid_mods": ["a.jar"],
+            "unknown_mods": ["a.jar", "b.jar"],
+            "disabled_mods": ["disabled.jar"],
+            "unreadable_mods": ["disabled.jar"],
+        }
+        self.assertEqual(count_flagged_mods(report), 2)
+        self.assertIn("JAR с замечаниями (уникальных): 2",
+                      format_instance_report(report))
+        self.assertEqual(report["mods"], ["a.jar", "b.jar", "c.jar"])
+
+
 class UnreadableModTests(unittest.TestCase):
     def test_one_unreadable_jar_does_not_hide_other_mods(self):
         from unittest.mock import patch
