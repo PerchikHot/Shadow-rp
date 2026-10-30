@@ -259,6 +259,11 @@ def count_flagged_mods(report: dict) -> int:
         "encrypted_mods", "unreadable_mods",
     )
     flagged = {name for category in categories for name in report.get(category, [])}
+    # Duplicate basenames refer to every matching active JAR, including
+    # copies in mods/1.20.1. Count those copies in the warning summary.
+    duplicates = set(report.get("duplicates", []))
+    flagged.update(name for name in active
+                   if name.rsplit("/", 1)[-1].casefold() in duplicates)
     return len(active & flagged)
 
 
