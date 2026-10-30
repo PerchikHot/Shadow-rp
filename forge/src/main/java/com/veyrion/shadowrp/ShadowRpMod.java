@@ -10,6 +10,8 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.InteractionResult;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
@@ -99,10 +101,14 @@ public final class ShadowRpMod {
             guide.setCustomName(Component.translatable("entity.shadowrp.guide"));
             guide.setCustomNameVisible(true);
             guide.setPersistenceRequired();
+            guide.setInvulnerable(true);
+            guide.setNoAi(true);
             if (!player.serverLevel().addFreshEntity(guide)) return 0;
             context.getSource().sendSuccess(() -> Component.translatable(
-                state.getBoolean("trial_complete") ? "message.shadowrp.guide_oath" :
-                "message.shadowrp.guide_trial"), false);
+                !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
+                !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
+                state.getBoolean("supplies_complete") ? "message.shadowrp.supplies_done" :
+                "message.shadowrp.supplies_request"), false);
             return 1;
         }));
 
@@ -135,8 +141,10 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("supplies_complete")) {
+                message = Component.translatable("message.shadowrp.status_supplies_done", state.getString("faction"));
             } else if (state.getBoolean("oath_complete")) {
-                message = Component.translatable("message.shadowrp.status_oath", state.getString("faction"));
+                message = Component.translatable("message.shadowrp.status_supplies", state.getString("faction"));
             } else if (state.getBoolean("trial_complete")) {
                 message = Component.translatable("message.shadowrp.status_done", state.getString("faction"));
             } else {
@@ -147,6 +155,68 @@ public final class ShadowRpMod {
             return 1;
         }));
         event.getDispatcher().register(root);
+    }
+
+    /**
+     * Right-click the persistent Garden Keeper to advance the first supply
+     * mission. No automatic item removal, network call, or repeatable reward:
+     * the player must deliberately interact with the NPC while carrying
+     * eight wheat and four oak logs.
+     */
+    @SubscribeEvent
+    public void onGuideInteract(PlayerInteractEvent.EntityInteract event) {
+        if (!(event.getTarget() instanceof Villager guide)
+                || !guide.getTags().contains("shadowrp_guide")) {
+            return;
+        }
+        // Suppress vanilla villager trading for the story guide on both sides.
+        event.setCancellationResult(InteractionResult.SUCCESS);
+        event.setCanceled(true);
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        CompoundTag state = progress(player);
+        String message;
+        if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
+            message = "message.shadowrp.guide_requires_faction";
+        } else if (!state.getBoolean("trial_complete")) {
+            message = "message.shadowrp.guide_trial";
+        } else if (!state.getBoolean("oath_complete")) {
+            message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("supplies_complete")) {
+            message = "message.shadowrp.supplies_done";
+        } else if (countInventoryItem(player, Items.WHEAT) < 8
+                || countInventoryItem(player, Items.OAK_LOG) < 4) {
+            message = "message.shadowrp.supplies_request";
+        } else {
+            removeInventoryItem(player, Items.WHEAT, 8);
+            removeInventoryItem(player, Items.OAK_LOG, 4);
+            player.getInventory().setChanged();
+            state.putBoolean("supplies_complete", true);
+            save(player, state);
+            player.giveExperiencePoints(75);
+            ItemStack reward = new ItemStack(Items.EMERALD, 2);
+            if (!player.getInventory().add(reward)) player.drop(reward, false);
+            message = "message.shadowrp.supplies_complete";
+        }
+        player.sendSystemMessage(Component.translatable(message));
+    }
+
+    private static int countInventoryItem(ServerPlayer player, net.minecraft.world.item.Item item) {
+        int total = 0;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (stack.is(item)) total += stack.getCount();
+        }
+        return total;
+    }
+
+    private static void removeInventoryItem(ServerPlayer player, net.minecraft.world.item.Item item, int amount) {
+        for (int slot = 0; slot < player.getInventory().getContainerSize() && amount > 0; slot++) {
+            ItemStack stack = player.getInventory().getItem(slot);
+            if (!stack.is(item)) continue;
+            int taken = Math.min(stack.getCount(), amount);
+            stack.shrink(taken);
+            amount -= taken;
+        }
     }
 
     @SubscribeEvent
