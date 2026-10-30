@@ -71,6 +71,22 @@ class DuplicateJarWarningCountTests(unittest.TestCase):
         self.assertEqual(count_flagged_mods(report), 1)
 
 
+class UnreadableModReportTests(unittest.TestCase):
+    def test_unreadable_mods_survive_report_serialization(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / 'mods'
+            mods.mkdir()
+            with zipfile.ZipFile(mods / 'blocked.jar', 'w') as jar:
+                jar.writestr('META-INF/mods.toml', 'modLoader="javafml"')
+            with patch('shadow_launcher.scan_mod_sizes', return_value=(0, [], ['blocked.jar'])):
+                report = inspect_instance(root)
+            self.assertEqual(report['unreadable_mods'], ['blocked.jar'])
+            self.assertIn('Нет доступа к JAR', format_instance_report(report))
+            self.assertIn('неполный подсчёт', format_instance_report(report))
+
+
 class UnreadableModTests(unittest.TestCase):
     def test_one_unreadable_jar_does_not_hide_other_mods(self):
         from unittest.mock import patch
