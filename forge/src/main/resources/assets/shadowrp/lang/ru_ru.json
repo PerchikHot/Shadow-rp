@@ -6,9 +6,18 @@
   "message.shadowrp.faction_shadow": "Ты присоединился к Саду Теней. Испытание: победи трёх враждебных мобов.",
   "message.shadowrp.faction_light": "Ты присоединился к Саду Света. Испытание: победи трёх враждебных мобов.",
   "message.shadowrp.progress": "Испытание: %s/3 враждебных мобов.",
-  "message.shadowrp.complete": "Испытание завершено! Получено 50 опыта. Продолжение истории в разработке.",
+  "message.shadowrp.complete": "Испытание завершено! Получено 50 опыта. Следующий шаг: /shadowrp guide.",
   "message.shadowrp.status_new": "Пролог ещё не начат: /shadowrp start.",
   "message.shadowrp.status_faction": "Пролог начат. Выбери фракцию: /shadowrp faction shadow или light.",
   "message.shadowrp.status_active": "Фракция: %s. Испытание: %s/3.",
-  "message.shadowrp.status_done": "Фракция: %s. Первое испытание завершено."
+  "message.shadowrp.status_done": "Фракция: %s. Испытание пройдено. Найди Хранителя: /shadowrp guide, затем /shadowrp oath.",
+  "entity.shadowrp.guide": "Хранитель Сада",
+  "message.shadowrp.guide_requires_faction": "Сначала начни историю и выбери фракцию.",
+  "message.shadowrp.guide_nearby": "Хранитель Сада уже находится поблизости.",
+  "message.shadowrp.guide_trial": "Хранитель Сада: докажи свою силу — победи трёх враждебных мобов.",
+  "message.shadowrp.guide_oath": "Хранитель Сада: испытание пройдено. Произнеси /shadowrp oath для завершения пролога.",
+  "message.shadowrp.oath_locked": "Сначала заверши испытание: три враждебных моба.",
+  "message.shadowrp.oath_done": "Клятва уже принесена. Пролог завершён.",
+  "message.shadowrp.oath_complete": "Клятва принята! Пролог завершён. Награда: изумруд.",
+  "message.shadowrp.status_oath": "Фракция: %s. Пролог и клятва завершены."
 }
