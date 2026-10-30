@@ -30,5 +30,11 @@
   "message.shadowrp.scout_complete": "Scouting complete! You earned 100 XP and 3 emeralds.",
   "message.shadowrp.scout_done": "Garden Keeper: scouting complete. Your faction recognizes your contribution.",
   "message.shadowrp.status_scout": "Faction: %s. Scouting: %s/5. Shadows hunt skeletons; Light hunts zombies.",
-  "message.shadowrp.status_scout_done": "Faction: %s. Prologue, supplies and scouting completed."
+  "message.shadowrp.status_scout_done": "Faction: %s. Prologue, supplies and scouting completed.",
+  "message.shadowrp.faction_locked": "You cannot switch Gardens after your oath. Finish your faction's story.",
+  "message.shadowrp.rank_ready": "Garden Keeper: scouting is complete. Talk to me to earn the Garden Defender rank.",
+  "message.shadowrp.rank_complete": "Chapter one complete! You are a Garden Defender. Reward: 125 XP and 1 diamond.",
+  "message.shadowrp.rank_done": "Garden Keeper: you already earned the Garden Defender rank. Chapter one is complete.",
+  "message.shadowrp.status_rank_ready": "Faction: %s. Scouting complete. Return to the Keeper for your rank.",
+  "message.shadowrp.status_rank": "Faction: %s. Garden Defender rank earned. Chapter one complete."
 }
