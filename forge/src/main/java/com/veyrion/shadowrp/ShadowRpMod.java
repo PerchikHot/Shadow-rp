@@ -141,6 +141,40 @@ public final class ShadowRpMod {
             return 1;
         }));
 
+        // Live quest journal: reads server-side progress and inventory, never
+        // consumes resources or grants rewards. Works after reconnect/respawn.
+        root.then(Commands.literal("journal").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            Component objective;
+            if (!state.getBoolean("started")) {
+                objective = Component.translatable("message.shadowrp.status_new");
+            } else if (state.getString("faction").isEmpty()) {
+                objective = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("rank_claimed")) {
+                objective = Component.translatable("message.shadowrp.journal_complete");
+            } else if (state.getBoolean("scout_complete")) {
+                objective = Component.translatable("message.shadowrp.status_rank_ready",
+                    state.getString("faction"));
+            } else if (state.getBoolean("supplies_complete")) {
+                objective = Component.translatable(
+                    "message.shadowrp.journal_scout_" + state.getString("faction"),
+                    state.getInt("scout_kills"));
+            } else if (state.getBoolean("oath_complete")) {
+                objective = Component.translatable("message.shadowrp.journal_supplies",
+                    countInventoryItem(player, Items.WHEAT),
+                    countInventoryItem(player, Items.OAK_LOG));
+            } else if (state.getBoolean("trial_complete")) {
+                objective = Component.translatable("message.shadowrp.status_done",
+                    state.getString("faction"));
+            } else {
+                objective = Component.translatable("message.shadowrp.journal_trial",
+                    state.getInt("trial_kills"));
+            }
+            context.getSource().sendSuccess(() -> objective, false);
+            return 1;
+        }));
+
         root.then(Commands.literal("status").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
