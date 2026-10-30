@@ -29,6 +29,37 @@ class CompanionShortcutTests(unittest.TestCase):
         self.assertEqual(fake.calls, ["refresh", "browse", "copy"])
 
 
+class DisabledModUiSummaryTests(unittest.TestCase):
+    def test_disabled_mod_count_is_present_in_main_window(self):
+        from shadow_launcher import ShadowCompanion
+        from unittest.mock import patch
+
+        class TextWidget:
+            def config(self, **kwargs):
+                self.text = kwargs.get("text", "")
+
+        class ModsList:
+            def delete(self, *args):
+                pass
+            def insert(self, *args):
+                pass
+
+        class FakeWindow:
+            folder = type("Folder", (), {"get": lambda self: "unused"})()
+            status = TextWidget()
+            details = TextWidget()
+            mods = ModsList()
+
+        report = {
+            "exists": True, "forge": False, "versions": [], "mods": [],
+            "disabled_mods": ["old.jar.disabled", "other.jar.off"],
+            "message": "Forge 1.20.1 не найден",
+        }
+        with patch("shadow_launcher.inspect_instance", return_value=report):
+            ShadowCompanion.refresh(FakeWindow())
+        self.assertIn("Отключено: 2", FakeWindow.details.text)
+
+
 class JarSizeReportTests(unittest.TestCase):
     def test_report_shows_mib_and_exact_bytes_without_file_changes(self):
         report = {
