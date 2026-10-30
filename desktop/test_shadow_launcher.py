@@ -8,6 +8,23 @@ from pathlib import Path
 from shadow_launcher import save_report_text, inspect_instance, format_instance_report, duplicate_mod_names, forge_1201_versions, suspicious_jar_compression, ambiguous_jar_members
 
 
+class ModsFolderLinkSafetyTests(unittest.TestCase):
+    def test_local_folder_allowed_but_linked_folder_not_offered(self):
+        from shadow_launcher import is_local_mods_directory
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mods = root / "mods"
+            mods.mkdir()
+            self.assertTrue(is_local_mods_directory(mods))
+            self.assertFalse(is_local_mods_directory(root / "missing"))
+            link = root / "linked"
+            try:
+                link.symlink_to(mods, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Directory symlinks unavailable")
+            self.assertFalse(is_local_mods_directory(link))
+
+
 class MinecraftVersionHintTests(unittest.TestCase):
     def test_filename_hints_warn_without_claiming_incompatibility(self):
         from shadow_launcher import other_minecraft_version_jars, count_flagged_mods
