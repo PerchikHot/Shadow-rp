@@ -75,6 +75,31 @@ class ActiveModSizeTests(unittest.TestCase):
             self.assertEqual(disabled.read_bytes(), b"unused backup")
 
 
+class InaccessibleModSizeTests(unittest.TestCase):
+    def test_stat_failure_isolated_from_other_mods(self):
+        from unittest.mock import patch
+        from shadow_launcher import scan_mod_sizes
+        with tempfile.TemporaryDirectory() as tmp:
+            mods = Path(tmp)
+            (mods / "working.jar").write_bytes(b"valid")
+            (mods / "empty.jar").write_bytes(b"")
+            (mods / "blocked.jar").write_bytes(b"private")
+            original_stat = Path.stat
+
+            def stat_with_blocked_file(path, *args, **kwargs):
+                if path.name == "blocked.jar":
+                    raise PermissionError("simulated locked JAR")
+                return original_stat(path, *args, **kwargs)
+
+            with patch.object(Path, "stat", stat_with_blocked_file):
+                total, empty, unreadable = scan_mod_sizes(
+                    mods, ["working.jar", "blocked.jar", "empty.jar"])
+            self.assertEqual(total, 5)
+            self.assertEqual(empty, ["empty.jar"])
+            self.assertEqual(unreadable, ["blocked.jar"])
+            self.assertEqual((mods / "blocked.jar").read_bytes(), b"private")
+
+
 class DisabledModTests(unittest.TestCase):
     def test_disabled_jar_is_reported_but_not_scanned_as_active(self):
         with tempfile.TemporaryDirectory() as tmp:
