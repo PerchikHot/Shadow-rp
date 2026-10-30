@@ -19,5 +19,10 @@
   "message.shadowrp.oath_locked": "Finish the trial by defeating three hostile mobs first.",
   "message.shadowrp.oath_done": "Your oath is already complete.",
   "message.shadowrp.oath_complete": "Oath accepted! Prologue complete. Reward: one emerald.",
-  "message.shadowrp.status_oath": "Faction: %s. Prologue and oath complete."
+  "message.shadowrp.status_oath": "Faction: %s. Prologue and oath complete.",
+  "message.shadowrp.supplies_request": "Garden Keeper: bring 8 wheat and 4 oak logs. Carry them in your inventory and talk to me again.",
+  "message.shadowrp.supplies_complete": "Supplies delivered! You received 75 XP and 2 emeralds. Your first faction assignment is complete.",
+  "message.shadowrp.supplies_done": "Garden Keeper: your supplies have been delivered. Assignment complete.",
+  "message.shadowrp.status_supplies": "Faction: %s. Oath complete. Keeper assignment: bring 8 wheat and 4 oak logs.",
+  "message.shadowrp.status_supplies_done": "Faction: %s. Prologue and first Keeper assignment complete."
 }
