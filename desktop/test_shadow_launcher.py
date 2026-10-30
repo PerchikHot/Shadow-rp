@@ -910,3 +910,17 @@ class EmptyJarArchiveTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OlderMinecraftVersionHintTests(unittest.TestCase):
+    def test_older_mod_versions_are_advisory_and_target_wins(self):
+        from shadow_launcher import other_minecraft_version_jars
+        mods = [
+            'old-forge-1.12.2.jar',
+            'legacy-1.7.10.jar',
+            'bridge-1.12.2-1.20.1.jar',
+            'generic-1.20.jar',
+            'current-1.20.1.jar',
+        ]
+        self.assertEqual(other_minecraft_version_jars(mods),
+                         ['old-forge-1.12.2.jar', 'legacy-1.7.10.jar'])
