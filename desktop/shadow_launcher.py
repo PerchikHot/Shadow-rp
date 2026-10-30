@@ -37,7 +37,8 @@ def disabled_mod_names(mods_dir: Path) -> list[str]:
     """Show disabled JARs without treating them as active Forge mods."""
     disabled: list[str] = []
     for folder, prefix in ((mods_dir, ""), (mods_dir / "1.20.1", "1.20.1/")):
-        if not folder.is_dir() or folder.is_symlink():
+        if (not folder.is_dir() or folder.is_symlink() or
+                getattr(folder, "is_junction", lambda: False)()):
             continue
         try:
             for path in folder.iterdir():
@@ -185,6 +186,10 @@ def inspect_instance(folder: Path) -> dict:
         mods_dir = folder / "mods"
         linked_mods = mods_dir.is_symlink() or getattr(mods_dir, "is_junction", lambda: False)()
         mods_folder_exists = mods_dir.is_dir() and not linked_mods
+        versioned = mods_dir / "1.20.1"
+        # Windows junctions can point outside the selected Minecraft instance.
+        linked_versioned_mods = mods_folder_exists and (
+            versioned.is_symlink() or getattr(versioned, "is_junction", lambda: False)())
         mods = []
         disabled_mods = disabled_mod_names(mods_dir) if mods_folder_exists else []
         # Linked folders/files may point outside .minecraft and must not be
@@ -194,8 +199,7 @@ def inspect_instance(folder: Path) -> dict:
                         if is_regular_jar(p))
             # Some mod managers keep Forge 1.20.1 JARs in a version folder.
             # Inspect it without changing the user's mod installation.
-            versioned = mods_dir / "1.20.1"
-            if versioned.is_dir() and not versioned.is_symlink() and not getattr(versioned, "is_junction", lambda: False)():
+            if versioned.is_dir() and not linked_versioned_mods:
                 mods.extend("1.20.1/" + p.name for p in versioned.iterdir()
                             if is_regular_jar(p))
             mods.sort(key=str.lower)
@@ -273,6 +277,7 @@ def inspect_instance(folder: Path) -> dict:
             "mods": mods, "mods_bytes": mods_bytes, "disabled_mods": disabled_mods,
             "mods_folder_exists": mods_folder_exists,
             "linked_mods": linked_mods,
+            "linked_versioned_mods": linked_versioned_mods,
             "duplicates": duplicate_mod_names(mods),
             "version_hints": other_minecraft_version_jars(mods),
             "empty_mods": empty_mods, "invalid_mods": invalid_mods,
@@ -329,6 +334,8 @@ def format_instance_report(report: dict) -> str:
         size = f"{report.get('mods_bytes', 0):,}".replace(",", " ")
         suffix = " (неполный подсчёт: часть JAR недоступна)" if report.get("unreadable_mods") else ""
         lines.append(f"Размер активных JAR: {size} байт{suffix}")
+    if report.get("linked_versioned_mods"):
+        lines.append("Папка mods/1.20.1 является ссылкой: внешний каталог не проверялся")
     if report.get("disabled_mods"):
         lines.append(f"Отключённых JAR: {len(report['disabled_mods'])}")
         lines.append("Отключённые JAR (не загружаются Forge): " +
@@ -450,6 +457,8 @@ class ShadowCompanion(tk.Tk):
                if report.get("unknown_mods") else "")
             + ("\nПроверь размер/сжатие JAR: " + ", ".join(report["large_mods"])
                if report.get("large_mods") else "")
+            + ("\nВнимание: mods/1.20.1 — ссылка, внешний каталог не проверялся"
+               if report.get("linked_versioned_mods") else "")
         ))
         self.mods.delete(0, tk.END)
         for name in report["mods"]:

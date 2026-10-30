@@ -89,6 +89,29 @@ class NewerMinecraftVersionHintTests(unittest.TestCase):
                          ["modern-1.23.1.jar", "1.20.1/experimental-1.29.jar"])
 
 
+class VersionedModsLinkTests(unittest.TestCase):
+    def test_linked_versioned_folder_is_reported_and_never_scanned(self):
+        from shadow_launcher import disabled_mod_names
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "minecraft"
+            mods = root / "mods"
+            mods.mkdir(parents=True)
+            outside = Path(tmp) / "outside"
+            outside.mkdir()
+            (outside / "outside.jar").write_bytes(b"not a real mod")
+            (outside / "outside.jar.disabled").write_bytes(b"disabled")
+            linked = mods / "1.20.1"
+            try:
+                linked.symlink_to(outside, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("Directory symlinks unavailable")
+            report = inspect_instance(root)
+            self.assertTrue(report["linked_versioned_mods"])
+            self.assertNotIn("1.20.1/outside.jar", report["mods"])
+            self.assertNotIn("1.20.1/outside.jar.disabled", disabled_mod_names(mods))
+            self.assertIn("внешний каталог не проверялся", format_instance_report(report))
+
+
 class WindowsJunctionInspectionTests(unittest.TestCase):
     def test_junction_like_mods_folder_is_not_traversed(self):
         from unittest.mock import patch
