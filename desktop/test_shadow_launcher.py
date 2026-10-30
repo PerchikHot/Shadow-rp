@@ -21,12 +21,15 @@ class CompanionShortcutTests(unittest.TestCase):
                 self.calls.append("browse")
             def copy_report(self):
                 self.calls.append("copy")
+            def save_report(self):
+                self.calls.append("save")
 
         fake = FakeCompanion()
         self.assertEqual(ShadowCompanion._shortcut_refresh(fake), "break")
         self.assertEqual(ShadowCompanion._shortcut_browse(fake), "break")
         self.assertEqual(ShadowCompanion._shortcut_copy_report(fake), "break")
-        self.assertEqual(fake.calls, ["refresh", "browse", "copy"])
+        self.assertEqual(ShadowCompanion._shortcut_save_report(fake), "break")
+        self.assertEqual(fake.calls, ["refresh", "browse", "copy", "save"])
 
 
 class DisabledModUiSummaryTests(unittest.TestCase):

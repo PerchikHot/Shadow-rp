@@ -393,6 +393,7 @@ class ShadowCompanion(tk.Tk):
         self.bind_all("<Control-r>", self._shortcut_refresh)
         self.bind_all("<Control-o>", self._shortcut_browse)
         self.bind_all("<Control-Shift-C>", self._shortcut_copy_report)
+        self.bind_all("<Control-s>", self._shortcut_save_report)
         self.refresh()
 
     def _shortcut_refresh(self, _event=None):
@@ -405,6 +406,11 @@ class ShadowCompanion(tk.Tk):
 
     def _shortcut_copy_report(self, _event=None):
         self.copy_report()
+        return "break"
+
+    def _shortcut_save_report(self, _event=None):
+        # Saving still opens the native dialog; never write a file silently.
+        self.save_report()
         return "break"
 
     def _button(self, parent, label, action):
@@ -442,7 +448,7 @@ class ShadowCompanion(tk.Tk):
         self._button(controls, "Сохранить .txt", self.save_report).pack(side="left", padx=4)
         self._button(controls, "Открыть папку mods", self.open_mods).pack(side="left", padx=4)
         self._button(controls, "Открыть Minecraft Launcher", self.open_launcher).pack(side="left", padx=4)
-        tk.Label(self, text="Ctrl+R — проверить  •  Ctrl+O — выбрать папку  •  Ctrl+Shift+C — скопировать отчёт",
+        tk.Label(self, text="Ctrl+R — проверить  •  Ctrl+O — выбрать папку  •  Ctrl+Shift+C — скопировать  •  Ctrl+S — сохранить отчёт",
                  bg=BG, fg=BLUE, font=("Segoe UI", 10)).pack(
                      anchor="w", padx=24, pady=(0, 8))
         tk.Label(self, text="Мод Shadow RP пока не собран. Установка и синхронизация не реализованы.",
