@@ -43,6 +43,19 @@ class MinecraftVersionHintTests(unittest.TestCase):
         self.assertEqual(len(mods), 6)
 
 
+class NewerMinecraftVersionHintTests(unittest.TestCase):
+    def test_newer_version_names_are_advisory_and_multiversion_is_allowed(self):
+        from shadow_launcher import other_minecraft_version_jars
+        mods = [
+            "modern-1.23.1.jar",
+            "1.20.1/experimental-1.29.jar",
+            "bridge-1.20.1-1.23.1.jar",
+            "generic-1.20.jar",
+        ]
+        self.assertEqual(other_minecraft_version_jars(mods),
+                         ["modern-1.23.1.jar", "1.20.1/experimental-1.29.jar"])
+
+
 class ModFolderSummaryTests(unittest.TestCase):
     def test_summary_counts_root_and_versioned_mods_separately(self):
         report = {
