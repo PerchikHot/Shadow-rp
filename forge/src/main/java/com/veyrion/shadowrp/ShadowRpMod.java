@@ -67,7 +67,13 @@ public final class ShadowRpMod {
                     context.getSource().sendFailure(Component.translatable("message.shadowrp.choose_first"));
                     return 0;
                 }
-                // Switching factions does not erase completed progress.
+                // The oath commits a player to their faction. Do not let
+                // completed scouting rewards carry over to the opposite side.
+                if (state.getBoolean("oath_complete") &&
+                    !choice.equals(state.getString("faction"))) {
+                    context.getSource().sendFailure(Component.translatable("message.shadowrp.faction_locked"));
+                    return 0;
+                }
                 state.putString("faction", choice);
                 save(player, state);
                 context.getSource().sendSuccess(() ->
@@ -107,7 +113,8 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
-                state.getBoolean("scout_complete") ? "message.shadowrp.scout_done" :
+                state.getBoolean("rank_claimed") ? "message.shadowrp.rank_done" :
+                state.getBoolean("scout_complete") ? "message.shadowrp.rank_ready" :
                 state.getBoolean("supplies_complete") ? "message.shadowrp.scout_request" :
                 "message.shadowrp.supplies_request"), false);
             return 1;
@@ -142,8 +149,10 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("rank_claimed")) {
+                message = Component.translatable("message.shadowrp.status_rank", state.getString("faction"));
             } else if (state.getBoolean("scout_complete")) {
-                message = Component.translatable("message.shadowrp.status_scout_done", state.getString("faction"));
+                message = Component.translatable("message.shadowrp.status_rank_ready", state.getString("faction"));
             } else if (state.getBoolean("supplies_complete")) {
                 message = Component.translatable("message.shadowrp.status_scout",
                     state.getString("faction"), state.getInt("scout_kills"));
@@ -185,8 +194,17 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("rank_claimed")) {
+            message = "message.shadowrp.rank_done";
         } else if (state.getBoolean("scout_complete")) {
-            message = "message.shadowrp.scout_done";
+            // A final return to the Keeper completes the first faction
+            // chapter. Persist before awarding so repeat clicks cannot farm.
+            state.putBoolean("rank_claimed", true);
+            save(player, state);
+            player.giveExperiencePoints(125);
+            ItemStack reward = new ItemStack(Items.DIAMOND, 1);
+            if (!player.getInventory().add(reward)) player.drop(reward, false);
+            message = "message.shadowrp.rank_complete";
         } else if (state.getBoolean("supplies_complete")) {
             message = "message.shadowrp.scout_request";
         } else if (countInventoryItem(player, Items.WHEAT) < 8
