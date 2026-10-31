@@ -1209,23 +1209,44 @@ class MainActivity : Activity() {
     snapshot.takeLast(30).filter { it.first in listOf("user", "assistant") }
      .forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second.take(10000))) }
     val data=JSONObject().put("model",model).put("messages",arr).put("stream",false).toString()
-    val c=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {
-     requestMethod="POST";connectTimeout=20000;readTimeout=120000;doOutput=true
-     instanceFollowRedirects=false
-     setRequestProperty("Content-Type","application/json")
-     if(key.isNotBlank())setRequestProperty("Authorization","Bearer $key")
+    // API keys must not travel over unencrypted remote HTTP or in URLs.
+    val endpoint = RpRemotePolicy.endpoint(base, key)
+    var reply: String? = null
+    for(attempt in 0..2) {
+     var connection: HttpURLConnection? = null
+     try {
+      val c=(endpoint.openConnection() as HttpURLConnection).apply {
+       requestMethod="POST";connectTimeout=20000;readTimeout=120000;doOutput=true
+       instanceFollowRedirects=false
+       setRequestProperty("Content-Type","application/json")
+       if(key.isNotBlank())setRequestProperty("Authorization","Bearer $key")
+      }
+      connection=c
+      c.outputStream.use { it.write(data.toByteArray()) }
+      val status=c.responseCode
+      if(status !in 200..299) {
+       // Never show or store an error body: it may echo credentials.
+       if(RpRemotePolicy.shouldRetryStatus(status,attempt)){
+        Thread.sleep(500L*(attempt+1));continue
+       }
+       error("HTTP $status")
+      }
+      val response=readModelResponse(c.inputStream)
+      reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices")
+       .getJSONObject(0).getJSONObject("message").getString("content"))
+      break
+     }catch(e:java.io.IOException){
+      if(attempt==2)throw e
+      Thread.sleep(500L*(attempt+1))
+     }finally{connection?.disconnect()}
     }
-    c.outputStream.use { it.write(data.toByteArray()) }
-    val response=readModelResponse(if(c.responseCode in 200..299)c.inputStream else c.errorStream)
-    if(c.responseCode !in 200..299)error("HTTP ${c.responseCode}: ${response.take(250)}")
-    val reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content"))
-    c.disconnect()
+    val safeReply=reply ?: error("Модель не ответила после повторных попыток")
     runOnUiThread {
      localPending.remove(name);localStarted.remove(name)
      val items=chats[name]
      if(RpReplySafety.canApply(snapshot,items)){
       prefs.edit().putLong("chat_time_${name}_${items!!.size}",System.currentTimeMillis()).apply()
-      items.add("assistant" to reply)
+      items.add("assistant" to safeReply)
       save()
      }
      if(active==name)chat(name)
