@@ -6,6 +6,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
+from rp_storage import load_data, save_data
 from urllib.request import Request, HTTPRedirectHandler, build_opener
 from rp_context import build_rp_messages, validate_endpoint
 
@@ -14,20 +15,11 @@ BG, PANEL, FG, BLUE = "#080f20", "#172640", "#edf5ff", "#60baff"
 
 
 def load():
-    try:
-        data = json.loads(DATA.read_text(encoding="utf-8"))
-        if isinstance(data, dict) and isinstance(data.get("characters"), dict):
-            return data
-    except (OSError, ValueError, TypeError):
-        pass
-    return {"characters": {"Новый персонаж": {"description": "", "messages": []}}}
+    return load_data(DATA)[0]
 
 
 def save(data):
-    DATA.parent.mkdir(parents=True, exist_ok=True)
-    temp = DATA.with_suffix(".tmp")
-    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    temp.replace(DATA)
+    save_data(DATA, data)
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -66,7 +58,7 @@ def generate(endpoint, api_key, model, description, messages, scenario="", memor
 class App:
     def __init__(self, root):
         self.root = root
-        self.data = load()
+        self.data, self.recovered_backup = load_data(DATA)
         self.pending = 0
         self.active = next(iter(self.data["characters"]), None)
         root.title("Shadow RP — ИИ-ролевой чат")
@@ -111,6 +103,8 @@ class App:
         self.button.pack(side="left", padx=6)
         self.status = tk.Label(main, text="Подключи совместимый API или локальную модель", bg=BG, fg=BLUE)
         self.status.pack(anchor="w")
+        if self.recovered_backup:
+            self.status.config(text="Восстановлено из резервной копии: основной файл повреждён")
         self.refresh()
 
     def export_chats(self):
