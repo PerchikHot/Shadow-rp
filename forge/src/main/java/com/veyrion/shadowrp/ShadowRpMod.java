@@ -100,9 +100,13 @@ public final class ShadowRpMod {
                 context.getSource().sendFailure(Component.translatable("message.shadowrp.guide_requires_faction"));
                 return 0;
             }
+            final String factionId = state.getString("faction");
             boolean existing = !player.serverLevel().getEntitiesOfClass(
                 Villager.class, player.getBoundingBox().inflate(32.0),
-                villager -> villager.getTags().contains("shadowrp_guide")).isEmpty();
+                villager -> villager.getTags().contains("shadowrp_guide") &&
+                    (!villager.getTags().contains("shadowrp_guide_shadow") &&
+                     !villager.getTags().contains("shadowrp_guide_light") ||
+                     villager.getTags().contains("shadowrp_guide_" + factionId))).isEmpty();
             if (existing) {
                 context.getSource().sendSuccess(() -> Component.translatable("message.shadowrp.guide_nearby"), false);
                 return 1;
@@ -112,7 +116,8 @@ public final class ShadowRpMod {
             guide.moveTo(player.getX() + 2.0, player.getY(), player.getZ() + 2.0,
                 player.getYRot(), 0.0F);
             guide.addTag("shadowrp_guide");
-            guide.setCustomName(Component.translatable("entity.shadowrp.guide"));
+            guide.addTag("shadowrp_guide_" + factionId);
+            guide.setCustomName(Component.translatable("entity.shadowrp.guide_" + factionId));
             guide.setCustomNameVisible(true);
             guide.setPersistenceRequired();
             guide.setInvulnerable(true);
@@ -136,11 +141,20 @@ public final class ShadowRpMod {
         // quest state. Coordinates refer only to the player's current dimension.
         root.then(Commands.literal("locate").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
+            String factionId = progress(player).getString("faction");
+            if (!"shadow".equals(factionId) && !"light".equals(factionId)) {
+                context.getSource().sendFailure(
+                    Component.translatable("message.shadowrp.guide_requires_faction"));
+                return 0;
+            }
             Villager nearest = null;
             double nearestDistance = Double.POSITIVE_INFINITY;
             for (Villager villager : player.serverLevel().getEntitiesOfClass(
                     Villager.class, player.getBoundingBox().inflate(128.0),
-                    candidate -> candidate.getTags().contains("shadowrp_guide"))) {
+                    candidate -> candidate.getTags().contains("shadowrp_guide") &&
+                        ((!candidate.getTags().contains("shadowrp_guide_shadow") &&
+                          !candidate.getTags().contains("shadowrp_guide_light")) ||
+                         candidate.getTags().contains("shadowrp_guide_" + factionId)))) {
                 double distance = villager.distanceToSqr(player);
                 if (distance < nearestDistance) {
                     nearest = villager;
@@ -284,6 +298,15 @@ public final class ShadowRpMod {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         CompoundTag state = progress(player);
         String message;
+        // Players cannot complete their own faction quests at the other
+        // Garden's Keeper. Legacy unaligned Keepers remain usable.
+        if ((guide.getTags().contains("shadowrp_guide_shadow") &&
+                !"shadow".equals(state.getString("faction"))) ||
+            (guide.getTags().contains("shadowrp_guide_light") &&
+                !"light".equals(state.getString("faction")))) {
+            player.sendSystemMessage(Component.translatable("message.shadowrp.other_faction_guide"));
+            return;
+        }
         if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
             message = "message.shadowrp.guide_requires_faction";
         } else if (!state.getBoolean("trial_complete")) {
