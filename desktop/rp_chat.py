@@ -5,7 +5,8 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, simpledialog, scrolledtext
-from urllib.request import Request, urlopen
+from urllib.request import Request, HTTPRedirectHandler, build_opener
+from rp_context import build_rp_messages, validate_endpoint
 
 DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.json"
 BG, PANEL, FG, BLUE = "#080f20", "#172640", "#edf5ff", "#60baff"
@@ -28,21 +29,37 @@ def save(data):
     temp.replace(DATA)
 
 
-def generate(endpoint, api_key, model, description, messages):
-    if not endpoint.startswith("https://") and not endpoint.startswith("http://localhost:"):
-        raise ValueError("Используй HTTPS endpoint или локальный http://localhost")
-    url = endpoint.rstrip("/") + "/chat/completions"
-    payload = {"model": model, "messages": [
-        {"role": "system", "content": "You are a fictional roleplay character. Stay in character. Character profile: " + description},
-        *messages[-30:]
-    ]}
+class _NoRedirect(HTTPRedirectHandler):
+    """Never forward an API key to an unexpected redirected host."""
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+def generate(endpoint, api_key, model, description, messages, scenario="", memory=""):
+    base = validate_endpoint(endpoint)
+    if not model.strip() or len(model) > 120:
+        raise ValueError("Укажи корректное имя модели")
+    url = base + "/chat/completions"
+    payload = {
+        "model": model.strip(),
+        "messages": build_rp_messages(description, scenario, memory, messages),
+    }
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = "Bearer " + api_key
-    req = Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
-    with urlopen(req, timeout=45) as response:
-        result = json.load(response)
-    return result["choices"][0]["message"]["content"]
+    req = Request(url, data=json.dumps(payload).encode("utf-8"),
+                  headers=headers, method="POST")
+    # No redirects: a 302 must not leak the bearer token to another host.
+    opener = build_opener(_NoRedirect())
+    with opener.open(req, timeout=45) as response:
+        raw = response.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        raise ValueError("Ответ модели превышает 2 МБ")
+    result = json.loads(raw)
+    answer = result["choices"][0]["message"]["content"]
+    if not isinstance(answer, str) or not answer.strip():
+        raise ValueError("Модель вернула пустой ответ")
+    return answer[:20000]
 
 
 class App:
@@ -61,6 +78,8 @@ class App:
         self.characters.bind("<<ListboxSelect>>", self.select)
         tk.Button(sidebar, text="+ Персонаж", command=self.add).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Описание персонажа", command=self.edit).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
         main = tk.Frame(root, bg=BG)
         main.pack(side="left", fill="both", expand=True, padx=14, pady=14)
         self.title = tk.Label(main, bg=BG, fg=FG, font=("Segoe UI", 17, "bold"))
@@ -120,7 +139,7 @@ class App:
             if name in self.data["characters"]:
                 messagebox.showwarning("Имя занято", "Такой персонаж уже существует")
                 return
-            self.data["characters"][name] = {"description": "", "messages": []}
+            self.data["characters"][name] = {"description": "", "scenario": "", "memory": "", "messages": []}
             self.active = name
             save(self.data)
             self.refresh()
@@ -133,6 +152,18 @@ class App:
         if description is not None:
             item["description"] = description
             save(self.data)
+
+    def edit_field(self, field, title, prompt):
+        if not self.active:
+            return
+        item = self.data["characters"][self.active]
+        current = item.get(field, "")
+        value = simpledialog.askstring(title, prompt,
+                                       initialvalue=current, parent=self.root)
+        if value is not None:
+            item[field] = value[:4000]
+            save(self.data)
+            self.status.config(text="Сохранено локально. Память меняется только вручную.")
 
     def send(self):
         content = self.entry.get().strip()
@@ -150,7 +181,9 @@ class App:
         snapshot = list(item["messages"])
         def work():
             try:
-                answer = generate(endpoint, key, model, item["description"], snapshot)
+                answer = generate(endpoint, key, model, item.get("description", ""),
+                                  snapshot, item.get("scenario", ""),
+                                  item.get("memory", ""))
                 error = None
             except Exception as exc:
                 answer, error = None, str(exc)
