@@ -8,6 +8,7 @@ from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
 from rp_storage import load_data, save_data
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
+from rp_reply_safety import card_context, can_apply_reply
 from rp_transport import chat_completion
 
 DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.json"
@@ -249,7 +250,8 @@ class App:
         self.status.config(text="ИИ отвечает…")
         self.refresh()
         endpoint, model, key = self.endpoint.get().strip(), self.model.get().strip(), self.key.get()
-        snapshot = list(item["messages"])
+        snapshot = [dict(message) for message in item["messages"]]
+        expected_context = card_context(item)
         description = item.get("description", "")
         scenario = item.get("scenario", "")
         memory = item.get("memory", "")
@@ -267,13 +269,18 @@ class App:
                 answer, error = None, str(exc)
 
             def finish():
-                if answer:
-                    item["messages"].append({"role": "assistant", "content": answer})
+                current = self.data["characters"].get(name)
+                applicable = (current is item and
+                              can_apply_reply(snapshot, current.get("messages"),
+                                              expected_context, card_context(current)))
+                if answer and applicable:
+                    current["messages"].append({"role": "assistant", "content": answer})
                     save(self.data)
                 self.pending = max(0, self.pending - 1)
                 self.button.config(state="normal")
-                self.status.config(text="Готово" if answer else
-                                   "Ошибка подключения — сообщение сохранено, можно повторить")
+                self.status.config(text=("Готово" if answer and applicable else
+                    "Ответ устарел — история или карточка изменилась" if answer else
+                    "Ошибка подключения — сообщение сохранено, можно повторить"))
                 if error:
                     messagebox.showerror("ИИ недоступен", error)
                 self.refresh()
