@@ -96,7 +96,11 @@ public final class ShadowRpMod {
         root.then(Commands.literal("guide").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
-            if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
+            if (player.isShiftKeyDown()) {
+            player.sendSystemMessage(questObjective(player));
+            return;
+        }
+        if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
                 context.getSource().sendFailure(Component.translatable("message.shadowrp.guide_requires_faction"));
                 return 0;
             }
@@ -220,46 +224,7 @@ public final class ShadowRpMod {
         // consumes resources or grants rewards. Works after reconnect/respawn.
         root.then(Commands.literal("journal").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
-            CompoundTag state = progress(player);
-            Component objective;
-            if (!state.getBoolean("started")) {
-                objective = Component.translatable("message.shadowrp.status_new");
-            } else if (state.getString("faction").isEmpty()) {
-                objective = Component.translatable("message.shadowrp.status_faction");
-            } else if (state.getBoolean("trophy_complete")) {
-                objective = Component.translatable("message.shadowrp.trophy_done");
-            } else if (state.getBoolean("nether_claimed")) {
-                boolean shadow = "shadow".equals(state.getString("faction"));
-                objective = Component.translatable(
-                    "message.shadowrp.journal_trophy_" + state.getString("faction"),
-                    countInventoryItem(player, shadow ? Items.BLAZE_ROD : Items.QUARTZ));
-            } else if (state.getBoolean("relic_complete")) {
-                objective = Component.translatable(state.getBoolean("nether_visited")
-                    ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
-            } else if (state.getBoolean("rank_claimed")) {
-                boolean shadow = "shadow".equals(state.getString("faction"));
-                objective = Component.translatable(
-                    "message.shadowrp.journal_relic_" + state.getString("faction"),
-                    countInventoryItem(player, shadow ? Items.ENDER_PEARL : Items.GLOWSTONE_DUST));
-            } else if (state.getBoolean("scout_complete")) {
-                objective = Component.translatable("message.shadowrp.status_rank_ready",
-                    state.getString("faction"));
-            } else if (state.getBoolean("supplies_complete")) {
-                objective = Component.translatable(
-                    "message.shadowrp.journal_scout_" + state.getString("faction"),
-                    state.getInt("scout_kills"));
-            } else if (state.getBoolean("oath_complete")) {
-                objective = Component.translatable("message.shadowrp.journal_supplies",
-                    countInventoryItem(player, Items.WHEAT),
-                    countInventoryItem(player, Items.OAK_LOG));
-            } else if (state.getBoolean("trial_complete")) {
-                objective = Component.translatable("message.shadowrp.status_done",
-                    state.getString("faction"));
-            } else {
-                objective = Component.translatable("message.shadowrp.journal_trial",
-                    state.getInt("trial_kills"));
-            }
-            context.getSource().sendSuccess(() -> objective, false);
+            context.getSource().sendSuccess(() -> questObjective(player), false);
             return 1;
         }));
 
@@ -297,6 +262,50 @@ public final class ShadowRpMod {
             return 1;
         }));
         event.getDispatcher().register(root);
+    }
+
+    /** Sneak-interact with a Keeper to read the next objective without spending items. */
+    private static Component questObjective(ServerPlayer player) {
+        CompoundTag state = progress(player);
+        Component objective;
+        if (!state.getBoolean("started")) {
+            objective = Component.translatable("message.shadowrp.status_new");
+        } else if (state.getString("faction").isEmpty()) {
+            objective = Component.translatable("message.shadowrp.status_faction");
+        } else if (state.getBoolean("trophy_complete")) {
+            objective = Component.translatable("message.shadowrp.trophy_done");
+        } else if (state.getBoolean("nether_claimed")) {
+            boolean shadow = "shadow".equals(state.getString("faction"));
+            objective = Component.translatable(
+                "message.shadowrp.journal_trophy_" + state.getString("faction"),
+                countInventoryItem(player, shadow ? Items.BLAZE_ROD : Items.QUARTZ));
+        } else if (state.getBoolean("relic_complete")) {
+            objective = Component.translatable(state.getBoolean("nether_visited")
+                ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
+        } else if (state.getBoolean("rank_claimed")) {
+            boolean shadow = "shadow".equals(state.getString("faction"));
+            objective = Component.translatable(
+                "message.shadowrp.journal_relic_" + state.getString("faction"),
+                countInventoryItem(player, shadow ? Items.ENDER_PEARL : Items.GLOWSTONE_DUST));
+        } else if (state.getBoolean("scout_complete")) {
+            objective = Component.translatable("message.shadowrp.status_rank_ready",
+                state.getString("faction"));
+        } else if (state.getBoolean("supplies_complete")) {
+            objective = Component.translatable(
+                "message.shadowrp.journal_scout_" + state.getString("faction"),
+                state.getInt("scout_kills"));
+        } else if (state.getBoolean("oath_complete")) {
+            objective = Component.translatable("message.shadowrp.journal_supplies",
+                countInventoryItem(player, Items.WHEAT),
+                countInventoryItem(player, Items.OAK_LOG));
+        } else if (state.getBoolean("trial_complete")) {
+            objective = Component.translatable("message.shadowrp.status_done",
+                state.getString("faction"));
+        } else {
+            objective = Component.translatable("message.shadowrp.journal_trial",
+                state.getInt("trial_kills"));
+        }
+        return objective;
     }
 
     /**
