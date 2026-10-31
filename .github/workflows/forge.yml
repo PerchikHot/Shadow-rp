@@ -23,6 +23,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.8'
+      - name: Validate quest and NPC translations
+        run: python3 forge/tools/check_localizations.py
       - name: Compile Forge 1.20.1 mod
         run: gradle -p forge build --no-daemon --stacktrace
       - name: Verify JAR exists
