@@ -9,6 +9,8 @@ import android.view.*
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -19,6 +21,22 @@ import java.io.File
 import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
+ // Bound model replies before JSON parsing; a broken endpoint must not
+ // exhaust Android memory or retain an unbounded error page.
+ private fun readModelResponse(stream: InputStream?): String {
+  val input = stream ?: error("Модель вернула пустой ответ")
+  val out = ByteArrayOutputStream()
+  val buffer = ByteArray(8192)
+  input.use {
+   while (true) {
+    val count = it.read(buffer)
+    if (count < 0) break
+    if (out.size() + count > 2 * 1024 * 1024) error("Ответ модели больше 2 МБ")
+    out.write(buffer, 0, count)
+   }
+  }
+  return out.toString("UTF-8")
+ }
  private val bg=Color.rgb(4,9,18)
  private val panel=Color.rgb(22,31,49)
  private val blue=Color.rgb(53,117,255)
@@ -1074,15 +1092,19 @@ class MainActivity : Activity() {
     val arr=JSONArray()
     val persona=listOf("Характер: "+prefs.getString("persona_$name","").orEmpty(),"Внешность: "+prefs.getString("appearance_$name","").orEmpty(),"Сценарий: "+prefs.getString("scenario_$name","").orEmpty(),"Начальная ситуация: "+prefs.getString("opening_$name","").orEmpty(),"Правила: "+prefs.getString("protocol_$name","").orEmpty(),"Память: "+prefs.getString("memory_$name","").orEmpty()).joinToString("\n") + "\nИгрок: " + prefs.getString("identity_name","Игрок").orEmpty() + ". " + prefs.getString("identity_bio","").orEmpty()
     arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
-    snapshot.forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second)) }
+    // Keep a bounded recent dialogue; pinned memory and scenario remain in
+    // the system message even when older turns leave the context window.
+    snapshot.takeLast(30).filter { it.first in listOf("user", "assistant") }
+     .forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second.take(10000))) }
     val data=JSONObject().put("model",model).put("messages",arr).put("stream",false).toString()
     val c=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {
      requestMethod="POST";connectTimeout=20000;readTimeout=120000;doOutput=true
+     instanceFollowRedirects=false
      setRequestProperty("Content-Type","application/json")
      if(key.isNotBlank())setRequestProperty("Authorization","Bearer $key")
     }
     c.outputStream.use { it.write(data.toByteArray()) }
-    val response=(if(c.responseCode in 200..299)c.inputStream else c.errorStream).bufferedReader().use { it.readText() }
+    val response=readModelResponse(if(c.responseCode in 200..299)c.inputStream else c.errorStream)
     if(c.responseCode !in 200..299)error("HTTP ${c.responseCode}: ${response.take(250)}")
     val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
     c.disconnect()
@@ -1276,16 +1298,16 @@ class MainActivity : Activity() {
       val personas=members.joinToString("\n"){ it+": "+prefs.getString("persona_$it","").orEmpty() }
       arr.put(JSONObject().put("role","system").put("content","Ты ведущий групповой ролевой игры. Участники: "+members.joinToString(", ")+". Сюжет: "+room.optString("story")+"\n"+personas+"\nОтвечай по-русски, от лица нескольких персонажей, не управляй действиями игрока."))
       // Ignore malformed room messages while preserving their original stored JSON.
-      for(i in 0 until history.length()){
+      for(i in maxOf(0, history.length()-30) until history.length()){
        val o=history.optJSONObject(i)?:continue
        if(!o.has("text") || o.isNull("text"))continue
        arr.put(JSONObject()
         .put("role",if(o.optString("role")=="Игрок")"user" else "assistant")
         .put("content",o.optString("text")))
       }
-      val conn=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000;setRequestProperty("Content-Type","application/json");if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")}
+      val conn=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000;instanceFollowRedirects=false;setRequestProperty("Content-Type","application/json");if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")}
       conn.outputStream.use{it.write(JSONObject().put("model",model).put("messages",arr).put("stream",false).toString().toByteArray())}
-      val response=(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream).bufferedReader().use{it.readText()}
+      val response=readModelResponse(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream)
       if(conn.responseCode !in 200..299)error("HTTP "+conn.responseCode+": "+response.take(200))
       val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
       runOnUiThread {history.put(JSONObject().put("role","Персонажи").put("text",reply));prefs.edit().putString(key,history.toString()).apply();roomChat(room)}
