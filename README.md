@@ -21,6 +21,26 @@ Run from source: `python desktop/rp_chat.py`.
 An AI endpoint must be configured to receive AI responses; no model is bundled.
 The Windows workflow must pass before the EXE can be treated as a verified build.
 
+## Transfer characters and stories between Android and Windows
+
+Both clients use the same **Shadow RP JSON** archive:
+`{"characters":{"Name":{"description":"...","scenario":"...","memory":"...","appearance":"...","greeting":"...","protocol":"...","messages":[{"role":"user","content":"..."}]}}}`.
+
+- **Android:** Profile → Export characters and stories / Import characters and stories.
+  The system file picker is used; no storage permission or cloud upload is needed.
+  Import shows the number of matching character names and asks before overwriting
+  those cards and chat histories. Other Android characters are retained.
+- **Windows:** Export chats / Import chats. Windows import asks for confirmation
+  and **replaces the entire Windows catalog** (export your current data first).
+  Windows preserves appearance, greeting and protocol fields when transferring
+  the archive back to Android, even though its editor currently exposes only
+  description, scenario and pinned memory.
+- Import limits: 8 MiB, 200 characters, 10,000 messages per character,
+  20,000 characters per message. Only user/assistant messages are portable.
+  API keys, GGUF models, avatars, device settings and credentials are never
+  included. This is **manual transfer**, not live synchronization.
+- Android backup codec regression tests run in the APK workflow before build.
+
 ## Separation from Shadow Garden
 Shadow Garden is a separate Minecraft Forge 1.20.1 project maintained locally
 on the owner's laptop, not in this GitHub repository.
