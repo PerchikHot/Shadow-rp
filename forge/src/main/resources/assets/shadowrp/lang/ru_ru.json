@@ -37,9 +37,18 @@
   "message.shadowrp.rank_done": "Хранитель Сада: ты уже получил звание Защитника. Первая глава завершена.",
   "message.shadowrp.status_rank_ready": "Фракция: %s. Разведка завершена. Вернись к Хранителю за званием.",
   "message.shadowrp.status_rank": "Фракция: %s. Звание Защитника Сада получено. Первая глава завершена.",
-  "message.shadowrp.journal_complete": "Защитник Сада: первая глава завершена. Ожидай продолжения.",
+  "message.shadowrp.journal_complete": "Глава 2: реликвия фракции передана. Ожидай следующего поручения.",
   "message.shadowrp.journal_trial": "Текущая цель: победи враждебных мобов (%s/3).",
   "message.shadowrp.journal_supplies": "Припасы Хранителю: пшеница %s/8, дубовые брёвна %s/4. Передай их Хранителю.",
   "message.shadowrp.journal_scout_shadow": "Разведка Сада Теней: побеждено скелетов %s/5.",
-  "message.shadowrp.journal_scout_light": "Разведка Сада Света: побеждено зомби %s/5."
+  "message.shadowrp.journal_scout_light": "Разведка Сада Света: побеждено зомби %s/5.",
+  "message.shadowrp.relic_request_shadow": "Хранитель Сада: началась вторая глава. Принеси 2 жемчуга Края — реликвию Сада Теней.",
+  "message.shadowrp.relic_request_light": "Хранитель Сада: началась вторая глава. Принеси 8 единиц светокаменной пыли — реликвию Сада Света.",
+  "message.shadowrp.relic_complete_shadow": "Реликвия Теней передана! Награда: 150 опыта и 2 обсидиана. Первое поручение второй главы выполнено.",
+  "message.shadowrp.relic_complete_light": "Реликвия Света передана! Награда: 150 опыта и 2 золотых слитка. Первое поручение второй главы выполнено.",
+  "message.shadowrp.relic_done": "Хранитель Сада: реликвия твоей фракции уже передана. Ожидай дальнейших поручений.",
+  "message.shadowrp.journal_relic_shadow": "Глава 2: реликвия Теней. Жемчуг Края: %s/2. Принеси Хранителю.",
+  "message.shadowrp.journal_relic_light": "Глава 2: реликвия Света. Светокаменная пыль: %s/8. Принеси Хранителю.",
+  "message.shadowrp.status_relic": "Фракция: %s. Защитник Сада. Глава 2: поиск реликвии фракции.",
+  "message.shadowrp.status_relic_done": "Фракция: %s. Защитник Сада. Реликвия передана, вторая глава началась."
 }
