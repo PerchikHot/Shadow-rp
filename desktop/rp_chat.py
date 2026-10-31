@@ -4,7 +4,8 @@ import os
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, simpledialog, scrolledtext
+from tkinter import filedialog, messagebox, simpledialog, scrolledtext
+from rp_backup import encode_backup, decode_backup, MAX_BYTES
 from urllib.request import Request, HTTPRedirectHandler, build_opener
 from rp_context import build_rp_messages, validate_endpoint
 
@@ -80,6 +81,8 @@ class App:
         tk.Button(sidebar, text="Описание персонажа", command=self.edit).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Импорт чатов", command=self.import_chats).pack(fill="x", padx=10, pady=5)
         main = tk.Frame(root, bg=BG)
         main.pack(side="left", fill="both", expand=True, padx=14, pady=14)
         self.title = tk.Label(main, bg=BG, fg=FG, font=("Segoe UI", 17, "bold"))
@@ -108,6 +111,43 @@ class App:
         self.status = tk.Label(main, text="Подключи совместимый API или локальную модель", bg=BG, fg=BLUE)
         self.status.pack(anchor="w")
         self.refresh()
+
+    def export_chats(self):
+        path = filedialog.asksaveasfilename(
+            parent=self.root, title="Экспорт Shadow RP",
+            defaultextension=".json", initialfile="shadow-rp-backup.json",
+            filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            Path(path).write_bytes(encode_backup(self.data))
+            self.status.config(text="Архив чатов сохранён")
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Ошибка экспорта", str(exc))
+
+    def import_chats(self):
+        path = filedialog.askopenfilename(
+            parent=self.root, title="Импорт Shadow RP",
+            filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "rb") as source:
+                raw = source.read(MAX_BYTES + 1)
+            imported = decode_backup(raw)
+            count = len(imported["characters"])
+            if not messagebox.askyesno(
+                "Импорт", f"Заменить текущие чаты архивом ({count} персонажей)? "
+                "Текущие данные будут перезаписаны. Сначала сделай экспорт.",
+                parent=self.root):
+                return
+            save(imported)
+            self.data = imported
+            self.active = next(iter(imported["characters"]), None)
+            self.refresh()
+            self.status.config(text="Чаты импортированы")
+        except (OSError, ValueError, UnicodeError) as exc:
+            messagebox.showerror("Ошибка импорта", str(exc))
 
     def refresh(self):
         names = list(self.data["characters"])
