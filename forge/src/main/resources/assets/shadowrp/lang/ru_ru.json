@@ -62,5 +62,13 @@
   "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, oath. Для сдачи предметов поговори с Хранителем Сада.",
   "entity.shadowrp.guide_shadow": "Хранитель Сада Теней",
   "entity.shadowrp.guide_light": "Хранитель Сада Света",
-  "message.shadowrp.other_faction_guide": "Этот Хранитель служит другому Саду. Найди Хранителя своей фракции командой /shadowrp locate."
+  "message.shadowrp.other_faction_guide": "Этот Хранитель служит другому Саду. Найди Хранителя своей фракции командой /shadowrp locate.",
+  "message.shadowrp.journal_trophy_shadow": "Глава 3: трофей Теней. Огненные стержни: %s/2. Передай Хранителю.",
+  "message.shadowrp.journal_trophy_light": "Глава 3: трофей Света. Кварц Нижнего мира: %s/8. Передай Хранителю.",
+  "message.shadowrp.trophy_request_shadow": "Хранитель Сада Теней: принеси 2 огненных стержня из Нижнего мира.",
+  "message.shadowrp.trophy_request_light": "Хранитель Сада Света: принеси 8 единиц кварца Нижнего мира.",
+  "message.shadowrp.trophy_complete": "Трофей фракции передан! Третья глава завершена. Награда: 250 опыта и 2 алмаза.",
+  "message.shadowrp.trophy_done": "Третья глава уже завершена. Трофей передан, награда получена.",
+  "message.shadowrp.status_trophy": "Фракция: %s. Глава 3: добудь трофей в Нижнем мире и передай Хранителю.",
+  "message.shadowrp.status_trophy_done": "Фракция: %s. Третья глава завершена, трофей передан."
 }
