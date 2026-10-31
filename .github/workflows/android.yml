@@ -21,8 +21,8 @@ jobs:
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /opt
-      - name: Build debug APK for testing
-        run: /opt/gradle-8.9/bin/gradle assembleDebug --no-daemon
+      - name: Test portable RP backups and build debug APK
+        run: /opt/gradle-8.9/bin/gradle testDebugUnitTest assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: ShadowRP-debug-apk
