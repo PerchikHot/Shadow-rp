@@ -11,6 +11,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -113,7 +114,10 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
-                state.getBoolean("relic_complete") ? "message.shadowrp.relic_done" :
+                state.getBoolean("nether_claimed") ? "message.shadowrp.nether_done" :
+                state.getBoolean("relic_complete") ?
+                    (state.getBoolean("nether_visited") ? "message.shadowrp.nether_ready" :
+                        "message.shadowrp.nether_request") :
                 state.getBoolean("rank_claimed") ? "message.shadowrp.relic_request_" + state.getString("faction") :
                 state.getBoolean("scout_complete") ? "message.shadowrp.rank_ready" :
                 state.getBoolean("supplies_complete") ? "message.shadowrp.scout_request" :
@@ -152,8 +156,11 @@ public final class ShadowRpMod {
                 objective = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 objective = Component.translatable("message.shadowrp.status_faction");
-            } else if (state.getBoolean("relic_complete")) {
+            } else if (state.getBoolean("nether_claimed")) {
                 objective = Component.translatable("message.shadowrp.journal_complete");
+            } else if (state.getBoolean("relic_complete")) {
+                objective = Component.translatable(state.getBoolean("nether_visited")
+                    ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
             } else if (state.getBoolean("rank_claimed")) {
                 boolean shadow = "shadow".equals(state.getString("faction"));
                 objective = Component.translatable(
@@ -189,8 +196,11 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("nether_claimed")) {
+                message = Component.translatable("message.shadowrp.status_nether_done", state.getString("faction"));
             } else if (state.getBoolean("relic_complete")) {
-                message = Component.translatable("message.shadowrp.status_relic_done", state.getString("faction"));
+                message = Component.translatable(state.getBoolean("nether_visited")
+                    ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
             } else if (state.getBoolean("rank_claimed")) {
                 message = Component.translatable("message.shadowrp.status_relic", state.getString("faction"));
             } else if (state.getBoolean("scout_complete")) {
@@ -236,8 +246,21 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("nether_claimed")) {
+            message = "message.shadowrp.nether_done";
         } else if (state.getBoolean("relic_complete")) {
-            message = "message.shadowrp.relic_done";
+            if (!state.getBoolean("nether_visited")) {
+                message = "message.shadowrp.nether_request";
+            } else {
+                // Completing the expedition is deliberate: the player must
+                // return to the Keeper. Claim once, persist before rewards.
+                state.putBoolean("nether_claimed", true);
+                save(player, state);
+                player.giveExperiencePoints(200);
+                ItemStack reward = new ItemStack(Items.EMERALD, 4);
+                if (!player.getInventory().add(reward)) player.drop(reward, false);
+                message = "message.shadowrp.nether_complete";
+            }
         } else if (state.getBoolean("rank_claimed")) {
             // Chapter two begins only after the first rank has been claimed.
             // Each faction collects a different relic. Consume the exact
@@ -312,6 +335,19 @@ public final class ShadowRpMod {
                 player.sendSystemMessage(Component.translatable("message.shadowrp.welcome"));
             }
         }
+    }
+
+    @SubscribeEvent
+    public void onDimensionChanged(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) ||
+                !Level.NETHER.equals(event.getTo())) return;
+        CompoundTag state = progress(player);
+        // An earlier Nether visit cannot skip the faction relic quest.
+        if (!state.getBoolean("relic_complete") ||
+                state.getBoolean("nether_visited")) return;
+        state.putBoolean("nether_visited", true);
+        save(player, state);
+        player.sendSystemMessage(Component.translatable("message.shadowrp.nether_discovered"));
     }
 
     @SubscribeEvent
