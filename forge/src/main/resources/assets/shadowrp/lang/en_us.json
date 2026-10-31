@@ -62,5 +62,13 @@
   "message.shadowrp.help": "Commands: /shadowrp start, faction shadow|light, status, journal, guide, locate, oath. Talk to the Garden Keeper to deliver quest items.",
   "entity.shadowrp.guide_shadow": "Keeper of the Garden of Shadows",
   "entity.shadowrp.guide_light": "Keeper of the Garden of Light",
-  "message.shadowrp.other_faction_guide": "This Keeper serves the other Garden. Use /shadowrp locate to find your faction's Keeper."
+  "message.shadowrp.other_faction_guide": "This Keeper serves the other Garden. Use /shadowrp locate to find your faction's Keeper.",
+  "message.shadowrp.journal_trophy_shadow": "Chapter three: Shadow trophy. Blaze rods: %s/2. Bring them to the Keeper.",
+  "message.shadowrp.journal_trophy_light": "Chapter three: Light trophy. Nether quartz: %s/8. Bring it to the Keeper.",
+  "message.shadowrp.trophy_request_shadow": "Garden Keeper of Shadows: bring 2 blaze rods from the Nether.",
+  "message.shadowrp.trophy_request_light": "Garden Keeper of Light: bring 8 Nether quartz.",
+  "message.shadowrp.trophy_complete": "Faction trophy delivered! Chapter three complete. Reward: 250 XP and 2 diamonds.",
+  "message.shadowrp.trophy_done": "Chapter three is already complete. Trophy delivered and reward claimed.",
+  "message.shadowrp.status_trophy": "Faction: %s. Chapter three: obtain a Nether trophy and return to the Keeper.",
+  "message.shadowrp.status_trophy_done": "Faction: %s. Chapter three complete; trophy delivered."
 }
