@@ -1,5 +1,4 @@
 """Shadow RP desktop: local character chats and optional OpenAI-compatible AI."""
-import json
 import os
 import threading
 import tkinter as tk
@@ -7,8 +6,8 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
 from rp_storage import load_data, save_data
-from urllib.request import Request, HTTPRedirectHandler, build_opener
 from rp_context import build_rp_messages, validate_endpoint
+from rp_transport import chat_completion
 
 DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.json"
 BG, PANEL, FG, BLUE = "#080f20", "#172640", "#edf5ff", "#60baff"
@@ -22,37 +21,10 @@ def save(data):
     save_data(DATA, data)
 
 
-class _NoRedirect(HTTPRedirectHandler):
-    """Never forward an API key to an unexpected redirected host."""
-    def redirect_request(self, request, fp, code, msg, headers, newurl):
-        return None
-
-
 def generate(endpoint, api_key, model, description, messages, scenario="", memory=""):
     base = validate_endpoint(endpoint)
-    if not model.strip() or len(model) > 120:
-        raise ValueError("Укажи корректное имя модели")
-    url = base + "/chat/completions"
-    payload = {
-        "model": model.strip(),
-        "messages": build_rp_messages(description, scenario, memory, messages),
-    }
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["Authorization"] = "Bearer " + api_key
-    req = Request(url, data=json.dumps(payload).encode("utf-8"),
-                  headers=headers, method="POST")
-    # No redirects: a 302 must not leak the bearer token to another host.
-    opener = build_opener(_NoRedirect())
-    with opener.open(req, timeout=45) as response:
-        raw = response.read(2 * 1024 * 1024 + 1)
-    if len(raw) > 2 * 1024 * 1024:
-        raise ValueError("Ответ модели превышает 2 МБ")
-    result = json.loads(raw)
-    answer = result["choices"][0]["message"]["content"]
-    if not isinstance(answer, str) or not answer.strip():
-        raise ValueError("Модель вернула пустой ответ")
-    return answer[:20000]
+    return chat_completion(base, api_key, model,
+                           build_rp_messages(description, scenario, memory, messages))
 
 
 class App:
@@ -207,6 +179,10 @@ class App:
             self.status.config(text="Сохранено локально. Память меняется только вручную.")
 
     def send(self):
+        # Return is still bound while the button is disabled; prevent
+        # concurrent requests and duplicate user turns.
+        if self.pending:
+            return
         content = self.entry.get().strip()
         if not content or not self.active:
             return
