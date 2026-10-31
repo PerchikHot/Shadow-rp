@@ -214,6 +214,47 @@ public final class ShadowRpMod {
             return 1;
         }));
 
+        // Navigate back to the last recorded Keeper without teleportation.
+        // The direction uses Minecraft's world axes (+X east, +Z south);
+        // cross-dimensional waypoints are reported but never misdirected.
+        root.then(Commands.literal("compass").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            if (!state.contains("guide_dimension", 8) ||
+                    state.getString("faction").isEmpty() ||
+                    !state.getString("guide_faction").equals(state.getString("faction"))) {
+                context.getSource().sendFailure(
+                    Component.translatable("message.shadowrp.home_unknown"));
+                return 0;
+            }
+            String dimension = state.getString("guide_dimension");
+            if (!dimension.equals(player.serverLevel().dimension().location().toString())) {
+                context.getSource().sendSuccess(() -> Component.translatable(
+                    "message.shadowrp.compass_dimension", dimension), false);
+                return 1;
+            }
+            double dx = state.getInt("guide_x") - player.getX();
+            double dz = state.getInt("guide_z") - player.getZ();
+            int distance = (int) Math.round(Math.hypot(dx, dz));
+            String direction;
+            if (distance <= 2) {
+                direction = "here";
+            } else if (Math.abs(dx) > Math.abs(dz) * 2) {
+                direction = dx > 0 ? "east" : "west";
+            } else if (Math.abs(dz) > Math.abs(dx) * 2) {
+                direction = dz > 0 ? "south" : "north";
+            } else {
+                direction = (dz > 0 ? "south" : "north") +
+                    (dx > 0 ? "east" : "west");
+            }
+            final String bearing = direction;
+            context.getSource().sendSuccess(() -> Component.translatable(
+                "message.shadowrp.compass", distance,
+                Component.translatable("message.shadowrp.direction_" + bearing),
+                state.getInt("guide_x"), state.getInt("guide_z")), false);
+            return 1;
+        }));
+
         // A one-time chapter completion reward is persisted server-side.
         // It cannot be repeatedly claimed after relogging or dying.
         root.then(Commands.literal("oath").executes(context -> {
