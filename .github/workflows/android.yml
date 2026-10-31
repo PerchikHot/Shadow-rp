@@ -21,8 +21,18 @@ jobs:
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /opt
+      - name: Generate and verify real Veyrion Android launcher icons
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 tools/build_icons.py
+          python3 tools/build_icons.py --verify
       - name: Test portable RP backups and build debug APK
         run: /opt/gradle-8.9/bin/gradle testDebugUnitTest assembleDebug --no-daemon
+      - name: Verify launcher icons are packaged into APK
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          unzip -l "$APK" | grep -E "res/mipmap-[^/]+/ic_launcher[^/]*\.png" || exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: ShadowRP-debug-apk

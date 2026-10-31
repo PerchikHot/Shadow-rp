@@ -8,6 +8,8 @@ on:
       - 'desktop/rp_backup.py'
       - 'desktop/test_rp_backup.py'
       - 'desktop/test_rp_context.py'
+      - 'assets/launcher.webp'
+      - 'tools/build_icons.py'
       - '.github/workflows/rp-windows.yml'
   workflow_dispatch:
 jobs:
@@ -23,10 +25,17 @@ jobs:
         run: |
           python -m py_compile desktop/rp_chat.py desktop/rp_context.py desktop/rp_backup.py
           python -m unittest discover -s desktop -p "test_rp_*.py" -v
-      - name: Build Windows EXE
+      - name: Generate and verify Windows EXE icon
         run: |
-          python -m pip install pyinstaller
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name ShadowRP desktop/rp_chat.py
+          python -m pip install pillow pyinstaller pefile
+          python tools/build_icons.py
+          python tools/build_icons.py --verify
+      - name: Build Windows EXE with actual Veyrion icon
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --icon assets/ShadowRP.ico --name ShadowRP desktop/rp_chat.py
+      - name: Verify EXE icon resource
+        run: |
+          python -c "import pefile; p=pefile.PE(r'dist/ShadowRP.exe'); assert any(x.id==14 for x in p.DIRECTORY_ENTRY_RESOURCE.entries), 'No Windows group icon resource'"
       - uses: actions/upload-artifact@v4
         with:
           name: ShadowRP-Windows-AI-Chat
