@@ -230,6 +230,11 @@ class MainActivity : Activity() {
   val editor = prefs.edit()
   editor.putString("characters", JSONArray(names).toString())
   imported.forEach { (name, card) ->
+   // Old message timestamps refer to a different history after replacement.
+   // Remove only timestamps for the overwritten character, not other chats.
+   for (index in 0 until (chats[name]?.size ?: 0)) {
+    editor.remove("chat_time_" + name + "_" + index)
+   }
    card.fields.forEach { (field, value) ->
     val key = if (field == "description") "persona" else field
     editor.putString(key + "_" + name, value)
