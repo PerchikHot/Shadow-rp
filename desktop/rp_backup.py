@@ -49,3 +49,16 @@ def encode_backup(data):
     if len(raw) > MAX_BYTES:
         raise ValueError("Архив больше 8 МБ")
     return raw
+
+
+def merge_backups(existing, incoming):
+    """Keep unrelated characters, replace colliding names only after UI confirmation.
+
+    Validate the *merged* archive before writing, including the 8 MiB limit.
+    No data is mutated in place if the incoming archive is invalid.
+    """
+    old = validate_backup(existing)["characters"]
+    new = validate_backup(incoming)["characters"]
+    merged = {"characters": {**old, **new}}
+    encode_backup(merged)
+    return merged
