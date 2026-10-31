@@ -5,6 +5,8 @@ on:
     paths:
       - 'desktop/rp_chat.py'
       - 'desktop/rp_context.py'
+      - 'desktop/rp_backup.py'
+      - 'desktop/test_rp_backup.py'
       - 'desktop/test_rp_context.py'
       - '.github/workflows/rp-windows.yml'
   workflow_dispatch:
@@ -19,7 +21,7 @@ jobs:
           python-version: '3.12'
       - name: Validate RP desktop client
         run: |
-          python -m py_compile desktop/rp_chat.py desktop/rp_context.py
+          python -m py_compile desktop/rp_chat.py desktop/rp_context.py desktop/rp_backup.py
           python -m unittest discover -s desktop -p "test_rp_*.py" -v
       - name: Build Windows EXE
         run: |
