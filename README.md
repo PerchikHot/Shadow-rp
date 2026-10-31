@@ -11,11 +11,11 @@ The actual desktop chat client is `desktop/rp_chat.py`, built into
 `ShadowRP.exe` by [Windows AI Chat workflow](.github/workflows/rp-windows.yml).
 
 Features:
-- Character cards and per-character chat history.
+- Character cards, editable scenario, manually pinned memory and per-character chat history.
 - Local JSON history in `%APPDATA%\\ShadowRP\\chats.json`.
 - Optional OpenAI-compatible chat-completions API (including localhost).
 - Model, API base URL and key supplied in the UI; API key is not stored.
-- Network errors do not delete user messages.
+- Network errors do not delete user messages; HTTP redirects are blocked for API keys.\n- Only the last 30 dialogue messages are sent, alongside the persistent character, scenario and pinned memory.\n- Pinned memory is edited by the user; no unverified personal facts are generated or saved automatically.
 
 Run from source: `python desktop/rp_chat.py`.
 An AI endpoint must be configured to receive AI responses; no model is bundled.
