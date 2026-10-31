@@ -46,6 +46,13 @@ public final class ShadowRpMod {
         LiteralArgumentBuilder<net.minecraft.commands.CommandSourceStack> root =
             Commands.literal("shadowrp").requires(source -> source.getEntity() instanceof ServerPlayer);
 
+        // Discoverability without changing the player's saved faction or quests.
+        root.then(Commands.literal("help").executes(context -> {
+            context.getSource().sendSuccess(() ->
+                Component.translatable("message.shadowrp.help"), false);
+            return 1;
+        }));
+
         root.then(Commands.literal("start").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
@@ -158,6 +165,15 @@ public final class ShadowRpMod {
         root.then(Commands.literal("oath").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
+            // Do not permanently lock a player to an empty faction if an
+            // older or externally edited save has a completed trial.
+            if (!state.getBoolean("started") ||
+                (!"shadow".equals(state.getString("faction")) &&
+                 !"light".equals(state.getString("faction")))) {
+                context.getSource().sendFailure(
+                    Component.translatable("message.shadowrp.guide_requires_faction"));
+                return 0;
+            }
             if (!state.getBoolean("trial_complete")) {
                 context.getSource().sendFailure(Component.translatable("message.shadowrp.oath_locked"));
                 return 0;
