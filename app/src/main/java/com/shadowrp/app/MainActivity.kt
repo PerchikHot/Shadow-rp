@@ -848,6 +848,7 @@ class MainActivity : Activity() {
    card.addView(edit)
    b.addView(card,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(5),dp(7),dp(5),dp(7))})
   }
+  item(b,"📌 Запомнить последнюю сцену","Только по твоему подтверждению; переносится в Windows") {pinScene(name)}
   item(b,"🖼  Изображение персонажа","Выбрать свой портрет из галереи") {chooseAvatar(name)}
   item(b,"✦  Отзывы","Комментарии об этом персонаже") {comments(name)}
   root.addView(button("▶  Начать RP") {chat(name)}.apply {
@@ -1099,6 +1100,7 @@ class MainActivity : Activity() {
   profileRow.addView(info,LinearLayout.LayoutParams(0,-2,1f))
   profileRow.addView(button("⋮"){characterDetail(name)})
   b.addView(profileRow)
+  b.addView(button("📌 Запомнить сцену") { pinScene(name) })
   // A failed model call keeps the last user turn. Retry without duplicating it.
   if(messages.lastOrNull()?.first=="user" && !localPending.contains(name)) {
    b.addView(button("↻ Повторить ответ ИИ") { request(name) })
@@ -1153,6 +1155,27 @@ class MainActivity : Activity() {
    (v as? ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
   }
  }
+ private fun pinScene(name:String) {
+  if(localPending.contains(name)){alert("Дождись завершения ответа ИИ.");return}
+  val history=chats[name]?.toList().orEmpty()
+  val old=prefs.getString("memory_$name","").orEmpty()
+  val proposed=try {RpSceneMemory.pinLastExchange(old,history)}
+   catch(e:IllegalArgumentException){alert(e.message?:"Нельзя закрепить сцену");return}
+  if(proposed==old){alert("Эта сцена уже закреплена");return}
+  AlertDialog.Builder(this).setTitle("📌 Запомнить сцену?")
+   .setMessage("Добавить последние реплики игрока и персонажа в память $name? " +
+    "Они будут передаваться модели и попадут в JSON-экспорт. " +
+    "Ничего не сохраняется без твоего подтверждения.")
+   .setPositiveButton("Закрепить"){_,_->
+    if(localPending.contains(name) || chats[name]?.toList()!=history){
+     alert("История изменилась. Открой сцену снова.");return@setPositiveButton
+    }
+    if(!prefs.edit().putString("memory_$name",proposed).commit()){
+     alert("Не удалось сохранить память.");return@setPositiveButton
+    }
+    if(active==name)chat(name) else characterDetail(name)
+   }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+ }
  private fun requestLocal(name:String) {
   val file=File(File(getExternalFilesDir(null),"models/text"),prefs.getString("local_model","qwen3-0.6b-q4_k_m.gguf").orEmpty())
   if(!file.exists()||!LocalLlm.available){alert("Локальная модель или движок недоступны. Проверь настройки.");return}
@@ -1160,16 +1183,17 @@ class MainActivity : Activity() {
   localStarted[name]=System.currentTimeMillis()
   if(active==name)chat(name)
   val history=chats[name]?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
-  val identity=prefs.getString("identity_name","Игрок").orEmpty()
-  val persona=prefs.getString("persona_$name","").orEmpty().take(250)
-  val memory=prefs.getString("memory_$name","").orEmpty().take(140)
-  val recent=history.takeLast(3).joinToString(""){(role,value)->
-   val tag=if(role=="user")"user" else "assistant"
-   "<|im_start|>$tag\n"+value.take(220)+"<|im_end|>\n"
-  }
-  val isQwen3=file.name.contains("qwen3",ignoreCase=true)
-  val system="Ты $name, персонаж ролевой истории. Характер: $persona. Важная память: $memory. Собеседник: $identity. Отвечай по-русски только от лица $name, не выходи из роли. Продолжай последнее действие и диалог, не обсуждай правила, инструкции или то, что ты ИИ. 1-3 естественные реплики, без HTML-тегов и анализа."
-  val prompt="<|im_start|>system\n"+system+"<|im_end|>\n"+recent+"<|im_start|>assistant\n"+(if(isQwen3)"<think>\n\n</think>\n" else "")
+  val prompt=RpLocalPrompt.build(
+   name=name,
+   persona=prefs.getString("persona_$name","").orEmpty(),
+   appearance=prefs.getString("appearance_$name","").orEmpty(),
+   scenario=prefs.getString("scenario_$name","").orEmpty(),
+   protocol=prefs.getString("protocol_$name","").orEmpty(),
+   memory=prefs.getString("memory_$name","").orEmpty(),
+   identity=prefs.getString("identity_name","Игрок").orEmpty(),
+   history=history,
+   qwen3=file.name.contains("qwen3",ignoreCase=true)
+  )
   thread {
    try{
     val response=LocalLlm().generate(file.absolutePath,prompt,64)
