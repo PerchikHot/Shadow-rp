@@ -225,6 +225,7 @@ class MainActivity : Activity() {
  }
 
  private fun applyRpImport(imported: Map<String, RpBackup.Card>) {
+  if(localPending.isNotEmpty()) throw IllegalStateException("Дождись завершения ответа ИИ перед импортом")
   val names = characters.toMutableList()
   imported.keys.forEach { if (it !in names) names.add(it) }
   val editor = prefs.edit()
@@ -1098,6 +1099,10 @@ class MainActivity : Activity() {
   profileRow.addView(info,LinearLayout.LayoutParams(0,-2,1f))
   profileRow.addView(button("⋮"){characterDetail(name)})
   b.addView(profileRow)
+  // A failed model call keeps the last user turn. Retry without duplicating it.
+  if(messages.lastOrNull()?.first=="user" && !localPending.contains(name)) {
+   b.addView(button("↻ Повторить ответ ИИ") { request(name) })
+  }
   if(messages.isEmpty()) {
    val greeting=prefs.getString("greeting_$name","").orEmpty().ifBlank { "✦ Начни историю с $name\\n\\nСоздай собственный сюжет и отправь первое сообщение." }
    val bubble=text(greeting,19f,Color.WHITE).apply {background=shape(panel);setPadding(dp(18),dp(18),dp(18),dp(18))}
@@ -1125,7 +1130,7 @@ class MainActivity : Activity() {
     override fun run(){
      if(!localPending.contains(name) || active!=name || typing.parent==null)return
      val elapsed=((System.currentTimeMillis()-started)/1000).coerceAtLeast(0)
-     typing.text="● $name печатает… %02d:%02d".format(elapsed/60,elapsed%60)
+     typing.text="● ИИ отвечает… %02d:%02d".format(elapsed/60,elapsed%60)
      timerHandler.postDelayed(this,1000)
     }
    }
@@ -1137,6 +1142,8 @@ class MainActivity : Activity() {
   bar.addView(input,LinearLayout.LayoutParams(0,-2,1f))
   bar.addView(button("➤") {
    val msg=input.text.toString().trim()
+   if(localPending.contains(name)){alert("Дождись ответа ИИ или ошибки подключения.");return@button}
+   if(msg.length>20000){alert("Сообщение превышает 20 000 символов.");return@button}
    if(msg.isNotBlank()){prefs.edit().putLong("chat_time_${name}_${messages.size}",System.currentTimeMillis()).apply();messages.add("user" to msg);save();chat(name);request(name)}
   }.apply {textSize=23f;setPadding(dp(14),dp(18),dp(14),dp(18))})
   root.addView(bar)
@@ -1152,7 +1159,7 @@ class MainActivity : Activity() {
   if(!localPending.add(name)){alert("Qwen уже генерирует ответ. Дождись завершения.");return}
   localStarted[name]=System.currentTimeMillis()
   if(active==name)chat(name)
-  val history=chats[name]?.takeLast(4)?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
+  val history=chats[name]?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
   val identity=prefs.getString("identity_name","Игрок").orEmpty()
   val persona=prefs.getString("persona_$name","").orEmpty().take(250)
   val memory=prefs.getString("memory_$name","").orEmpty().take(140)
@@ -1178,7 +1185,7 @@ class MainActivity : Activity() {
     }
     val cleaned=raw.replace(Regex("(?s)<think>.*?</think>"),"").substringAfterLast("</think>").replace("<|im_end|>","").replace(Regex("(?i)</?br\\s*/?>"),"\\n").replace(Regex("(?i)</?(?:p|div)>"),"\\n").replace(Regex("\\n{3,}"),"\\n\\n").trim()
     if(cleaned.isBlank() || cleaned.startsWith("<think>"))error("Qwen не выдала реплику персонажа. Попробуй ещё раз.")
-    runOnUiThread{localPending.remove(name);localStarted.remove(name);val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to cleaned)};save();if(active==name)chat(name)}
+    runOnUiThread{localPending.remove(name);localStarted.remove(name);val items=chats[name];if(RpReplySafety.canApply(history,items)){prefs.edit().putLong("chat_time_${name}_${items!!.size}",System.currentTimeMillis()).apply();items.add("assistant" to RpReplySafety.clean(cleaned));save()};if(active==name)chat(name)}
    }catch(e:Throwable){runOnUiThread{localPending.remove(name);localStarted.remove(name);if(active==name)chat(name);alert("Ошибка локального ИИ: "+e.message)}}
   }
  }
@@ -1188,7 +1195,10 @@ class MainActivity : Activity() {
   val key=prefs.getString("key","")!!
   if(prefs.getBoolean("local_llm",false)){requestLocal(name);return}
   if(base.isBlank()||model.isBlank()){alert("Настрой ИИ-модель через ⚙");return}
-  val snapshot=chats[name]?.toList()?:return
+  if(!localPending.add(name)){alert("Дождись предыдущего ответа ИИ.");return}
+  localStarted[name]=System.currentTimeMillis()
+  val snapshot=chats[name]?.toList()?:run{localPending.remove(name);localStarted.remove(name);return}
+  if(active==name)chat(name)
   thread {
    try {
     val arr=JSONArray()
@@ -1208,10 +1218,23 @@ class MainActivity : Activity() {
     c.outputStream.use { it.write(data.toByteArray()) }
     val response=readModelResponse(if(c.responseCode in 200..299)c.inputStream else c.errorStream)
     if(c.responseCode !in 200..299)error("HTTP ${c.responseCode}: ${response.take(250)}")
-    val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
+    val reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content"))
     c.disconnect()
-    runOnUiThread { val items=chats[name];if(items!=null){prefs.edit().putLong("chat_time_${name}_${items.size}",System.currentTimeMillis()).apply();items.add("assistant" to reply)};save();if(active==name)chat(name) }
-   }catch(e:Exception){runOnUiThread { alert("Ошибка модели: ${e.message}") }}
+    runOnUiThread {
+     localPending.remove(name);localStarted.remove(name)
+     val items=chats[name]
+     if(RpReplySafety.canApply(snapshot,items)){
+      prefs.edit().putLong("chat_time_${name}_${items!!.size}",System.currentTimeMillis()).apply()
+      items.add("assistant" to reply)
+      save()
+     }
+     if(active==name)chat(name)
+    }
+   }catch(e:Exception){runOnUiThread {
+    localPending.remove(name);localStarted.remove(name)
+    if(active==name)chat(name)
+    alert("Ошибка модели: ${e.message}")
+   }}
   }
  }
  private fun imagePrompt() {
