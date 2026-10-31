@@ -5,7 +5,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
-from rp_backup import encode_backup, decode_backup, MAX_BYTES
+from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
 from urllib.request import Request, HTTPRedirectHandler, build_opener
 from rp_context import build_rp_messages, validate_endpoint
 
@@ -67,6 +67,7 @@ class App:
     def __init__(self, root):
         self.root = root
         self.data = load()
+        self.pending = 0
         self.active = next(iter(self.data["characters"]), None)
         root.title("Shadow RP — ИИ-ролевой чат")
         root.geometry("1050x700")
@@ -126,6 +127,9 @@ class App:
             messagebox.showerror("Ошибка экспорта", str(exc))
 
     def import_chats(self):
+        if self.pending:
+            messagebox.showwarning("Импорт", "Дождись ответа ИИ перед импортом.")
+            return
         path = filedialog.askopenfilename(
             parent=self.root, title="Импорт Shadow RP",
             filetypes=[("JSON", "*.json")])
@@ -135,17 +139,20 @@ class App:
             with open(path, "rb") as source:
                 raw = source.read(MAX_BYTES + 1)
             imported = decode_backup(raw)
+            merged = merge_backups(self.data, imported)
             count = len(imported["characters"])
+            collisions = len(set(imported["characters"]) & set(self.data["characters"]))
             if not messagebox.askyesno(
-                "Импорт", f"Заменить текущие чаты архивом ({count} персонажей)? "
-                "Текущие данные будут перезаписаны. Сначала сделай экспорт.",
+                "Импорт", f"Импортировать {count} персонажей? Совпадающих имён: "
+                f"{collisions}. Их карточки и истории будут заменены, остальные "
+                "персонажи останутся. Рекомендуется сначала экспортировать данные.",
                 parent=self.root):
                 return
-            save(imported)
-            self.data = imported
-            self.active = next(iter(imported["characters"]), None)
+            save(merged)
+            self.data = merged
+            self.active = self.active if self.active in merged["characters"] else next(iter(merged["characters"]), None)
             self.refresh()
-            self.status.config(text="Чаты импортированы")
+            self.status.config(text="Чаты импортированы; остальные сохранены")
         except (OSError, ValueError, UnicodeError) as exc:
             messagebox.showerror("Ошибка импорта", str(exc))
 
@@ -216,6 +223,7 @@ class App:
         self.entry.delete(0, "end")
         self.refresh()
         self.button.config(state="disabled")
+        self.pending += 1
         self.status.config(text="ИИ отвечает…")
         endpoint, model, key = self.endpoint.get().strip(), self.model.get().strip(), self.key.get()
         snapshot = list(item["messages"])
@@ -231,6 +239,7 @@ class App:
                 if answer:
                     item["messages"].append({"role": "assistant", "content": answer})
                     save(self.data)
+                self.pending = max(0, self.pending - 1)
                 self.button.config(state="normal")
                 self.status.config(text="Готово" if answer else "Ошибка подключения — сообщение сохранено")
                 if error:
