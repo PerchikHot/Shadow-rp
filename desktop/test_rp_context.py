@@ -35,6 +35,45 @@ class RpContextTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_rp_messages("", "", "", [], limit=0)
 
+    def test_android_character_card_fields_reach_windows_model(self):
+        """Imported Android appearance, greeting and RP rules affect the prompt."""
+        from unittest.mock import patch
+        from rp_chat import generate
+
+        captured = {}
+        def fake_chat(base, key, model, messages):
+            captured["messages"] = messages
+            return "Готово"
+
+        with patch("rp_chat.chat_completion", side_effect=fake_chat):
+            answer = generate(
+                "https://api.example.org/v1", "", "local-model",
+                "Детектив", [{"role": "user", "content": "Начнём"}],
+                "Ночной поезд", "Мы уже знакомы",
+                appearance="Синий плащ", greeting="Добро пожаловать!",
+                protocol="Говори кратко, от первого лица")
+        self.assertEqual(answer, "Готово")
+        system = captured["messages"][0]["content"]
+        for value in ("Детектив", "Ночной поезд", "Мы уже знакомы",
+                      "Синий плащ", "Добро пожаловать!",
+                      "Говори кратко, от первого лица"):
+            self.assertIn(value, system)
+        self.assertEqual(captured["messages"][-1]["content"], "Начнём")
+
+    def test_portable_fields_are_bounded_and_not_added_as_fake_dialogue(self):
+        result = build_rp_messages(
+            "", "", "", [{"role": "user", "content": "Hi"}],
+            appearance="a" * 9000, greeting="g" * 9000,
+            protocol="p" * 9000)
+        self.assertEqual(len(result), 2)
+        system = result[0]["content"]
+        self.assertIn("a" * 4000, system)
+        self.assertNotIn("a" * 4001, system)
+        self.assertIn("g" * 4000, system)
+        self.assertNotIn("g" * 4001, system)
+        self.assertIn("p" * 4000, system)
+        self.assertNotIn("p" * 4001, system)
+
     def test_endpoint_requires_https_or_explicit_loopback_port(self):
         for value in ("https://api.example.org/v1", "http://localhost:1234/v1",
                       "http://127.0.0.1:11434/v1", "http://[::1]:8080/v1"):
