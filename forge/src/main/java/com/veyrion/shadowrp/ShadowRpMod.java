@@ -96,11 +96,7 @@ public final class ShadowRpMod {
         root.then(Commands.literal("guide").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
-            if (player.isShiftKeyDown()) {
-            player.sendSystemMessage(questObjective(player));
-            return;
-        }
-        if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
+            if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
                 context.getSource().sendFailure(Component.translatable("message.shadowrp.guide_requires_faction"));
                 return 0;
             }
@@ -333,6 +329,10 @@ public final class ShadowRpMod {
             (guide.getTags().contains("shadowrp_guide_light") &&
                 !"light".equals(state.getString("faction")))) {
             player.sendSystemMessage(Component.translatable("message.shadowrp.other_faction_guide"));
+            return;
+        }
+        if (player.isShiftKeyDown()) {
+            player.sendSystemMessage(questObjective(player));
             return;
         }
         if (!state.getBoolean("started") || state.getString("faction").isEmpty()) {
