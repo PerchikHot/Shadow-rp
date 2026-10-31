@@ -596,19 +596,6 @@ public final class ShadowRpMod {
         }
     }
 
-    // Forge creates a new ServerPlayer after death. PersistentData is not
-    // automatically copied: without this handler, faction membership, quest
-    // chapters, guide coordinates and one-time reward flags are lost.
-    @SubscribeEvent
-    public void onClone(PlayerEvent.Clone event) {
-        if (!event.isWasDeath()) return;
-        CompoundTag oldData = event.getOriginal().getPersistentData();
-        if (oldData.contains(SAVE_TAG, net.minecraft.nbt.Tag.TAG_COMPOUND)) {
-            event.getEntity().getPersistentData().put(
-                SAVE_TAG, oldData.getCompound(SAVE_TAG).copy());
-        }
-    }
-
     @SubscribeEvent
     public void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (event.getEntity() instanceof ServerPlayer player &&
