@@ -7,6 +7,7 @@ from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
 from rp_storage import load_data, save_data
 from rp_context import build_rp_messages, validate_endpoint
+from rp_memory import pin_last_exchange
 from rp_transport import chat_completion
 
 DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.json"
@@ -52,6 +53,7 @@ class App:
         tk.Button(sidebar, text="Правила RP", command=lambda: self.edit_field("protocol", "Правила RP", "Стиль речи и правила поведения персонажа:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Импорт чатов", command=self.import_chats).pack(fill="x", padx=10, pady=5)
         main = tk.Frame(root, bg=BG)
@@ -191,6 +193,32 @@ class App:
             item[field] = value[:4000]
             save(self.data)
             self.status.config(text="Сохранено локально. Память меняется только вручную.")
+
+    def pin_scene(self):
+        """Only the player's explicit approval can change long-term memory."""
+        if self.pending or not self.active:
+            messagebox.showwarning("Память", "Дождись ответа ИИ и выбери персонажа.")
+            return
+        item = self.data["characters"][self.active]
+        try:
+            proposed = pin_last_exchange(item.get("memory", ""), item["messages"])
+        except ValueError as exc:
+            messagebox.showwarning("Память", str(exc))
+            return
+        if proposed == item.get("memory", ""):
+            self.status.config(text="Эта сцена уже закреплена")
+            return
+        if not messagebox.askyesno(
+            "Закрепить сцену?",
+            "Добавить последние реплики игрока и персонажа в долговременную "
+            "память? Текст будет передаваться модели в следующих диалогах и "
+            "включаться в ручной экспорт.\n\n" + proposed[-800:],
+            parent=self.root,
+        ):
+            return
+        item["memory"] = proposed
+        save(self.data)
+        self.status.config(text="Сцена закреплена вручную; память сохранена")
 
     def send(self):
         if self.pending:
