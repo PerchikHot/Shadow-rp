@@ -4,10 +4,10 @@ license="MIT"
 
 [[mods]]
 modId="shadowrp"
-version="0.1.0"
+version="0.2.0"
 displayName="Shadow RP"
 authors="Veyrion"
-description='''Early playable story prototype: choose a faction and complete the first trial.'''
+description='''Playable four-chapter faction quest prototype with Garden Keeper NPC and persistent waypoints.'''
 
 [[dependencies.shadowrp]]
 modId="forge"
