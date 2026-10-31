@@ -56,5 +56,7 @@
   "message.shadowrp.nether_ready": "Нижний мир посещён. Вернись к Хранителю за наградой.",
   "message.shadowrp.nether_complete": "Экспедиция в Нижний мир завершена! Награда: 200 опыта и 4 изумруда.",
   "message.shadowrp.nether_done": "Экспедиция в Нижний мир уже завершена. Ожидай следующую главу.",
-  "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена."
+  "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена.",
+  "message.shadowrp.guide_not_found": "Хранитель Сада не найден в радиусе 128 блоков в этом измерении. Вызови его командой /shadowrp guide.",
+  "message.shadowrp.guide_location": "Хранитель Сада: X %s, Y %s, Z %s (это измерение)."
 }
