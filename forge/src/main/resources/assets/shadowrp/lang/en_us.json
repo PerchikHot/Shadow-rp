@@ -59,7 +59,7 @@
   "message.shadowrp.status_nether_done": "Faction: %s. Nether expedition completed; chapter two finished.",
   "message.shadowrp.guide_not_found": "No Garden Keeper found within 128 blocks in this dimension. Use /shadowrp guide to summon one.",
   "message.shadowrp.guide_location": "Garden Keeper: X %s, Y %s, Z %s (this dimension).",
-  "message.shadowrp.help": "Commands: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath, track on|off. Talk to the Garden Keeper to deliver quest items.",
+  "message.shadowrp.help": "Commands: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath, track on|off. Talk to the Garden Keeper to deliver quest items. /shadowrp compass — Keeper direction.",
   "entity.shadowrp.guide_shadow": "Keeper of the Garden of Shadows",
   "entity.shadowrp.guide_light": "Keeper of the Garden of Light",
   "message.shadowrp.other_faction_guide": "This Keeper serves the other Garden. Use /shadowrp locate to find your faction's Keeper.",
@@ -79,5 +79,16 @@
   "message.shadowrp.home_unknown": "No Keeper waypoint saved for your faction yet. Use /shadowrp guide or /shadowrp locate.",
   "message.shadowrp.home_waypoint": "Last known Keeper waypoint: dimension %s, X %s, Y %s, Z %s. The NPC may have moved or disappeared.",
   "message.shadowrp.track_on": "Quest tracker enabled: objective appears every 10 seconds.",
-  "message.shadowrp.track_off": "Quest tracker disabled."
+  "message.shadowrp.track_off": "Quest tracker disabled.",
+  "message.shadowrp.compass": "Keeper: %s blocks away, head %s (X: %s, Z: %s).",
+  "message.shadowrp.compass_dimension": "The Keeper is in another dimension: %s. Return there first.",
+  "message.shadowrp.direction_here": "nearby",
+  "message.shadowrp.direction_east": "east",
+  "message.shadowrp.direction_west": "west",
+  "message.shadowrp.direction_south": "south",
+  "message.shadowrp.direction_north": "north",
+  "message.shadowrp.direction_southeast": "southeast",
+  "message.shadowrp.direction_southwest": "southwest",
+  "message.shadowrp.direction_northeast": "northeast",
+  "message.shadowrp.direction_northwest": "northwest"
 }
