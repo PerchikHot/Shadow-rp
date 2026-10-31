@@ -93,5 +93,43 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(len(result), 20000)
 
 
+class RetryUiTests(unittest.TestCase):
+    def test_retry_reuses_existing_user_turn(self):
+        from rp_chat import App
+
+        class FakeApp:
+            pending = 0
+            active = "Test"
+            data = {"characters": {"Test": {"messages": [
+                {"role": "user", "content": "Продолжай"}
+            ]}}}
+            requested = []
+            def _request_reply(self, name, item):
+                self.requested.append((name, len(item["messages"])))
+
+        fake = FakeApp()
+        App.retry_last(fake)
+        self.assertEqual(fake.requested, [("Test", 1)])
+        self.assertEqual(len(fake.data["characters"]["Test"]["messages"]), 1)
+        fake.pending = 1
+        App.retry_last(fake)
+        self.assertEqual(len(fake.requested), 1)
+
+    def test_retry_is_unavailable_after_assistant_reply(self):
+        from rp_chat import App
+
+        class FakeApp:
+            pending = 0
+            active = "Test"
+            data = {"characters": {"Test": {"messages": [
+                {"role": "user", "content": "Привет"},
+                {"role": "assistant", "content": "Привет"}
+            ]}}}
+            def _request_reply(self, *args):
+                raise AssertionError("Must not retry completed turn")
+
+        App.retry_last(FakeApp())
+
+
 if __name__ == "__main__":
     unittest.main()
