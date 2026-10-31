@@ -59,7 +59,7 @@
   "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена.",
   "message.shadowrp.guide_not_found": "Хранитель Сада не найден в радиусе 128 блоков в этом измерении. Вызови его командой /shadowrp guide.",
   "message.shadowrp.guide_location": "Хранитель Сада: X %s, Y %s, Z %s (это измерение).",
-  "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath, track on|off. Для сдачи предметов поговори с Хранителем Сада.",
+  "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath, track on|off. Для сдачи предметов поговори с Хранителем Сада. /shadowrp compass — Keeper direction.",
   "entity.shadowrp.guide_shadow": "Хранитель Сада Теней",
   "entity.shadowrp.guide_light": "Хранитель Сада Света",
   "message.shadowrp.other_faction_guide": "Этот Хранитель служит другому Саду. Найди Хранителя своей фракции командой /shadowrp locate.",
@@ -79,5 +79,16 @@
   "message.shadowrp.home_unknown": "Метка Хранителя ещё не сохранена для твоей фракции. Используй /shadowrp guide или /shadowrp locate.",
   "message.shadowrp.home_waypoint": "Последняя известная метка Хранителя: измерение %s, X %s, Y %s, Z %s. Местоположение NPC не гарантируется.",
   "message.shadowrp.track_on": "Отслеживание задания включено: цель показывается каждые 10 секунд.",
-  "message.shadowrp.track_off": "Отслеживание задания выключено."
+  "message.shadowrp.track_off": "Отслеживание задания выключено.",
+  "message.shadowrp.compass": "Хранитель: %s блоков, направление — %s (X: %s, Z: %s).",
+  "message.shadowrp.compass_dimension": "Хранитель находится в другом измерении: %s. Сначала вернись туда.",
+  "message.shadowrp.direction_here": "рядом",
+  "message.shadowrp.direction_east": "восток",
+  "message.shadowrp.direction_west": "запад",
+  "message.shadowrp.direction_south": "юг",
+  "message.shadowrp.direction_north": "север",
+  "message.shadowrp.direction_southeast": "юго-восток",
+  "message.shadowrp.direction_southwest": "юго-запад",
+  "message.shadowrp.direction_northeast": "северо-восток",
+  "message.shadowrp.direction_northwest": "северо-запад"
 }
