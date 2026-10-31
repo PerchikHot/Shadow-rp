@@ -37,9 +37,18 @@
   "message.shadowrp.rank_done": "Garden Keeper: you already earned the Garden Defender rank. Chapter one is complete.",
   "message.shadowrp.status_rank_ready": "Faction: %s. Scouting complete. Return to the Keeper for your rank.",
   "message.shadowrp.status_rank": "Faction: %s. Garden Defender rank earned. Chapter one complete.",
-  "message.shadowrp.journal_complete": "Garden Defender: chapter one completed. Await the next chapter.",
+  "message.shadowrp.journal_complete": "Chapter two: faction relic delivered. Await the next assignment.",
   "message.shadowrp.journal_trial": "Current objective: defeat hostile mobs (%s/3).",
   "message.shadowrp.journal_supplies": "Garden Keeper supplies: wheat %s/8, oak logs %s/4. Right-click the Keeper to deliver.",
   "message.shadowrp.journal_scout_shadow": "Garden of Shadows scouting: skeletons defeated %s/5.",
-  "message.shadowrp.journal_scout_light": "Garden of Light scouting: zombies defeated %s/5."
+  "message.shadowrp.journal_scout_light": "Garden of Light scouting: zombies defeated %s/5.",
+  "message.shadowrp.relic_request_shadow": "Garden Keeper: chapter two begins. Bring 2 ender pearls to recover the Shadow relic.",
+  "message.shadowrp.relic_request_light": "Garden Keeper: chapter two begins. Bring 8 glowstone dust to recover the Light relic.",
+  "message.shadowrp.relic_complete_shadow": "Shadow relic delivered! Reward: 150 XP and 2 obsidian. Chapter two's first task is complete.",
+  "message.shadowrp.relic_complete_light": "Light relic delivered! Reward: 150 XP and 2 gold ingots. Chapter two's first task is complete.",
+  "message.shadowrp.relic_done": "Garden Keeper: your faction's relic has already been delivered. Await further orders.",
+  "message.shadowrp.journal_relic_shadow": "Chapter two: Shadow relic. Ender pearls: %s/2. Bring them to the Keeper.",
+  "message.shadowrp.journal_relic_light": "Chapter two: Light relic. Glowstone dust: %s/8. Bring it to the Keeper.",
+  "message.shadowrp.status_relic": "Faction: %s. Garden Defender. Chapter two: recover the faction relic.",
+  "message.shadowrp.status_relic_done": "Faction: %s. Garden Defender. Faction relic delivered; chapter two is underway."
 }
