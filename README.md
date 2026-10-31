@@ -1,22 +1,30 @@
 # Shadow RP
 
-Shadow RP is an AI-powered roleplay chat application, **not** a Minecraft mod.
+Shadow RP — AI roleplay chat for Android and Windows. **Not a Minecraft mod.**
 
 ## Android
-The Android application is built from the `app/` module using the
-[Build Android APK](.github/workflows/android.yml) workflow.
+The Android app is in `app/`. Its APK is built by
+[Android workflow](.github/workflows/android.yml).
 
-## Windows
-The previous Windows companion preview inspected Minecraft installations and
-was unrelated to Shadow RP's intended roleplay chat experience. It must not be
-presented as a Shadow RP desktop client. A proper Windows RP chat client and
-its build pipeline are still pending.
+## Windows RP chat (new)
+The actual desktop chat client is `desktop/rp_chat.py`, built into
+`ShadowRP.exe` by [Windows AI Chat workflow](.github/workflows/rp-windows.yml).
 
-## Project boundaries
-Shadow Garden is a separate Minecraft Forge project developed locally on the
-owner's laptop. Its files and builds do not belong in this repository.
+Features:
+- Character cards and per-character chat history.
+- Local JSON history in `%APPDATA%\\ShadowRP\\chats.json`.
+- Optional OpenAI-compatible chat-completions API (including localhost).
+- Model, API base URL and key supplied in the UI; API key is not stored.
+- Network errors do not delete user messages.
 
-## Current limitations
-The existing `forge/` and `desktop/` directories are legacy, unrelated
-work and are not part of the Shadow RP product. They are retained temporarily
-to avoid destructive removal before the user has a separate backup.
+Run from source: `python desktop/rp_chat.py`.
+An AI endpoint must be configured to receive AI responses; no model is bundled.
+The Windows workflow must pass before the EXE can be treated as a verified build.
+
+## Separation from Shadow Garden
+Shadow Garden is a separate Minecraft Forge 1.20.1 project maintained locally
+on the owner's laptop, not in this GitHub repository.
+
+The old `forge/` directory and `desktop/shadow_launcher.py` are unrelated
+legacy files, retained temporarily to avoid destructive deletion without backup.
+Their workflows have been disabled. They are **not** Shadow RP deliverables.
