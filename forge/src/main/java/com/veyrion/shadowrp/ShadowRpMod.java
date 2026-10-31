@@ -101,14 +101,26 @@ public final class ShadowRpMod {
                 return 0;
             }
             final String factionId = state.getString("faction");
-            boolean existing = !player.serverLevel().getEntitiesOfClass(
-                Villager.class, player.getBoundingBox().inflate(32.0),
+            // Match /shadowrp locate's radius. Otherwise walking just 33
+            // blocks and calling /guide again can flood a village with NPCs.
+            var nearbyGuides = player.serverLevel().getEntitiesOfClass(
+                Villager.class, player.getBoundingBox().inflate(128.0),
                 villager -> villager.getTags().contains("shadowrp_guide") &&
-                    (!villager.getTags().contains("shadowrp_guide_shadow") &&
-                     !villager.getTags().contains("shadowrp_guide_light") ||
-                     villager.getTags().contains("shadowrp_guide_" + factionId))).isEmpty();
-            if (existing) {
-                context.getSource().sendSuccess(() -> Component.translatable("message.shadowrp.guide_nearby"), false);
+                    ((!villager.getTags().contains("shadowrp_guide_shadow") &&
+                      !villager.getTags().contains("shadowrp_guide_light")) ||
+                     villager.getTags().contains("shadowrp_guide_" + factionId)));
+            if (!nearbyGuides.isEmpty()) {
+                Villager nearest = nearbyGuides.get(0);
+                for (Villager candidate : nearbyGuides) {
+                    if (candidate.distanceToSqr(player) < nearest.distanceToSqr(player)) {
+                        nearest = candidate;
+                    }
+                }
+                final Villager guide = nearest;
+                context.getSource().sendSuccess(() -> Component.translatable(
+                    "message.shadowrp.guide_location",
+                    guide.blockPosition().getX(), guide.blockPosition().getY(),
+                    guide.blockPosition().getZ()), false);
                 return 1;
             }
             Villager guide = EntityType.VILLAGER.create(player.serverLevel());
