@@ -214,8 +214,13 @@ public final class ShadowRpMod {
                 objective = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 objective = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("trophy_complete")) {
+                objective = Component.translatable("message.shadowrp.trophy_done");
             } else if (state.getBoolean("nether_claimed")) {
-                objective = Component.translatable("message.shadowrp.journal_complete");
+                boolean shadow = "shadow".equals(state.getString("faction"));
+                objective = Component.translatable(
+                    "message.shadowrp.journal_trophy_" + state.getString("faction"),
+                    countInventoryItem(player, shadow ? Items.BLAZE_ROD : Items.QUARTZ));
             } else if (state.getBoolean("relic_complete")) {
                 objective = Component.translatable(state.getBoolean("nether_visited")
                     ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
@@ -254,8 +259,10 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("trophy_complete")) {
+                message = Component.translatable("message.shadowrp.status_trophy_done", state.getString("faction"));
             } else if (state.getBoolean("nether_claimed")) {
-                message = Component.translatable("message.shadowrp.status_nether_done", state.getString("faction"));
+                message = Component.translatable("message.shadowrp.status_trophy", state.getString("faction"));
             } else if (state.getBoolean("relic_complete")) {
                 message = Component.translatable(state.getBoolean("nether_visited")
                     ? "message.shadowrp.nether_ready" : "message.shadowrp.nether_request");
@@ -313,8 +320,26 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("trophy_complete")) {
+            message = "message.shadowrp.trophy_done";
         } else if (state.getBoolean("nether_claimed")) {
-            message = "message.shadowrp.nether_done";
+            // Chapter three: a faction-specific Nether trophy, turned in
+            // deliberately at the correct Keeper. Rewards cannot be farmed.
+            boolean shadow = "shadow".equals(state.getString("faction"));
+            net.minecraft.world.item.Item trophy = shadow ? Items.BLAZE_ROD : Items.QUARTZ;
+            int required = shadow ? 2 : 8;
+            if (countInventoryItem(player, trophy) < required) {
+                message = "message.shadowrp.trophy_request_" + state.getString("faction");
+            } else {
+                removeInventoryItem(player, trophy, required);
+                player.getInventory().setChanged();
+                state.putBoolean("trophy_complete", true);
+                save(player, state);
+                player.giveExperiencePoints(250);
+                ItemStack reward = new ItemStack(Items.DIAMOND, 2);
+                if (!player.getInventory().add(reward)) player.drop(reward, false);
+                message = "message.shadowrp.trophy_complete";
+            }
         } else if (state.getBoolean("relic_complete")) {
             if (!state.getBoolean("nether_visited")) {
                 message = "message.shadowrp.nether_request";
