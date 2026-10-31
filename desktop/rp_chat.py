@@ -21,10 +21,13 @@ def save(data):
     save_data(DATA, data)
 
 
-def generate(endpoint, api_key, model, description, messages, scenario="", memory=""):
+def generate(endpoint, api_key, model, description, messages, scenario="", memory="",
+             *, appearance="", greeting="", protocol=""):
     base = validate_endpoint(endpoint)
-    return chat_completion(base, api_key, model,
-                           build_rp_messages(description, scenario, memory, messages))
+    return chat_completion(
+        base, api_key, model,
+        build_rp_messages(description, scenario, memory, messages,
+                          appearance=appearance, greeting=greeting, protocol=protocol))
 
 
 class App:
@@ -44,6 +47,9 @@ class App:
         self.characters.bind("<<ListboxSelect>>", self.select)
         tk.Button(sidebar, text="+ Персонаж", command=self.add).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Описание персонажа", command=self.edit).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Внешность", command=lambda: self.edit_field("appearance", "Внешность", "Внешность, одежда, особенности:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Приветствие", command=lambda: self.edit_field("greeting", "Приветствие", "Первая реплика персонажа:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Правила RP", command=lambda: self.edit_field("protocol", "Правила RP", "Стиль речи и правила поведения персонажа:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
@@ -135,7 +141,10 @@ class App:
         self.history.config(state="normal")
         self.history.delete("1.0", "end")
         if self.active:
-            for msg in self.data["characters"][self.active]["messages"]:
+            card = self.data["characters"][self.active]
+            if not card["messages"] and card.get("greeting", "").strip():
+                self.history.insert("end", f"{self.active}: {card['greeting']}\n\n")
+            for msg in card["messages"]:
                 speaker = "Ты" if msg["role"] == "user" else self.active
                 self.history.insert("end", f"{speaker}: {msg['content']}\n\n")
         self.history.config(state="disabled")
@@ -168,11 +177,8 @@ class App:
     def edit(self):
         if not self.active:
             return
-        item = self.data["characters"][self.active]
-        description = simpledialog.askstring("Карточка персонажа", "Характер, мир, правила RP:", initialvalue=item["description"], parent=self.root)
-        if description is not None:
-            item["description"] = description
-            save(self.data)
+        self.edit_field("description", "Карточка персонажа",
+                        "Характер, мир, правила RP:")
 
     def edit_field(self, field, title, prompt):
         if not self.active:
@@ -219,11 +225,15 @@ class App:
         description = item.get("description", "")
         scenario = item.get("scenario", "")
         memory = item.get("memory", "")
+        appearance = item.get("appearance", "")
+        greeting = item.get("greeting", "")
+        protocol = item.get("protocol", "")
 
         def work():
             try:
                 answer = generate(endpoint, key, model, description, snapshot,
-                                  scenario, memory)
+                                  scenario, memory, appearance=appearance,
+                                  greeting=greeting, protocol=protocol)
                 error = None
             except Exception as exc:
                 answer, error = None, str(exc)
