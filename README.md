@@ -35,7 +35,7 @@ After installing the JAR into a compatible Forge 1.20.1 instance, the
 4. For the Garden of Shadows, defeat **5 skeletons**; for the Garden of
    Light, defeat **5 zombies**. Return to the Keeper for the Defender rank.
 
-`/shadowrp journal` displays the next objective, live inventory counts for
+**Sneak + right-click** the Garden Keeper to view the current objective without handing over items or claiming a reward. This is a read-only alternative to the command.\n\n`/shadowrp journal` displays the next objective, live inventory counts for
 the supply quest, and scouting progress. `/shadowrp status` gives a short
 summary. Progress is stored server-side per player and copied on respawn;
 rewards are intended to be one-time. After the oath, faction switching is
