@@ -50,5 +50,11 @@
   "message.shadowrp.journal_relic_shadow": "Chapter two: Shadow relic. Ender pearls: %s/2. Bring them to the Keeper.",
   "message.shadowrp.journal_relic_light": "Chapter two: Light relic. Glowstone dust: %s/8. Bring it to the Keeper.",
   "message.shadowrp.status_relic": "Faction: %s. Garden Defender. Chapter two: recover the faction relic.",
-  "message.shadowrp.status_relic_done": "Faction: %s. Garden Defender. Faction relic delivered; chapter two is underway."
+  "message.shadowrp.status_relic_done": "Faction: %s. Garden Defender. Faction relic delivered; chapter two is underway.",
+  "message.shadowrp.nether_request": "Chapter two: enter the Nether after delivering your faction relic, then return to the Garden Keeper.",
+  "message.shadowrp.nether_discovered": "Nether reconnaissance complete! Return to the Garden Keeper to report.",
+  "message.shadowrp.nether_ready": "Nether visited. Return to the Garden Keeper for your expedition reward.",
+  "message.shadowrp.nether_complete": "Nether expedition complete! Reward: 200 XP and 4 emeralds.",
+  "message.shadowrp.nether_done": "The Nether expedition is already complete. Await the next chapter.",
+  "message.shadowrp.status_nether_done": "Faction: %s. Nether expedition completed; chapter two finished."
 }
