@@ -20,6 +20,9 @@ on:
       - 'tools/build_icons.py'
       - '.github/workflows/rp-windows.yml'
   workflow_dispatch:
+concurrency:
+  group: shadow-rp-windows-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -68,7 +71,14 @@ jobs:
             gh release create $tag --repo $env:GITHUB_REPOSITORY --title 'Shadow RP — Windows AI Chat' --notes "Version: $published" --latest=false
             if ($LASTEXITCODE -ne 0) { throw 'Cannot create Windows release' }
           }
-          gh release upload $tag $exe --repo $env:GITHUB_REPOSITORY --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot upload Windows EXE' }
+          # GitHub Releases uploads can transiently return HTTP 404 while an
+          # existing asset is being replaced. Retry without overlapping runs.
+          $uploaded = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            gh release upload $tag $exe --repo $env:GITHUB_REPOSITORY --clobber
+            if ($LASTEXITCODE -eq 0) { $uploaded = $true; break }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (3 * $attempt) }
+          }
+          if (!$uploaded) { throw 'Cannot upload Windows EXE after 3 attempts' }
           gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes "Shadow RP AI roleplay chat Windows EXE.`nVersion: $published"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot update Windows release version' }
