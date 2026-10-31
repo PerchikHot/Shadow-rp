@@ -27,11 +27,14 @@ jobs:
         run: gradle -p forge build --no-daemon --stacktrace
       - name: Verify JAR exists
         run: |
-          test -s forge/build/libs/shadowrp-forge-1.20.1-0.1.0.jar
-          unzip -l forge/build/libs/shadowrp-forge-1.20.1-0.1.0.jar | grep 'META-INF/mods.toml'
+          jar=$(find forge/build/libs -maxdepth 1 -type f -name 'shadowrp-forge-1.20.1-*.jar' ! -name '*-sources.jar' | head -n 1)
+          test -n "$jar"
+          test -s "$jar"
+          unzip -l "$jar" | grep 'META-INF/mods.toml'
+          echo "FORGE_JAR=$jar" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: ShadowRP-Forge-1.20.1-untested
-          path: forge/build/libs/shadowrp-forge-1.20.1-0.1.0.jar
+          path: ${{ env.FORGE_JAR }}
           if-no-files-found: error
           retention-days: 14
