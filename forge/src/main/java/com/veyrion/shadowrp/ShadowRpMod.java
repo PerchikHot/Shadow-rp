@@ -125,6 +125,34 @@ public final class ShadowRpMod {
             return 1;
         }));
 
+        // Find an existing Keeper without spawning another NPC or changing
+        // quest state. Coordinates refer only to the player's current dimension.
+        root.then(Commands.literal("locate").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            Villager nearest = null;
+            double nearestDistance = Double.POSITIVE_INFINITY;
+            for (Villager villager : player.serverLevel().getEntitiesOfClass(
+                    Villager.class, player.getBoundingBox().inflate(128.0),
+                    candidate -> candidate.getTags().contains("shadowrp_guide"))) {
+                double distance = villager.distanceToSqr(player);
+                if (distance < nearestDistance) {
+                    nearest = villager;
+                    nearestDistance = distance;
+                }
+            }
+            if (nearest == null) {
+                context.getSource().sendFailure(
+                    Component.translatable("message.shadowrp.guide_not_found"));
+                return 0;
+            }
+            final Villager guide = nearest;
+            context.getSource().sendSuccess(() -> Component.translatable(
+                "message.shadowrp.guide_location",
+                guide.blockPosition().getX(), guide.blockPosition().getY(),
+                guide.blockPosition().getZ()), false);
+            return 1;
+        }));
+
         // A one-time chapter completion reward is persisted server-side.
         // It cannot be repeatedly claimed after relogging or dying.
         root.then(Commands.literal("oath").executes(context -> {
