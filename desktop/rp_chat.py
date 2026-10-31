@@ -73,6 +73,8 @@ class App:
         self.entry.bind("<Return>", lambda _: self.send())
         self.button = tk.Button(bottom, text="Отправить ИИ", command=self.send)
         self.button.pack(side="left", padx=6)
+        self.retry_button = tk.Button(bottom, text="Повторить ответ", command=self.retry_last, state="disabled")
+        self.retry_button.pack(side="left", padx=3)
         self.status = tk.Label(main, text="Подключи совместимый API или локальную модель", bg=BG, fg=BLUE)
         self.status.pack(anchor="w")
         if self.recovered_backup:
@@ -138,6 +140,12 @@ class App:
                 self.history.insert("end", f"{speaker}: {msg['content']}\n\n")
         self.history.config(state="disabled")
         self.history.see("end")
+        # A failed request leaves the user turn intact, so retry it without
+        # creating a duplicate message or losing character continuity.
+        item = self.data["characters"].get(self.active) if self.active else None
+        last = item["messages"][-1] if item and item["messages"] else None
+        self.retry_button.config(state="normal" if not self.pending and
+                                 last and last["role"] == "user" else "disabled")
 
     def select(self, _):
         selection = self.characters.curselection()
@@ -179,8 +187,6 @@ class App:
             self.status.config(text="Сохранено локально. Память меняется только вручную.")
 
     def send(self):
-        # Return is still bound while the button is disabled; prevent
-        # concurrent requests and duplicate user turns.
         if self.pending:
             return
         content = self.entry.get().strip()
@@ -191,27 +197,45 @@ class App:
         item["messages"].append({"role": "user", "content": content})
         save(self.data)
         self.entry.delete(0, "end")
-        self.refresh()
-        self.button.config(state="disabled")
+        self._request_reply(name, item)
+
+    def retry_last(self):
+        if self.pending or not self.active:
+            return
+        name = self.active
+        item = self.data["characters"][name]
+        if not item["messages"] or item["messages"][-1]["role"] != "user":
+            return
+        self._request_reply(name, item)
+
+    def _request_reply(self, name, item):
         self.pending += 1
+        self.button.config(state="disabled")
+        self.retry_button.config(state="disabled")
         self.status.config(text="ИИ отвечает…")
+        self.refresh()
         endpoint, model, key = self.endpoint.get().strip(), self.model.get().strip(), self.key.get()
         snapshot = list(item["messages"])
+        description = item.get("description", "")
+        scenario = item.get("scenario", "")
+        memory = item.get("memory", "")
+
         def work():
             try:
-                answer = generate(endpoint, key, model, item.get("description", ""),
-                                  snapshot, item.get("scenario", ""),
-                                  item.get("memory", ""))
+                answer = generate(endpoint, key, model, description, snapshot,
+                                  scenario, memory)
                 error = None
             except Exception as exc:
                 answer, error = None, str(exc)
+
             def finish():
                 if answer:
                     item["messages"].append({"role": "assistant", "content": answer})
                     save(self.data)
                 self.pending = max(0, self.pending - 1)
                 self.button.config(state="normal")
-                self.status.config(text="Готово" if answer else "Ошибка подключения — сообщение сохранено")
+                self.status.config(text="Готово" if answer else
+                                   "Ошибка подключения — сообщение сохранено, можно повторить")
                 if error:
                     messagebox.showerror("ИИ недоступен", error)
                 self.refresh()
