@@ -17,6 +17,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -250,6 +251,31 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> questObjective(player), false);
             return 1;
         }));
+
+        // Optional server-side action-bar tracker. Players choose whether
+        // to receive a concise objective reminder; no client mod is needed.
+        LiteralArgumentBuilder<net.minecraft.commands.CommandSourceStack> track =
+            Commands.literal("track");
+        track.then(Commands.literal("on").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            state.putBoolean("track_objective", true);
+            save(player, state);
+            player.displayClientMessage(questObjective(player), true);
+            context.getSource().sendSuccess(() ->
+                Component.translatable("message.shadowrp.track_on"), false);
+            return 1;
+        }));
+        track.then(Commands.literal("off").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            state.putBoolean("track_objective", false);
+            save(player, state);
+            context.getSource().sendSuccess(() ->
+                Component.translatable("message.shadowrp.track_off"), false);
+            return 1;
+        }));
+        root.then(track);
 
         root.then(Commands.literal("status").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
@@ -496,6 +522,16 @@ public final class ShadowRpMod {
             int taken = Math.min(stack.getCount(), amount);
             stack.shrink(taken);
             amount -= taken;
+        }
+    }
+
+    @SubscribeEvent
+    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END ||
+                !(event.player instanceof ServerPlayer player) ||
+                player.tickCount % 200 != 0) return;
+        if (progress(player).getBoolean("track_objective")) {
+            player.displayClientMessage(questObjective(player), true);
         }
     }
 
