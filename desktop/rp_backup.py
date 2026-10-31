@@ -26,11 +26,12 @@ def validate_backup(data):
                 raise ValueError("Некорректное сообщение")
             clean.append({"role": msg["role"], "content": msg["content"]})
         entry = {"messages": clean}
-        for field in ("description", "scenario", "memory"):
+        for field in ("description", "scenario", "memory", "appearance", "greeting", "protocol"):
             value = card.get(field, "")
             if not isinstance(value, str) or len(value) > 30000:
                 raise ValueError("Некорректное поле " + field)
-            entry[field] = value
+            if field in ("description", "scenario", "memory") or field in card:
+                entry[field] = value
         result[name] = entry
         if len(result) > MAX_CHARACTERS:
             raise ValueError("Слишком много персонажей")
