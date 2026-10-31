@@ -50,5 +50,11 @@
   "message.shadowrp.journal_relic_shadow": "Глава 2: реликвия Теней. Жемчуг Края: %s/2. Принеси Хранителю.",
   "message.shadowrp.journal_relic_light": "Глава 2: реликвия Света. Светокаменная пыль: %s/8. Принеси Хранителю.",
   "message.shadowrp.status_relic": "Фракция: %s. Защитник Сада. Глава 2: поиск реликвии фракции.",
-  "message.shadowrp.status_relic_done": "Фракция: %s. Защитник Сада. Реликвия передана, вторая глава началась."
+  "message.shadowrp.status_relic_done": "Фракция: %s. Защитник Сада. Реликвия передана, вторая глава началась.",
+  "message.shadowrp.nether_request": "Глава 2: после передачи реликвии войди в Нижний мир и вернись к Хранителю Сада.",
+  "message.shadowrp.nether_discovered": "Разведка Нижнего мира завершена! Вернись к Хранителю Сада с докладом.",
+  "message.shadowrp.nether_ready": "Нижний мир посещён. Вернись к Хранителю за наградой.",
+  "message.shadowrp.nether_complete": "Экспедиция в Нижний мир завершена! Награда: 200 опыта и 4 изумруда.",
+  "message.shadowrp.nether_done": "Экспедиция в Нижний мир уже завершена. Ожидай следующую главу.",
+  "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена."
 }
