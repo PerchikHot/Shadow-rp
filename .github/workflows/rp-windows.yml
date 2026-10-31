@@ -57,13 +57,14 @@ jobs:
           if (!(Test-Path $exe)) { throw 'Verified Windows EXE missing' }
           $version = (Select-String -Path 'app/build.gradle.kts' -Pattern 'versionName\s*=\s*"([^"]+)"' | Select-Object -First 1).Matches.Groups[1].Value
           if (!$version) { throw 'Android/Windows release version missing' }
+          $published = "$version+$env:GITHUB_RUN_NUMBER"
           $tag = 'shadow-rp-windows'
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --title 'Shadow RP — Windows AI Chat' --notes "Version: $version" --latest=false
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --title 'Shadow RP — Windows AI Chat' --notes "Version: $published" --latest=false
             if ($LASTEXITCODE -ne 0) { throw 'Cannot create Windows release' }
           }
           gh release upload $tag $exe --repo $env:GITHUB_REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Cannot upload Windows EXE' }
-          gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes "Shadow RP AI roleplay chat Windows EXE.`nVersion: $version"
+          gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes "Shadow RP AI roleplay chat Windows EXE.`nVersion: $published"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot update Windows release version' }
