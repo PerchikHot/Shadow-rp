@@ -1,0 +1,28 @@
+name: Shadow RP Windows AI Chat
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/rp_chat.py'
+      - '.github/workflows/rp-windows.yml'
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate RP desktop client
+        run: python -m py_compile desktop/rp_chat.py
+      - name: Build Windows EXE
+        run: |
+          python -m pip install pyinstaller
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name ShadowRP desktop/rp_chat.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ShadowRP-Windows-AI-Chat
+          path: dist/ShadowRP.exe
+          if-no-files-found: error
