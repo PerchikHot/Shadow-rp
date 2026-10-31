@@ -113,7 +113,8 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
-                state.getBoolean("rank_claimed") ? "message.shadowrp.rank_done" :
+                state.getBoolean("relic_complete") ? "message.shadowrp.relic_done" :
+                state.getBoolean("rank_claimed") ? "message.shadowrp.relic_request_" + state.getString("faction") :
                 state.getBoolean("scout_complete") ? "message.shadowrp.rank_ready" :
                 state.getBoolean("supplies_complete") ? "message.shadowrp.scout_request" :
                 "message.shadowrp.supplies_request"), false);
@@ -151,8 +152,13 @@ public final class ShadowRpMod {
                 objective = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 objective = Component.translatable("message.shadowrp.status_faction");
-            } else if (state.getBoolean("rank_claimed")) {
+            } else if (state.getBoolean("relic_complete")) {
                 objective = Component.translatable("message.shadowrp.journal_complete");
+            } else if (state.getBoolean("rank_claimed")) {
+                boolean shadow = "shadow".equals(state.getString("faction"));
+                objective = Component.translatable(
+                    "message.shadowrp.journal_relic_" + state.getString("faction"),
+                    countInventoryItem(player, shadow ? Items.ENDER_PEARL : Items.GLOWSTONE_DUST));
             } else if (state.getBoolean("scout_complete")) {
                 objective = Component.translatable("message.shadowrp.status_rank_ready",
                     state.getString("faction"));
@@ -183,8 +189,10 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("relic_complete")) {
+                message = Component.translatable("message.shadowrp.status_relic_done", state.getString("faction"));
             } else if (state.getBoolean("rank_claimed")) {
-                message = Component.translatable("message.shadowrp.status_rank", state.getString("faction"));
+                message = Component.translatable("message.shadowrp.status_relic", state.getString("faction"));
             } else if (state.getBoolean("scout_complete")) {
                 message = Component.translatable("message.shadowrp.status_rank_ready", state.getString("faction"));
             } else if (state.getBoolean("supplies_complete")) {
@@ -228,8 +236,28 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("relic_complete")) {
+            message = "message.shadowrp.relic_done";
         } else if (state.getBoolean("rank_claimed")) {
-            message = "message.shadowrp.rank_done";
+            // Chapter two begins only after the first rank has been claimed.
+            // Each faction collects a different relic. Consume the exact
+            // requirement and persist completion before granting a reward.
+            boolean shadow = "shadow".equals(state.getString("faction"));
+            net.minecraft.world.item.Item required =
+                shadow ? Items.ENDER_PEARL : Items.GLOWSTONE_DUST;
+            int requiredCount = shadow ? 2 : 8;
+            if (countInventoryItem(player, required) < requiredCount) {
+                message = "message.shadowrp.relic_request_" + state.getString("faction");
+            } else {
+                removeInventoryItem(player, required, requiredCount);
+                player.getInventory().setChanged();
+                state.putBoolean("relic_complete", true);
+                save(player, state);
+                player.giveExperiencePoints(150);
+                ItemStack reward = new ItemStack(shadow ? Items.OBSIDIAN : Items.GOLD_INGOT, 2);
+                if (!player.getInventory().add(reward)) player.drop(reward, false);
+                message = "message.shadowrp.relic_complete_" + state.getString("faction");
+            }
         } else if (state.getBoolean("scout_complete")) {
             // A final return to the Keeper completes the first faction
             // chapter. Persist before awarding so repeat clicks cannot farm.
