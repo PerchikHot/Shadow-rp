@@ -83,6 +83,20 @@ public final class ShadowRpMod {
                     context.getSource().sendFailure(Component.translatable("message.shadowrp.faction_locked"));
                     return 0;
                 }
+                // Switching Gardens before the oath starts a fresh trial.
+                // Never carry completed kills or a Keeper checkpoint across
+                // factions; after the oath the existing lock still applies.
+                String previousFaction = state.getString("faction");
+                if (!previousFaction.isEmpty() && !previousFaction.equals(choice)) {
+                    for (String key : new String[]{
+                            "trial_kills", "trial_complete", "scout_kills",
+                            "scout_complete", "scout_faction", "guide_faction",
+                            "guide_dimension", "guide_x", "guide_y", "guide_z"}) {
+                        state.remove(key);
+                    }
+                    context.getSource().sendSuccess(() ->
+                        Component.translatable("message.shadowrp.faction_reset"), false);
+                }
                 state.putString("faction", choice);
                 save(player, state);
                 context.getSource().sendSuccess(() ->
