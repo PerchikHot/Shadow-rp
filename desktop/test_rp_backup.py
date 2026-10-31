@@ -1,5 +1,5 @@
 import unittest
-from rp_backup import encode_backup, decode_backup
+from rp_backup import encode_backup, decode_backup, merge_backups
 
 
 class BackupTests(unittest.TestCase):
@@ -23,6 +23,27 @@ class BackupTests(unittest.TestCase):
     def test_reject_bad_optional_fields(self):
         with self.assertRaises(ValueError):
             encode_backup({"characters": {"A": {"appearance": ["invalid"]}}})
+
+    def test_merge_preserves_unrelated_characters(self):
+        old = {"characters": {
+            "Алиса": {"description": "old", "messages": []},
+            "Бета": {"description": "keep", "messages": []}}}
+        incoming = {"characters": {
+            "Алиса": {"description": "new", "messages": [
+                {"role": "assistant", "content": "Hello"}]},
+            "Гамма": {"description": "added", "messages": []}}}
+        result = merge_backups(old, incoming)
+        self.assertEqual(set(result["characters"]), {"Алиса", "Бета", "Гамма"})
+        self.assertEqual(result["characters"]["Алиса"]["description"], "new")
+        self.assertEqual(result["characters"]["Бета"]["description"], "keep")
+        self.assertEqual(len(result["characters"]["Алиса"]["messages"]), 1)
+        self.assertEqual(old["characters"]["Алиса"]["description"], "old")
+
+    def test_merge_rejects_oversized_catalog(self):
+        old = {"characters": {str(i): {"messages": []} for i in range(150)}}
+        incoming = {"characters": {"new" + str(i): {"messages": []} for i in range(60)}}
+        with self.assertRaises(ValueError):
+            merge_backups(old, incoming)
 
     def test_reject_bad_role(self):
         with self.assertRaises(ValueError):
