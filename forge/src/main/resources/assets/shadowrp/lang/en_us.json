@@ -70,5 +70,10 @@
   "message.shadowrp.trophy_complete": "Faction trophy delivered! Chapter three complete. Reward: 250 XP and 2 diamonds.",
   "message.shadowrp.trophy_done": "Chapter three is already complete. Trophy delivered and reward claimed.",
   "message.shadowrp.status_trophy": "Faction: %s. Chapter three: obtain a Nether trophy and return to the Keeper.",
-  "message.shadowrp.status_trophy_done": "Faction: %s. Chapter three complete; trophy delivered."
+  "message.shadowrp.status_trophy_done": "Faction: %s. Chapter three complete; trophy delivered.",
+  "message.shadowrp.end_request": "Chapter four: after delivering your Nether trophy, enter the End and return to the Garden Keeper.",
+  "message.shadowrp.end_discovered": "End reconnaissance complete! Return to the Keeper to report.",
+  "message.shadowrp.end_ready": "The End has been visited. Return to the Keeper for your reward.",
+  "message.shadowrp.end_complete": "End expedition complete! Reward: 350 XP and 3 diamonds.",
+  "message.shadowrp.end_done": "Chapter four is complete. Your End expedition has already been recorded."
 }
