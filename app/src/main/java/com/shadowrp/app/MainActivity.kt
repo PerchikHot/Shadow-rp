@@ -174,6 +174,80 @@ class MainActivity : Activity() {
   }
   editor.apply()
  }
+
+ // Cross-platform transfer uses the Android document picker: no storage permission,
+ // network upload or automatic replacement of the user's existing histories.
+ private val rpExportPicker = 7313
+ private val rpImportPicker = 7314
+
+ private fun exportRpChats() {
+  val intent = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+   addCategory(android.content.Intent.CATEGORY_OPENABLE)
+   type = "application/json"
+   putExtra(android.content.Intent.EXTRA_TITLE, "shadow-rp-backup.json")
+  }
+  try { startActivityForResult(intent, rpExportPicker) }
+  catch (e: Exception) { alert("Не удалось открыть выбор файла: " + e.message) }
+ }
+
+ private fun importRpChats() {
+  val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+   addCategory(android.content.Intent.CATEGORY_OPENABLE)
+   type = "application/json"
+  }
+  try { startActivityForResult(intent, rpImportPicker) }
+  catch (e: Exception) { alert("Не удалось открыть выбор файла: " + e.message) }
+ }
+
+ private fun rpCards(): Map<String, RpBackup.Card> = characters.associateWith { name ->
+  val values = listOf("description", "scenario", "memory", "appearance", "greeting", "protocol")
+   .associateWith { field ->
+    val key = if (field == "description") "persona" else field
+    prefs.getString(key + "_" + name, "").orEmpty()
+   }
+  val history = chats[name].orEmpty().filter { it.first == "user" || it.first == "assistant" }
+  RpBackup.Card(values, history)
+ }
+
+ private fun readRpArchive(uri: android.net.Uri): ByteArray {
+  return contentResolver.openInputStream(uri)?.use { input ->
+   val output = ByteArrayOutputStream()
+   val buffer = ByteArray(8192)
+   while (true) {
+    val count = input.read(buffer)
+    if (count < 0) break
+    if (output.size() + count > RpBackup.MAX_BYTES)
+     throw IllegalArgumentException("Архив больше 8 МБ")
+    output.write(buffer, 0, count)
+   }
+   output.toByteArray()
+  } ?: throw IllegalArgumentException("Не удалось открыть архив")
+ }
+
+ private fun applyRpImport(imported: Map<String, RpBackup.Card>) {
+  val names = characters.toMutableList()
+  imported.keys.forEach { if (it !in names) names.add(it) }
+  val editor = prefs.edit()
+  editor.putString("characters", JSONArray(names).toString())
+  imported.forEach { (name, card) ->
+   card.fields.forEach { (field, value) ->
+    val key = if (field == "description") "persona" else field
+    editor.putString(key + "_" + name, value)
+   }
+   val history = JSONArray()
+   card.messages.forEach { (role, content) ->
+    history.put(JSONObject().put("role", role).put("content", content))
+   }
+   editor.putString("chat_" + name, history.toString())
+  }
+  if (!editor.commit()) throw IllegalStateException("Не удалось сохранить импорт")
+  characters.clear()
+  characters.addAll(names)
+  imported.forEach { (name, card) -> chats[name] = card.messages.toMutableList() }
+  profile()
+  alert("Импортировано персонажей: " + imported.size)
+ }
+
  private val animeRoster=listOf(
   "Цунаде|Naruto",
   "Мэй Теруми|Naruto",
@@ -586,6 +660,29 @@ class MainActivity : Activity() {
  }
  override fun onActivityResult(requestCode:Int,resultCode:Int,data:android.content.Intent?) {
   super.onActivityResult(requestCode,resultCode,data)
+  if(resultCode==Activity.RESULT_OK && data?.data!=null && requestCode==rpExportPicker) {
+   try {
+    val bytes = RpBackup.encode(rpCards())
+    contentResolver.openOutputStream(data.data!!, "wt")?.use { it.write(bytes) }
+     ?: throw IllegalStateException("Не удалось создать архив")
+    alert("Экспорт завершён. Архив можно открыть в Windows Shadow RP.")
+   } catch(e: Exception) { alert("Ошибка экспорта: " + e.message) }
+   return
+  }
+  if(resultCode==Activity.RESULT_OK && data?.data!=null && requestCode==rpImportPicker) {
+   try {
+    val imported = RpBackup.decode(readRpArchive(data.data!!))
+    val collisions = imported.keys.count { it in characters }
+    AlertDialog.Builder(this).setTitle("Импорт Shadow RP")
+     .setMessage("Импортировать " + imported.size + " персонажей? Совпадающих имён: " +
+      collisions + ". Их карточки и истории будут заменены. Остальные персонажи сохранятся. Сделай экспорт перед импортом.")
+     .setPositiveButton("Импортировать") { _, _ ->
+      try { applyRpImport(imported) }
+      catch(e: Exception) { alert("Ошибка сохранения: " + e.message) }
+     }.setNegativeButton("Отмена", null).show().also { styleDialog(it) }
+   } catch(e: Exception) { alert("Ошибка импорта: " + e.message) }
+   return
+  }
   if(requestCode==ggufPicker && resultCode==Activity.RESULT_OK && data?.data!=null){
    val uri=data.data!!
    val name=try{
@@ -1190,6 +1287,8 @@ class MainActivity : Activity() {
   item(b,"Моя личность",prefs.getString("identity_name","Не настроена").orEmpty()) { editIdentity() }
   item(b,"Групповые комнаты","Создавать и открывать групповые истории") { roomList() }
   item(b,"Мои чаты","Сохранены локально") { chatList() }
+  item(b,"⇧ Экспорт персонажей и историй","JSON для Windows Shadow RP; без API-ключей и моделей") { exportRpChats() }
+  item(b,"⇩ Импорт персонажей и историй","Выбор файла, проверка и подтверждение замены совпадающих имён") { importRpChats() }
   item(b,"Настройки ИИ","Подключить API") { settings() }
   nav(4)
  }
