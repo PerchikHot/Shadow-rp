@@ -70,5 +70,10 @@
   "message.shadowrp.trophy_complete": "Трофей фракции передан! Третья глава завершена. Награда: 250 опыта и 2 алмаза.",
   "message.shadowrp.trophy_done": "Третья глава уже завершена. Трофей передан, награда получена.",
   "message.shadowrp.status_trophy": "Фракция: %s. Глава 3: добудь трофей в Нижнем мире и передай Хранителю.",
-  "message.shadowrp.status_trophy_done": "Фракция: %s. Третья глава завершена, трофей передан."
+  "message.shadowrp.status_trophy_done": "Фракция: %s. Третья глава завершена, трофей передан.",
+  "message.shadowrp.end_request": "Глава 4: после сдачи трофея войди в Край и вернись к Хранителю Сада.",
+  "message.shadowrp.end_discovered": "Разведка Края завершена! Вернись к Хранителю с докладом.",
+  "message.shadowrp.end_ready": "Край посещён. Вернись к Хранителю за наградой.",
+  "message.shadowrp.end_complete": "Экспедиция в Край завершена! Награда: 350 опыта и 3 алмаза.",
+  "message.shadowrp.end_done": "Четвёртая глава завершена. Экспедиция в Край уже зачтена."
 }
