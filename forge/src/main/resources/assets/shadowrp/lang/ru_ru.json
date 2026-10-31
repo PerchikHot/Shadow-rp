@@ -58,5 +58,6 @@
   "message.shadowrp.nether_done": "Экспедиция в Нижний мир уже завершена. Ожидай следующую главу.",
   "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена.",
   "message.shadowrp.guide_not_found": "Хранитель Сада не найден в радиусе 128 блоков в этом измерении. Вызови его командой /shadowrp guide.",
-  "message.shadowrp.guide_location": "Хранитель Сада: X %s, Y %s, Z %s (это измерение)."
+  "message.shadowrp.guide_location": "Хранитель Сада: X %s, Y %s, Z %s (это измерение).",
+  "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, oath. Для сдачи предметов поговори с Хранителем Сада."
 }
