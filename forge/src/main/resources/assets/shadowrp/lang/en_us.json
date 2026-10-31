@@ -59,7 +59,7 @@
   "message.shadowrp.status_nether_done": "Faction: %s. Nether expedition completed; chapter two finished.",
   "message.shadowrp.guide_not_found": "No Garden Keeper found within 128 blocks in this dimension. Use /shadowrp guide to summon one.",
   "message.shadowrp.guide_location": "Garden Keeper: X %s, Y %s, Z %s (this dimension).",
-  "message.shadowrp.help": "Commands: /shadowrp start, faction shadow|light, status, journal, guide, locate, oath. Talk to the Garden Keeper to deliver quest items.",
+  "message.shadowrp.help": "Commands: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath. Talk to the Garden Keeper to deliver quest items.",
   "entity.shadowrp.guide_shadow": "Keeper of the Garden of Shadows",
   "entity.shadowrp.guide_light": "Keeper of the Garden of Light",
   "message.shadowrp.other_faction_guide": "This Keeper serves the other Garden. Use /shadowrp locate to find your faction's Keeper.",
@@ -75,5 +75,7 @@
   "message.shadowrp.end_discovered": "End reconnaissance complete! Return to the Keeper to report.",
   "message.shadowrp.end_ready": "The End has been visited. Return to the Keeper for your reward.",
   "message.shadowrp.end_complete": "End expedition complete! Reward: 350 XP and 3 diamonds.",
-  "message.shadowrp.end_done": "Chapter four is complete. Your End expedition has already been recorded."
+  "message.shadowrp.end_done": "Chapter four is complete. Your End expedition has already been recorded.",
+  "message.shadowrp.home_unknown": "No Keeper waypoint saved for your faction yet. Use /shadowrp guide or /shadowrp locate.",
+  "message.shadowrp.home_waypoint": "Last known Keeper waypoint: dimension %s, X %s, Y %s, Z %s. The NPC may have moved or disappeared."
 }

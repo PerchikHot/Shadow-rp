@@ -59,7 +59,7 @@
   "message.shadowrp.status_nether_done": "Фракция: %s. Экспедиция в Нижний мир завершена, вторая глава пройдена.",
   "message.shadowrp.guide_not_found": "Хранитель Сада не найден в радиусе 128 блоков в этом измерении. Вызови его командой /shadowrp guide.",
   "message.shadowrp.guide_location": "Хранитель Сада: X %s, Y %s, Z %s (это измерение).",
-  "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, oath. Для сдачи предметов поговори с Хранителем Сада.",
+  "message.shadowrp.help": "Команды: /shadowrp start, faction shadow|light, status, journal, guide, locate, home, oath. Для сдачи предметов поговори с Хранителем Сада.",
   "entity.shadowrp.guide_shadow": "Хранитель Сада Теней",
   "entity.shadowrp.guide_light": "Хранитель Сада Света",
   "message.shadowrp.other_faction_guide": "Этот Хранитель служит другому Саду. Найди Хранителя своей фракции командой /shadowrp locate.",
@@ -75,5 +75,7 @@
   "message.shadowrp.end_discovered": "Разведка Края завершена! Вернись к Хранителю с докладом.",
   "message.shadowrp.end_ready": "Край посещён. Вернись к Хранителю за наградой.",
   "message.shadowrp.end_complete": "Экспедиция в Край завершена! Награда: 350 опыта и 3 алмаза.",
-  "message.shadowrp.end_done": "Четвёртая глава завершена. Экспедиция в Край уже зачтена."
+  "message.shadowrp.end_done": "Четвёртая глава завершена. Экспедиция в Край уже зачтена.",
+  "message.shadowrp.home_unknown": "Метка Хранителя ещё не сохранена для твоей фракции. Используй /shadowrp guide или /shadowrp locate.",
+  "message.shadowrp.home_waypoint": "Последняя известная метка Хранителя: измерение %s, X %s, Y %s, Z %s. Местоположение NPC не гарантируется."
 }

@@ -117,6 +117,7 @@ public final class ShadowRpMod {
                     }
                 }
                 final Villager guide = nearest;
+                rememberGuide(player, guide);
                 context.getSource().sendSuccess(() -> Component.translatable(
                     "message.shadowrp.guide_location",
                     guide.blockPosition().getX(), guide.blockPosition().getY(),
@@ -135,6 +136,7 @@ public final class ShadowRpMod {
             guide.setInvulnerable(true);
             guide.setNoAi(true);
             if (!player.serverLevel().addFreshEntity(guide)) return 0;
+            rememberGuide(player, guide);
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
@@ -183,10 +185,31 @@ public final class ShadowRpMod {
                 return 0;
             }
             final Villager guide = nearest;
+            rememberGuide(player, guide);
             context.getSource().sendSuccess(() -> Component.translatable(
                 "message.shadowrp.guide_location",
                 guide.blockPosition().getX(), guide.blockPosition().getY(),
                 guide.blockPosition().getZ()), false);
+            return 1;
+        }));
+
+        // Return the last known faction Keeper waypoint even when it is
+        // outside the loaded 128-block search radius. This does not teleport
+        // the player or assume the NPC still exists at those coordinates.
+        root.then(Commands.literal("home").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            if (!state.contains("guide_dimension", 8) ||
+                    !state.getString("guide_faction").equals(state.getString("faction")) ||
+                    state.getString("faction").isEmpty()) {
+                context.getSource().sendFailure(
+                    Component.translatable("message.shadowrp.home_unknown"));
+                return 0;
+            }
+            context.getSource().sendSuccess(() -> Component.translatable(
+                "message.shadowrp.home_waypoint",
+                state.getString("guide_dimension"), state.getInt("guide_x"),
+                state.getInt("guide_y"), state.getInt("guide_z")), false);
             return 1;
         }));
 
@@ -443,6 +466,18 @@ public final class ShadowRpMod {
             message = "message.shadowrp.supplies_complete";
         }
         player.sendSystemMessage(Component.translatable(message));
+    }
+
+    /** Remember only the coordinates of the player's own Garden Keeper. */
+    private static void rememberGuide(ServerPlayer player, Villager guide) {
+        CompoundTag state = progress(player);
+        state.putString("guide_faction", state.getString("faction"));
+        state.putString("guide_dimension",
+            player.serverLevel().dimension().location().toString());
+        state.putInt("guide_x", guide.blockPosition().getX());
+        state.putInt("guide_y", guide.blockPosition().getY());
+        state.putInt("guide_z", guide.blockPosition().getZ());
+        save(player, state);
     }
 
     private static int countInventoryItem(ServerPlayer player, net.minecraft.world.item.Item item) {
