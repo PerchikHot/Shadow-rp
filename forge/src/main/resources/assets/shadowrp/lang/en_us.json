@@ -3,6 +3,7 @@
   "message.shadowrp.started": "Prologue started. Choose /shadowrp faction shadow or /shadowrp faction light.",
   "message.shadowrp.already_started": "Prologue already started. See /shadowrp status.",
   "message.shadowrp.choose_first": "First use /shadowrp start.",
+  "message.shadowrp.faction_reset": "Faction changed before the oath: trial progress and Keeper checkpoint reset.",
   "message.shadowrp.faction_shadow": "You joined the Garden of Shadows. Trial: defeat three hostile mobs.",
   "message.shadowrp.faction_light": "You joined the Garden of Light. Trial: defeat three hostile mobs.",
   "message.shadowrp.progress": "Trial: %s/3 hostile mobs.",
