@@ -31,7 +31,8 @@ Both clients use the same **Shadow RP JSON** archive:
   Import shows the number of matching character names and asks before overwriting
   those cards and chat histories. Other Android characters are retained.
 - **Windows:** Export chats / Import chats. Windows import asks for confirmation
-  and **replaces the entire Windows catalog** (export your current data first).
+  and merges characters by name. Matching cards and their histories are replaced
+  only after confirmation; unrelated Windows characters are kept. Export first.
   Windows preserves appearance, greeting and protocol fields when transferring
   the archive back to Android, even though its editor currently exposes only
   description, scenario and pinned memory.
