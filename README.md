@@ -39,7 +39,7 @@ After installing the JAR into a compatible Forge 1.20.1 instance, the
 the supply quest, and scouting progress. `/shadowrp status` gives a short
 summary. Progress is stored server-side per player and copied on respawn;
 rewards are intended to be one-time. After the oath, faction switching is
-blocked. The guide is a persistent named villager, **not** a custom NPC model.
+blocked. Newly summoned Keepers are faction-aligned: the Garden of Shadows and Garden of Light have separately named villagers. A player cannot turn in quests to the opposite faction's Keeper; `/shadowrp locate` searches their own faction. Existing unaligned Keepers from older builds remain usable for save compatibility. The guide is a persistent named villager, **not** a custom NPC model.
 
 **Important limitations:** GitHub Actions compiles the Forge JAR, but the
 chapter has not been playtested in a running Minecraft client or on a
