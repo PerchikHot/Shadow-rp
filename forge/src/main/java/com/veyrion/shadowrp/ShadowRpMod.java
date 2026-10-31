@@ -446,6 +446,10 @@ public final class ShadowRpMod {
         if (event.getEntity() instanceof ServerPlayer player) {
             if (!progress(player).getBoolean("started")) {
                 player.sendSystemMessage(Component.translatable("message.shadowrp.welcome"));
+            } else {
+                // Returning players immediately see their current objective
+                // without needing to remember the journal command.
+                player.sendSystemMessage(questObjective(player));
             }
         }
     }
@@ -461,6 +465,7 @@ public final class ShadowRpMod {
         state.putBoolean("nether_visited", true);
         save(player, state);
         player.sendSystemMessage(Component.translatable("message.shadowrp.nether_discovered"));
+        player.displayClientMessage(questObjective(player), true);
     }
 
     @SubscribeEvent
@@ -497,8 +502,11 @@ public final class ShadowRpMod {
             }
             int count = Math.min(5, state.getInt("scout_kills") + 1);
             state.putInt("scout_kills", count);
+            if (count == 5) state.putBoolean("scout_complete", true);
+            // Commit the milestone before rewards so a restart cannot
+            // replay the same reward from an older saved quest state.
+            save(player, state);
             if (count == 5) {
-                state.putBoolean("scout_complete", true);
                 player.giveExperiencePoints(100);
                 ItemStack reward = new ItemStack(Items.EMERALD, 3);
                 if (!player.getInventory().add(reward)) player.drop(reward, false);
@@ -506,19 +514,20 @@ public final class ShadowRpMod {
             } else {
                 player.sendSystemMessage(Component.translatable("message.shadowrp.scout_progress", count));
             }
-            save(player, state);
+            player.displayClientMessage(questObjective(player), true);
             return;
         }
         if (state.getBoolean("trial_complete")) return;
         int kills = Math.min(3, state.getInt("trial_kills") + 1);
         state.putInt("trial_kills", kills);
+        if (kills == 3) state.putBoolean("trial_complete", true);
+        save(player, state);
         if (kills == 3) {
-            state.putBoolean("trial_complete", true);
             player.giveExperiencePoints(50);
             player.sendSystemMessage(Component.translatable("message.shadowrp.complete"));
         } else {
             player.sendSystemMessage(Component.translatable("message.shadowrp.progress", kills));
         }
-        save(player, state);
+        player.displayClientMessage(questObjective(player), true);
     }
 }
