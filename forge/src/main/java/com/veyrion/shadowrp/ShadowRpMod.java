@@ -138,6 +138,10 @@ public final class ShadowRpMod {
             context.getSource().sendSuccess(() -> Component.translatable(
                 !state.getBoolean("trial_complete") ? "message.shadowrp.guide_trial" :
                 !state.getBoolean("oath_complete") ? "message.shadowrp.guide_oath" :
+                state.getBoolean("end_claimed") ? "message.shadowrp.end_done" :
+                state.getBoolean("trophy_complete") ?
+                    (state.getBoolean("end_visited") ? "message.shadowrp.end_ready" :
+                        "message.shadowrp.end_request") :
                 state.getBoolean("nether_claimed") ? "message.shadowrp.nether_done" :
                 state.getBoolean("relic_complete") ?
                     (state.getBoolean("nether_visited") ? "message.shadowrp.nether_ready" :
@@ -232,8 +236,11 @@ public final class ShadowRpMod {
                 message = Component.translatable("message.shadowrp.status_new");
             } else if (state.getString("faction").isEmpty()) {
                 message = Component.translatable("message.shadowrp.status_faction");
+            } else if (state.getBoolean("end_claimed")) {
+                message = Component.translatable("message.shadowrp.end_done");
             } else if (state.getBoolean("trophy_complete")) {
-                message = Component.translatable("message.shadowrp.status_trophy_done", state.getString("faction"));
+                message = Component.translatable(state.getBoolean("end_visited")
+                    ? "message.shadowrp.end_ready" : "message.shadowrp.end_request");
             } else if (state.getBoolean("nether_claimed")) {
                 message = Component.translatable("message.shadowrp.status_trophy", state.getString("faction"));
             } else if (state.getBoolean("relic_complete")) {
@@ -268,8 +275,11 @@ public final class ShadowRpMod {
             objective = Component.translatable("message.shadowrp.status_new");
         } else if (state.getString("faction").isEmpty()) {
             objective = Component.translatable("message.shadowrp.status_faction");
+        } else if (state.getBoolean("end_claimed")) {
+            objective = Component.translatable("message.shadowrp.end_done");
         } else if (state.getBoolean("trophy_complete")) {
-            objective = Component.translatable("message.shadowrp.trophy_done");
+            objective = Component.translatable(state.getBoolean("end_visited")
+                ? "message.shadowrp.end_ready" : "message.shadowrp.end_request");
         } else if (state.getBoolean("nether_claimed")) {
             boolean shadow = "shadow".equals(state.getString("faction"));
             objective = Component.translatable(
@@ -341,8 +351,21 @@ public final class ShadowRpMod {
             message = "message.shadowrp.guide_trial";
         } else if (!state.getBoolean("oath_complete")) {
             message = "message.shadowrp.guide_oath";
+        } else if (state.getBoolean("end_claimed")) {
+            message = "message.shadowrp.end_done";
         } else if (state.getBoolean("trophy_complete")) {
-            message = "message.shadowrp.trophy_done";
+            // Chapter four starts only after the Nether trophy was handed in.
+            // Visiting the End earlier cannot skip this objective.
+            if (!state.getBoolean("end_visited")) {
+                message = "message.shadowrp.end_request";
+            } else {
+                state.putBoolean("end_claimed", true);
+                save(player, state);
+                player.giveExperiencePoints(350);
+                ItemStack reward = new ItemStack(Items.DIAMOND, 3);
+                if (!player.getInventory().add(reward)) player.drop(reward, false);
+                message = "message.shadowrp.end_complete";
+            }
         } else if (state.getBoolean("nether_claimed")) {
             // Chapter three: a faction-specific Nether trophy, turned in
             // deliberately at the correct Keeper. Rewards cannot be farmed.
@@ -456,9 +479,19 @@ public final class ShadowRpMod {
 
     @SubscribeEvent
     public void onDimensionChanged(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) ||
-                !Level.NETHER.equals(event.getTo())) return;
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         CompoundTag state = progress(player);
+        if (Level.END.equals(event.getTo())) {
+            if (state.getBoolean("trophy_complete") &&
+                    !state.getBoolean("end_visited")) {
+                state.putBoolean("end_visited", true);
+                save(player, state);
+                player.sendSystemMessage(Component.translatable("message.shadowrp.end_discovered"));
+                player.displayClientMessage(questObjective(player), true);
+            }
+            return;
+        }
+        if (!Level.NETHER.equals(event.getTo())) return;
         // An earlier Nether visit cannot skip the faction relic quest.
         if (!state.getBoolean("relic_complete") ||
                 state.getBoolean("nether_visited")) return;
