@@ -318,6 +318,26 @@ public final class ShadowRpMod {
         }));
         root.then(track);
 
+        // Read-only campaign overview for returning players. Quest progress
+        // remains server-side and is never advanced by opening this screen.
+        root.then(Commands.literal("chapters").executes(context -> {
+            ServerPlayer player = context.getSource().getPlayerOrException();
+            CompoundTag state = progress(player);
+            int completed = 0;
+            for (String flag : new String[]{
+                    "rank_claimed", "nether_claimed",
+                    "trophy_complete", "end_claimed"}) {
+                if (state.getBoolean(flag)) completed++;
+            }
+            final int finished = completed;
+            final String factionId = state.getString("faction");
+            context.getSource().sendSuccess(() -> Component.translatable(
+                "message.shadowrp.chapters", finished,
+                factionId.isEmpty() ? "-" : factionId), false);
+            context.getSource().sendSuccess(() -> questObjective(player), false);
+            return 1;
+        }));
+
         root.then(Commands.literal("status").executes(context -> {
             ServerPlayer player = context.getSource().getPlayerOrException();
             CompoundTag state = progress(player);
