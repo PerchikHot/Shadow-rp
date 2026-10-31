@@ -32,8 +32,14 @@ def validate_endpoint(endpoint: str) -> str:
 
 
 def build_rp_messages(description: str, scenario: str, memory: str,
-                      messages: list[dict], limit: int = 30) -> list[dict]:
-    """Keep persona, scenario and pinned memories while bounding chat history."""
+                      messages: list[dict], limit: int = 30, *,
+                      appearance: str = "", greeting: str = "",
+                      protocol: str = "") -> list[dict]:
+    """Build bounded RP context, preserving all six portable character-card fields.
+
+    These fields are exported by Android; Windows must not silently ignore them.
+    Pinned memory is explicitly user-authored, never generated or inferred.
+    """
     if not 1 <= limit <= 60:
         raise ValueError("Invalid history limit")
     system = (
@@ -41,7 +47,10 @@ def build_rp_messages(description: str, scenario: str, memory: str,
         "Respect the established scene and continuity. Do not invent past "
         "meetings or personal facts about the player.\n"
         "CHARACTER:\n" + str(description)[:4000] + "\n"
+        "APPEARANCE:\n" + str(appearance)[:4000] + "\n"
         "SCENARIO:\n" + str(scenario)[:4000] + "\n"
+        "INITIAL GREETING:\n" + str(greeting)[:4000] + "\n"
+        "CHARACTER RP RULES:\n" + str(protocol)[:4000] + "\n"
         "USER-PINNED MEMORY (facts explicitly provided by the player):\n"
         + str(memory)[:4000]
     )
