@@ -1,6 +1,7 @@
 """Headless tests for RP dialogue search and non-destructive rewind."""
 import unittest
 from rp_history import search_dialogue, rewind_to_user_turn
+from rp_backup import validate_backup
 
 
 def sample():
@@ -30,7 +31,7 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(len(updated["characters"]["Алиса"]["messages"]), 3)
         self.assertEqual(updated["characters"]["Алиса"]["messages"][-1]["role"], "user")
         self.assertEqual(updated["characters"]["Алиса"]["memory"], "Старая сцена")
-        self.assertEqual(updated["characters"]["Боб"], original["characters"]["Боб"])
+        self.assertEqual(updated["characters"]["Боб"], validate_backup(original)["characters"]["Боб"])
         self.assertEqual(len(original["characters"]["Алиса"]["messages"]), 4)
 
     def test_rejects_assistant_turn_missing_character_and_last_turn(self):
