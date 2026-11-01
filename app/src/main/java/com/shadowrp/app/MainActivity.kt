@@ -226,8 +226,10 @@ class MainActivity : Activity() {
 
  private fun applyRpImport(imported: Map<String, RpBackup.Card>) {
   if(localPending.isNotEmpty()) throw IllegalStateException("Дождись завершения ответа ИИ перед импортом")
-  val names = characters.toMutableList()
-  imported.keys.forEach { if (it !in names) names.add(it) }
+  // Validate the *combined* archive before writing even one preference.
+  // Individually valid imports can exceed 200 cards or 8 MiB after merging.
+  val merged = RpBackup.checkedMerge(rpCards(), imported)
+  val names = merged.keys.toList()
   val editor = prefs.edit()
   editor.putString("characters", JSONArray(names).toString())
   imported.forEach { (name, card) ->
