@@ -21,6 +21,18 @@ class BackupTests(unittest.TestCase):
             "scenario": "", "memory": "", "messages": []}}}
         self.assertEqual(decode_backup(encode_backup(old)), old)
 
+    def test_portable_names_reject_control_characters_on_both_platforms(self):
+        # Android RpBackup.checkName rejects these before writing preferences.
+        # Windows must not export an archive Android will refuse to import.
+        for name in ("Алиса\\nБета", "Герой\\x00", "Персонаж\\t2", "Ник\\x7f"):
+            with self.subTest(name=repr(name)):
+                payload = {"characters": {name: {"messages": []}}}
+                with self.assertRaises(ValueError):
+                    encode_backup(payload)
+                import json
+                with self.assertRaises(ValueError):
+                    decode_backup(json.dumps(payload).encode("utf-8"))
+
     def test_reject_bad_optional_fields(self):
         with self.assertRaises(ValueError):
             encode_backup({"characters": {"A": {"appearance": ["invalid"]}}})
