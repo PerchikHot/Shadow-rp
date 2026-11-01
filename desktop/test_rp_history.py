@@ -1,6 +1,6 @@
 """Headless tests for RP dialogue search and non-destructive rewind."""
 import unittest
-from rp_history import search_dialogue, rewind_to_user_turn
+from rp_history import search_dialogue, rewind_to_user_turn, branch_from_user_turn
 from rp_backup import validate_backup
 
 
@@ -41,6 +41,32 @@ class HistoryTests(unittest.TestCase):
             with self.subTest(character=character, index=index):
                 with self.assertRaises(ValueError):
                     rewind_to_user_turn(sample(), character, index)
+
+    def test_branch_keeps_original_and_clears_future_pinned_memory(self):
+        original = sample()
+        result, name = branch_from_user_turn(original, "Алиса", 2)
+        self.assertEqual(name, "Алиса (ветка 2)")
+        self.assertEqual(len(result["characters"][name]["messages"]), 3)
+        self.assertEqual(result["characters"][name]["messages"][-1]["role"], "user")
+        self.assertEqual(result["characters"][name]["scenario"], "Космос")
+        self.assertEqual(result["characters"][name]["memory"], "")
+        self.assertEqual(result["characters"]["Алиса"]["memory"], "Старая сцена")
+        self.assertEqual(len(result["characters"]["Алиса"]["messages"]), 4)
+        self.assertEqual(original, sample())
+        self.assertEqual(validate_backup(result), result)
+
+    def test_branch_names_unique_and_invalid_turns_rejected(self):
+        data = sample()
+        first, first_name = branch_from_user_turn(data, "Алиса", 0)
+        second, second_name = branch_from_user_turn(first, "Алиса", 2)
+        self.assertNotEqual(first_name, second_name)
+        self.assertIn("Алиса (ветка 3)", second["characters"])
+        for character, index in (("Алиса", 1), ("Алиса", -1),
+                                 ("Алиса", True), ("Боб", 0),
+                                 ("Неизвестный", 0)):
+            with self.subTest(character=character, index=index):
+                with self.assertRaises(ValueError):
+                    branch_from_user_turn(data, character, index)
 
     def test_rejects_invalid_search_limits_and_input(self):
         for query, limit in [("x" * 201, 50), ("a", 0), ("a", 101)]:
