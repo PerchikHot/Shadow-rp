@@ -1103,6 +1103,10 @@ class MainActivity : Activity() {
   profileRow.addView(button("⋮"){characterDetail(name)})
   b.addView(profileRow)
   b.addView(button("📌 Запомнить сцену") { pinScene(name) })
+  b.addView(button("⌕ Поиск и откат переписки") { searchRpHistory(name) })
+  if (rpRewindCheckpoint(name).baseFile.exists()) {
+   b.addView(button("↶ Восстановить переписку до отката") { restoreRpRewind(name) })
+  }
   // A failed model call keeps the last user turn. Retry without duplicating it.
   if(messages.lastOrNull()?.first=="user" && !localPending.contains(name)) {
    b.addView(button("↻ Повторить ответ ИИ") { request(name) })
@@ -1156,6 +1160,107 @@ class MainActivity : Activity() {
    while(v!=null && v !is ScrollView){v=v.parent as? android.view.View}
    (v as? ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
   }
+ }
+ private fun rpRewindCheckpoint(name:String): android.util.AtomicFile {
+  // A hash avoids using arbitrary character names as filesystem paths.
+  val digest=java.security.MessageDigest.getInstance("SHA-256")
+   .digest(name.toByteArray(Charsets.UTF_8))
+   .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+  return android.util.AtomicFile(File(filesDir,"rp-rewind-$"+"{digest}.json"))
+ }
+ private fun saveRpRewindCheckpoint(name:String) {
+  val card=rpCards()[name]?:throw IllegalArgumentException("Персонаж не найден")
+  val bytes=RpBackup.encode(mapOf(name to card))
+  val checkpoint=rpRewindCheckpoint(name)
+  val output=checkpoint.startWrite()
+  try {
+   output.write(bytes)
+   checkpoint.finishWrite(output)
+  } catch(e:Exception) {
+   checkpoint.failWrite(output)
+   throw e
+  }
+ }
+ private fun restoreRpRewind(name:String) {
+  if(localPending.isNotEmpty()){alert("Дождись завершения ответа ИИ.");return}
+  val checkpoint=rpRewindCheckpoint(name)
+  val restored=try {
+   val bytes=checkpoint.openRead().use { input ->
+    val out=ByteArrayOutputStream()
+    val buffer=ByteArray(8192)
+    while(true) {
+     val count=input.read(buffer)
+     if(count<0)break
+     if(out.size()+count>RpBackup.MAX_BYTES)throw IllegalArgumentException("Резервная копия слишком большая")
+     out.write(buffer,0,count)
+    }
+    out.toByteArray()
+   }
+   RpBackup.decode(bytes)[name]?:throw IllegalArgumentException("Персонаж не найден в копии")
+  } catch(e:Exception) {alert("Ошибка резервной копии: "+e.message);return}
+  AlertDialog.Builder(this).setTitle("Восстановить переписку?")
+   .setMessage("Восстановить предыдущую историю $name из локальной копии? Текущая переписка этого персонажа будет заменена. Другие персонажи не изменятся.")
+   .setPositiveButton("Восстановить"){_,_->
+    try { applyRpImport(mapOf(name to restored));chat(name) }
+    catch(e:Exception){alert("Ошибка восстановления: "+e.message)}
+   }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+ }
+ private fun searchRpHistory(name:String) {
+  val snapshot=chats[name]?.toList().orEmpty()
+  if(snapshot.isEmpty()){alert("История пока пуста.");return}
+  val container=LinearLayout(this).apply {orientation=1;setPadding(dp(10),dp(8),dp(10),dp(8))}
+  val search=EditText(this).apply {
+   hint="Текст реплики";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted)
+   background=shape(panel);setPadding(dp(12),dp(10),dp(12),dp(10))
+  }
+  container.addView(search)
+  val results=LinearLayout(this).apply{orientation=1}
+  val scroll=ScrollView(this).apply{addView(results)}
+  container.addView(scroll,LinearLayout.LayoutParams(-1,dp(330)))
+  val dialog=AlertDialog.Builder(this).setTitle("Поиск по истории • $name")
+   .setView(container).setNegativeButton("Закрыть",null).create()
+  fun render(query:String) {
+   results.removeAllViews()
+   val matches=try {RpHistory.search(snapshot,query)} catch(e:IllegalArgumentException) {
+    results.addView(text(e.message?:"Некорректный поиск",14f,muted));return
+   }
+   results.addView(text("Найдено: "+matches.size+" (последние 50). Нажми реплику игрока для отката.",13f,muted))
+   matches.forEach { match ->
+    val title=if(match.role=="user")"Игрок • #"+(match.index+1) else "$name • #"+(match.index+1)
+    item(results,title,match.preview) {
+     if(match.role!="user"){alert("Для отката выбери реплику игрока.");return@item}
+     val shortened=try{RpHistory.rewind(snapshot,match.index)}
+      catch(e:IllegalArgumentException){alert(e.message?:"Нельзя откатить");return@item}
+     AlertDialog.Builder(this).setTitle("Откатить историю?")
+      .setMessage("Сохранить резервную копию и удалить "+(snapshot.size-shortened.size)+
+       " последующих сообщений $name? Выбранная реплика игрока останется, ответ ИИ можно будет создать заново.")
+      .setPositiveButton("Откатить"){_,_->
+       if(localPending.isNotEmpty() || chats[name]?.toList()!=snapshot) {
+        alert("История изменилась. Открой поиск заново.");return@setPositiveButton
+       }
+       try {
+        saveRpRewindCheckpoint(name)
+        val editor=prefs.edit()
+        val array=JSONArray()
+        shortened.forEach{(role,content)->array.put(JSONObject().put("role",role).put("content",content))}
+        editor.putString("chat_$"+"{name}",array.toString())
+        for(i in shortened.size until snapshot.size)editor.remove("chat_time_$"+"{name}_$"+"{i}")
+        if(!editor.commit())throw IllegalStateException("Не удалось сохранить откат")
+        chats[name]=shortened.toMutableList()
+        dialog.dismiss()
+        chat(name)
+       } catch(e:Exception){alert("Откат не выполнен: "+e.message)}
+      }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+    }
+   }
+  }
+  search.addTextChangedListener(object:android.text.TextWatcher {
+   override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
+   override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render(s?.toString()?:"")}
+   override fun afterTextChanged(s:android.text.Editable?){}
+  })
+  render("")
+  dialog.show();styleDialog(dialog)
  }
  private fun pinScene(name:String) {
   if(localPending.contains(name)){alert("Дождись завершения ответа ИИ.");return}
