@@ -5,7 +5,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
 from rp_backup import encode_backup, decode_backup, merge_backups, export_character, MAX_BYTES
-from rp_storage import load_data, save_data
+from rp_storage import load_data, save_data, create_import_checkpoint
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
 from rp_history import search_dialogue, rewind_to_user_turn
@@ -187,14 +187,16 @@ class App:
             if not messagebox.askyesno(
                 "Импорт", f"Импортировать {count} персонажей? Совпадающих имён: "
                 f"{collisions}. Их карточки и истории будут заменены, остальные "
-                "персонажи останутся. Рекомендуется сначала экспортировать данные.",
+                "персонажи останутся. Перед импортом будет создана отдельная "
+                "резервная копия всех текущих чатов.",
                 parent=self.root):
                 return
+            checkpoint = create_import_checkpoint(DATA, self.data)
             save(merged)
             self.data = merged
             self.active = self.active if self.active in merged["characters"] else next(iter(merged["characters"]), None)
             self.refresh()
-            self.status.config(text="Чаты импортированы; остальные сохранены")
+            self.status.config(text=f"Чаты импортированы. Резервная копия: {checkpoint.name}")
         except (OSError, ValueError, UnicodeError) as exc:
             messagebox.showerror("Ошибка импорта", str(exc))
 
