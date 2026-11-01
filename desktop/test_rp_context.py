@@ -46,6 +46,18 @@ class RpContextTests(unittest.TestCase):
         self.assertLess(len(result), 31)
         self.assertEqual(turns[0]["content"], "0:" + "x" * 9000)
 
+    def test_latest_part_and_valid_turns_survive_invalid_role_spam(self):
+        long_turn = "old" * 5000 + "LATEST-SCENE"
+        turns = [{"role": "user", "content": "earlier context"}]
+        turns += [{"role": "system", "content": "ignored"}] * 40
+        turns += [{"role": "assistant", "content": long_turn}]
+        result = build_rp_messages("", "", "", turns, limit=2)
+        self.assertEqual([turn["role"] for turn in result],
+                         ["system", "user", "assistant"])
+        self.assertEqual(result[1]["content"], "earlier context")
+        self.assertEqual(len(result[2]["content"]), 10000)
+        self.assertTrue(result[2]["content"].endswith("LATEST-SCENE"))
+
     def test_invalid_context_budgets_rejected(self):
         for budget in (0, -1, True, 120001, "24000"):
             with self.subTest(budget=budget), self.assertRaises(ValueError):
