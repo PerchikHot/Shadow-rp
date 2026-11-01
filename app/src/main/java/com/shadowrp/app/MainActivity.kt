@@ -155,13 +155,32 @@ class MainActivity : Activity() {
   load();seedCatalog();migrateDefaults();showSplash()
  }
  private fun showSplash() {
-  val backdrop=android.widget.FrameLayout(this).apply {setBackgroundColor(Color.rgb(5,9,19))}
-  val center=LinearLayout(this).apply {orientation=1;gravity=Gravity.CENTER}
-  val logo=ImageView(this).apply{setImageResource(R.drawable.shadow_icon);scaleType=ImageView.ScaleType.FIT_CENTER}
-  center.addView(logo,LinearLayout.LayoutParams(dp(156),dp(156)))
-  val label=text("Shadow RP",26f,Color.WHITE,true).apply{gravity=Gravity.CENTER}
+  // Activity first screen: distinct from the OS-managed Android 12+ splash.
+  val backdrop=android.widget.FrameLayout(this).apply {
+   background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+    intArrayOf(Color.rgb(3,9,22),Color.rgb(10,29,57),Color.rgb(3,12,29)))
+  }
+  val center=LinearLayout(this).apply {
+   orientation=1;gravity=Gravity.CENTER;setPadding(dp(20),0,dp(20),0)
+  }
+  val logo=ImageView(this).apply {
+   setImageResource(R.drawable.shadow_icon)
+   scaleType=ImageView.ScaleType.FIT_CENTER
+   contentDescription="Shadow RP — персонаж в капюшоне с голубыми глазами"
+  }
+  center.addView(logo,LinearLayout.LayoutParams(dp(244),dp(244)))
+  val label=text("SHADOW RP",30f,Color.rgb(231,246,255),true).apply {
+   gravity=Gravity.CENTER;letterSpacing=0.12f
+  }
   center.addView(label)
+  center.addView(text("ТВОЯ ИСТОРИЯ. ТВОИ ПЕРСОНАЖИ.",12f,
+   Color.rgb(124,198,246)).apply{gravity=Gravity.CENTER;letterSpacing=0.09f})
   backdrop.addView(center,android.widget.FrameLayout.LayoutParams(-1,-1))
+  val footer=text("VEYRION  •  ROLEPLAY AI",11f,Color.rgb(99,151,191)).apply {
+   gravity=Gravity.CENTER
+  }
+  backdrop.addView(footer,android.widget.FrameLayout.LayoutParams(
+   -1,dp(62),Gravity.BOTTOM))
   setContentView(backdrop)
   val handler=Handler(Looper.getMainLooper())
   // Delayed splash callbacks must not touch views after Activity destruction.
