@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12–16 system splash, distinct from the Activity's first screen. -->
+    <style name="ShadowRPTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#050C1C</item>
+        <item name="android:windowSplashScreenBackground">#050C1C</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/shadow_icon</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#050C1C</item>
+        <item name="android:statusBarColor">#050C1C</item>
+        <item name="android:navigationBarColor">#050C1C</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
