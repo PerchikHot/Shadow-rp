@@ -93,7 +93,7 @@ class TransportTests(unittest.TestCase):
         client = Client(json.dumps(parts, ensure_ascii=False).encode("utf-8"))
         self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
                                          opener=client, sleep=lambda _: None),
-                         "Первый абзац\\nВторой абзац".replace("\\n", "\n"))
+                         "Первый абзац\nВторой абзац")
         for invalid in ([{"type": "image_url", "image_url": "x"}],
                         [{"type": "text", "text": None}], []):
             body = json.dumps({"choices": [{"message": {"content": invalid}}]}).encode()
@@ -113,7 +113,7 @@ class TransportTests(unittest.TestCase):
                             [{"role": "user", "content": "x" * (3 * 1024 * 1024)}],
                             opener=Client(), sleep=lambda _: None)
         with self.assertRaises(ValueError):
-            chat_completion("https://example.test/v1", "key\\nX-Evil: yes",
+            chat_completion("https://example.test/v1", "key\nX-Evil: yes",
                             "model", [], opener=Client(), sleep=lambda _: None)
 
     def test_request_timeout_http_408_is_retried(self):
