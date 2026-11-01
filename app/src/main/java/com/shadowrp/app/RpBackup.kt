@@ -2,6 +2,9 @@ package com.shadowrp.app
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 
 /** Portable, user-approved character and dialogue archive shared with Windows Shadow RP.
  * No API keys, model files, avatars, device identifiers or other preferences are exported.
@@ -46,7 +49,12 @@ internal object RpBackup {
 
     fun decode(bytes: ByteArray): Map<String, Card> {
         require(bytes.size <= MAX_BYTES) { "Архив больше 8 МБ" }
-        val root = JSONObject(bytes.toString(Charsets.UTF_8))
+        // Unlike String(bytes, UTF_8), a strict decoder does not silently
+        // replace malformed characters in portable character names or dialogue.
+        val decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+        val root = JSONObject(decoder.decode(ByteBuffer.wrap(bytes)).toString())
         val characters = root.optJSONObject("characters")
             ?: throw IllegalArgumentException("Неверный формат архива Shadow RP")
         require(characters.length() <= MAX_CHARACTERS) { "Слишком много персонажей" }
@@ -80,6 +88,17 @@ internal object RpBackup {
             result[name] = Card(values, history)
         }
         return result
+    }
+
+    /** Preflight the entire merged archive before Android writes any preferences.
+     * The Windows importer performs the same merged 200-card / 8-MiB check.
+     * Never mutate the caller's maps when a collision is rejected.
+     */
+    fun checkedMerge(existing: Map<String, Card>, incoming: Map<String, Card>): Map<String, Card> {
+        val merged = LinkedHashMap(existing)
+        merged.putAll(incoming)
+        encode(merged) // validates names, fields, roles, history and total size
+        return merged
     }
 
     private fun checkName(name: String) {
