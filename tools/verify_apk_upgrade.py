@@ -26,7 +26,14 @@ def version_code(output: str) -> int:
     return int(match.group(1))
 
 
-def inspect(apksigner: str, aapt: str, apk: Path) -> tuple[frozenset[str], int]:
+def package_name(output: str) -> str:
+    match = re.search(r"package: name='([^']+)'", output)
+    if not match:
+        raise ValueError("Cannot read APK package name")
+    return match.group(1)
+
+
+def inspect(apksigner: str, aapt: str, apk: Path) -> tuple[frozenset[str], int, str]:
     if not apk.is_file() or apk.stat().st_size == 0:
         raise ValueError(f"Missing APK: {apk}")
     signed = subprocess.run(
@@ -40,12 +47,14 @@ def inspect(apksigner: str, aapt: str, apk: Path) -> tuple[frozenset[str], int]:
         [aapt, "dump", "badging", str(apk)],
         check=True, capture_output=True, text=True,
     ).stdout
-    return digests, version_code(badging)
+    return digests, version_code(badging), package_name(badging)
 
 
 def verify_upgrade(apksigner: str, aapt: str, previous: Path, candidate: Path) -> None:
-    old_certs, old_code = inspect(apksigner, aapt, previous)
-    new_certs, new_code = inspect(apksigner, aapt, candidate)
+    old_certs, old_code, old_package = inspect(apksigner, aapt, previous)
+    new_certs, new_code, new_package = inspect(apksigner, aapt, candidate)
+    if old_package != new_package or new_package != "com.shadowrp.app":
+        raise ValueError("APK package ID changed; refusing to overwrite release")
     if old_certs != new_certs:
         raise ValueError("APK signing certificate changed; refusing to overwrite release")
     if new_code < old_code:
