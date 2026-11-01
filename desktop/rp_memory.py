@@ -11,8 +11,14 @@ MAX_QUOTE = 500
 
 def _quote(text: str) -> str:
     """Indent continuation lines so a quote cannot spoof a speaker header."""
-    return (text.strip()[:MAX_QUOTE].replace("\r\n", "\n")
-            .replace("\r", "\n").replace("\n", "\n│ "))
+    # Unicode line separators also render as new lines in many chat views.
+    # Strip bidi formatting controls that could visually reverse speaker tags.
+    sanitized = (text.strip()[:MAX_QUOTE].replace("\r\n", "\n")
+                 .replace("\r", "\n").replace("\u0085", "\n")
+                 .replace("\u2028", "\n").replace("\u2029", "\n"))
+    sanitized = sanitized.translate({code: None for code in
+        (*range(0x202A, 0x202F), *range(0x2066, 0x206A))})
+    return sanitized.replace("\n", "\n│ ")
 
 
 def pin_last_exchange(memory: str, messages: list[dict]) -> str:
