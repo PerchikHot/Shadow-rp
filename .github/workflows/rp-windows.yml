@@ -6,6 +6,8 @@ on:
       - 'desktop/rp_chat.py'
       - 'desktop/rp_context.py'
       - 'desktop/rp_memory.py'
+      - 'desktop/rp_history.py'
+      - 'desktop/test_rp_history.py'
       - 'desktop/rp_reply_safety.py'
       - 'desktop/test_rp_reply_safety.py'
       - 'desktop/test_rp_memory.py'
@@ -36,7 +38,7 @@ jobs:
           python-version: '3.12'
       - name: Validate RP desktop client
         run: |
-          python -m py_compile desktop/rp_chat.py desktop/rp_context.py desktop/rp_memory.py desktop/rp_reply_safety.py desktop/rp_transport.py desktop/rp_backup.py desktop/rp_storage.py
+          python -m py_compile desktop/rp_chat.py desktop/rp_context.py desktop/rp_memory.py desktop/rp_history.py desktop/rp_reply_safety.py desktop/rp_transport.py desktop/rp_backup.py desktop/rp_storage.py
           python -m unittest discover -s desktop -p "test_rp_*.py" -v
       - name: Generate and verify Windows EXE icon
         run: |
