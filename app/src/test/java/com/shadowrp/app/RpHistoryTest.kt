@@ -20,6 +20,18 @@ class RpHistoryTest {
         assertEquals(listOf(4, 3), RpHistory.search(history, "", 2).map { it.index })
     }
 
+    @Test fun speakerFilteredSearchIsPortableAndNonDestructive() {
+        assertEquals(listOf(2), RpHistory.search(history, "role:player лес").map { it.index })
+        assertEquals(listOf(3), RpHistory.search(history, "role:character лес").map { it.index })
+        assertEquals(listOf(4, 2, 0), RpHistory.search(history, "role:игрок").map { it.index })
+        assertEquals(listOf(3, 1), RpHistory.search(history, "role:assistant").map { it.index })
+        assertEquals(5, history.size)
+        try {
+            RpHistory.search(history, "role:admin лес")
+            fail("Unknown speaker filter accepted")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun rewindKeepsSelectedPlayerTurnAndDoesNotMutateSource() {
         val result = RpHistory.rewind(history, 2)
         assertEquals(history.take(3), result)
