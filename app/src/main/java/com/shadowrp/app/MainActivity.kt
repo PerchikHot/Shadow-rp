@@ -63,8 +63,21 @@ class MainActivity : Activity() {
   text=s;textSize=size;setTextColor(color);setPadding(14,12,14,12);if(bold)setTypeface(null,Typeface.BOLD)
  }
  private fun button(s:String,click:()->Unit)=TextView(this).apply {
-  text=s;textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;setPadding(12,16,12,16)
-  background=shape(panel);setOnClickListener { click() }
+  text=s;textSize=15f;setTextColor(Color.WHITE);gravity=Gravity.CENTER
+  setPadding(dp(12),dp(14),dp(12),dp(14));minHeight=dp(48)
+  val normal=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+   intArrayOf(Color.rgb(30,58,100),Color.rgb(19,32,57))).apply {
+   cornerRadius=dp(16).toFloat();setStroke(dp(1),Color.rgb(55,103,164))
+  }
+  val pressed=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+   intArrayOf(Color.rgb(46,108,178),Color.rgb(27,62,112))).apply {
+   cornerRadius=dp(16).toFloat();setStroke(dp(1),Color.rgb(105,200,255))
+  }
+  background=android.graphics.drawable.StateListDrawable().apply {
+   addState(intArrayOf(android.R.attr.state_pressed),pressed)
+   addState(intArrayOf(),normal)
+  }
+  isFocusable=true;setOnClickListener { click() }
  }
  private fun styleDialog(dialog:AlertDialog) {
   dialog.window?.setBackgroundDrawable(shape(panel,22f))
