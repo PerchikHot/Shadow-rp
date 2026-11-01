@@ -1,5 +1,6 @@
 import unittest
-from rp_backup import encode_backup, decode_backup, merge_backups, export_character
+from rp_backup import (encode_backup, decode_backup, merge_backups,
+                       merge_backups_as_copies, export_character)
 
 
 class BackupTests(unittest.TestCase):
@@ -44,6 +45,37 @@ class BackupTests(unittest.TestCase):
         incoming = {"characters": {"new" + str(i): {"messages": []} for i in range(60)}}
         with self.assertRaises(ValueError):
             merge_backups(old, incoming)
+
+    def test_import_as_copies_preserves_existing_history(self):
+        old = {"characters": {"Алиса": {"messages": [
+            {"role": "user", "content": "Личная история"}]}}}
+        incoming = {"characters": {
+            "Алиса": {"messages": [{"role": "assistant", "content": "Новая история"}]},
+            "Алиса (импорт 2)": {"messages": []},
+        }}
+        merged = merge_backups_as_copies(old, incoming)
+        self.assertEqual(set(merged["characters"]),
+                         {"Алиса", "Алиса (импорт 2)", "Алиса (импорт 3)"})
+        self.assertEqual(merged["characters"]["Алиса"]["messages"][0]["content"],
+                         "Личная история")
+        self.assertEqual(merged["characters"]["Алиса (импорт 3)"]["messages"][0]["content"],
+                         "Новая история")
+        self.assertEqual(old["characters"]["Алиса"]["messages"][0]["content"],
+                         "Личная история")
+        self.assertEqual(decode_backup(encode_backup(merged)), merged)
+
+    def test_import_as_copies_truncates_long_names_safely(self):
+        name = "Я" * 100
+        old = {"characters": {name: {"messages": []}}}
+        new = {"characters": {name: {"messages": []}}}
+        merged = merge_backups_as_copies(old, new)
+        self.assertEqual(len(merged["characters"]), 2)
+        self.assertTrue(all(len(n) <= 100 for n in merged["characters"]))
+
+    def test_import_as_copies_rejects_too_many_characters(self):
+        old = {"characters": {str(i): {"messages": []} for i in range(200)}}
+        with self.assertRaises(ValueError):
+            merge_backups_as_copies(old, {"characters": {"0": {"messages": []}}})
 
     def test_export_only_selected_character_preserves_portable_fields(self):
         data = {"characters": {
