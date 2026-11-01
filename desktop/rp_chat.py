@@ -16,6 +16,14 @@ DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.j
 BG, PANEL, FG, BLUE = "#080f20", "#172640", "#edf5ff", "#60baff"
 
 
+def filter_character_names(names, query):
+    """Case-insensitive sidebar search; never modifies character storage."""
+    if not isinstance(query, str):
+        raise ValueError("Search text must be a string")
+    needle = query.strip().casefold()
+    return [name for name in names if needle in name.casefold()]
+
+
 def load():
     return load_data(DATA)[0]
 
@@ -56,9 +64,21 @@ class App:
         sidebar = tk.Frame(root, bg=PANEL, width=235)
         sidebar.pack(side="left", fill="y")
         tk.Label(sidebar, text="SHADOW RP", bg=PANEL, fg=BLUE, font=("Segoe UI", 18, "bold")).pack(pady=18)
-        self.characters = tk.Listbox(sidebar, bg=BG, fg=FG, selectbackground="#23539a", borderwidth=0, font=("Segoe UI", 12))
+        tk.Label(sidebar, text="ПОИСК ПЕРСОНАЖА", bg=PANEL, fg="#9DB8D9",
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=12)
+        self.character_query = tk.StringVar()
+        self.character_search = tk.Entry(sidebar, textvariable=self.character_query,
+                                         bg=BG, fg=FG, insertbackground=FG,
+                                         relief="flat", font=("Segoe UI", 11))
+        self.character_search.pack(fill="x", padx=10, pady=(4, 7), ipady=6)
+        root.bind("<Control-f>", lambda _: self.character_search.focus_set())
+        self.character_count = tk.Label(sidebar, bg=PANEL, fg="#92B3D7",
+                                        font=("Segoe UI", 9))
+        self.character_count.pack(anchor="w", padx=12, pady=(0, 4))
+        self.characters = tk.Listbox(sidebar, bg=BG, fg=FG, selectbackground="#23539a", borderwidth=0, font=("Segoe UI", 12), highlightthickness=0)
         self.characters.pack(fill="both", expand=True, padx=10)
         self.characters.bind("<<ListboxSelect>>", self.select)
+        self.character_query.trace_add("write", lambda *_: self.refresh())
         tk.Button(sidebar, text="+ Персонаж", command=self.add).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Описание персонажа", command=self.edit).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Внешность", command=lambda: self.edit_field("appearance", "Внешность", "Внешность, одежда, особенности:")).pack(fill="x", padx=10, pady=5)
@@ -75,6 +95,10 @@ class App:
         main.pack(side="left", fill="both", expand=True, padx=14, pady=14)
         self.title = tk.Label(main, bg=BG, fg=FG, font=("Segoe UI", 17, "bold"))
         self.title.pack(anchor="w")
+        self.subtitle = tk.Label(main, bg=BG, fg="#9DB8D9",
+                                 font=("Segoe UI", 10), anchor="w", justify="left",
+                                 wraplength=620)
+        self.subtitle.pack(fill="x", pady=(2, 0))
         self.history = scrolledtext.ScrolledText(main, bg=PANEL, fg=FG, wrap="word", state="disabled", font=("Segoe UI", 11), borderwidth=0)
         self.history.pack(fill="both", expand=True, pady=10)
         self.history.tag_configure("player_name",
@@ -173,13 +197,19 @@ class App:
             messagebox.showerror("Ошибка импорта", str(exc))
 
     def refresh(self):
-        names = list(self.data["characters"])
+        all_names = list(self.data["characters"])
+        names = filter_character_names(all_names, self.character_query.get())
+        self.character_count.config(text=f"Показано: {len(names)} из {len(all_names)}")
         self.characters.delete(0, "end")
         for name in names:
             self.characters.insert("end", name)
         if self.active in names:
             self.characters.selection_set(names.index(self.active))
         self.title.config(text=self.active or "Нет персонажей")
+        active_card = self.data["characters"].get(self.active, {}) if self.active else {}
+        scenario = str(active_card.get("scenario", "")).strip()
+        self.subtitle.config(text=("СЦЕНАРИЙ  /  " + scenario[:180]) if scenario
+                             else "ВЫБЕРИ ПЕРСОНАЖА  •  CTRL+F — ПОИСК")
         self.history.config(state="normal")
         self.history.delete("1.0", "end")
         if self.active:
