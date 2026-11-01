@@ -8,6 +8,7 @@ from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
 from rp_storage import load_data, save_data
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
+from rp_history import search_dialogue, rewind_to_user_turn
 from rp_reply_safety import card_context, can_apply_reply
 from rp_transport import chat_completion
 
@@ -55,6 +56,7 @@ class App:
         tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Импорт чатов", command=self.import_chats).pack(fill="x", padx=10, pady=5)
         main = tk.Frame(root, bg=BG)
@@ -220,6 +222,87 @@ class App:
         item["memory"] = proposed
         save(self.data)
         self.status.config(text="Сцена закреплена вручную; память сохранена")
+
+
+    def history_tools(self):
+        """Search all turns; rewind only after explicit confirmation and backup."""
+        if not self.active or self.pending:
+            messagebox.showwarning("История", "Выбери персонажа и дождись ответа ИИ.")
+            return
+        name = self.active
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"История — {name}")
+        dialog.geometry("700x520")
+        dialog.configure(bg=BG)
+        dialog.transient(self.root)
+        tk.Label(dialog, text="Поиск по всей переписке (до 50 совпадений)",
+                 bg=BG, fg=FG).pack(anchor="w", padx=12, pady=8)
+        query = tk.StringVar()
+        field = tk.Entry(dialog, textvariable=query, bg=PANEL, fg=FG,
+                         insertbackground=FG)
+        field.pack(fill="x", padx=12)
+        listing = tk.Listbox(dialog, bg=PANEL, fg=FG, selectbackground="#23539a",
+                             font=("Segoe UI", 10))
+        listing.pack(fill="both", expand=True, padx=12, pady=8)
+        matches = []
+
+        def populate(*_):
+            nonlocal matches
+            card = self.data["characters"].get(name)
+            if card is None:
+                matches = []
+            else:
+                matches = search_dialogue(card["messages"], query.get())
+            listing.delete(0, "end")
+            for index, role, preview in matches:
+                speaker = "Ты" if role == "user" else name
+                listing.insert("end", f"#{index + 1} {speaker}: {preview}")
+
+        def rewind():
+            selected = listing.curselection()
+            if not selected or self.pending:
+                messagebox.showwarning("История", "Выбери реплику и дождись ответа ИИ.",
+                                       parent=dialog)
+                return
+            index, role, _ = matches[selected[0]]
+            if role != "user":
+                messagebox.showwarning("История", "Для отката выбери реплику игрока.",
+                                       parent=dialog)
+                return
+            try:
+                candidate = rewind_to_user_turn(self.data, name, index)
+            except ValueError as exc:
+                messagebox.showwarning("История", str(exc), parent=dialog)
+                return
+            removed = (len(self.data["characters"][name]["messages"]) -
+                       len(candidate["characters"][name]["messages"]))
+            if not messagebox.askyesno(
+                "Откат диалога",
+                f"Удалить {removed} последующих реплик персонажа «{name}»?\\n"
+                "Перед откатом будет создан отдельный архив "
+                "chats-rewind-checkpoint.json. Его можно импортировать обратно.",
+                parent=dialog,
+            ):
+                return
+            try:
+                # Do not overwrite the live conversation until the complete
+                # pre-rewind archive has been safely written to disk.
+                save_data(DATA.with_name("chats-rewind-checkpoint.json"), self.data)
+                save(candidate)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror("Ошибка сохранения", str(exc), parent=dialog)
+                return
+            self.data = candidate
+            self.active = name
+            self.refresh()
+            self.status.config(text=f"Откат: удалено {removed} реплик; архив сохранён")
+            dialog.destroy()
+
+        query.trace_add("write", populate)
+        tk.Button(dialog, text="Откатить к выбранной реплике игрока",
+                  command=rewind).pack(fill="x", padx=12, pady=(0, 12))
+        populate()
+        field.focus_set()
 
     def send(self):
         if self.pending:
