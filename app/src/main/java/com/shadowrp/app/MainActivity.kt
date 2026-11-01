@@ -46,6 +46,8 @@ class MainActivity : Activity() {
  private val prefs by lazy { getSharedPreferences("shadowrp", MODE_PRIVATE) }
  private val characters=mutableListOf<String>()
  private val chats=mutableMapOf<String,MutableList<Pair<String,String>>>()
+ // One active request per room: repeated taps must not duplicate turns.
+ private val roomPending=mutableSetOf<String>()
  private var active="Цунаде"
  private val localPending=mutableSetOf<String>()
  private val localStarted=mutableMapOf<String,Long>()
@@ -1560,40 +1562,120 @@ class MainActivity : Activity() {
    val fromUser=o.optString("role")=="Игрок"
    b.addView(text(o.optString("role")+"\n"+o.optString("text"),16f).apply{background=shape(if(fromUser)Color.rgb(67,49,179) else panel,16f)},LinearLayout.LayoutParams(-1,-2).apply{setMargins(dp(8),dp(5),dp(8),dp(5))})
   }
+  if(roomPending.contains(key))b.addView(text("ИИ отвечает участникам комнаты…",14f,muted))
   val input=EditText(this).apply {hint="Твоё действие или реплика";setTextColor(Color.WHITE);setHintTextColor(muted);textSize=19f;background=shape(panel);setPadding(dp(14),dp(14),dp(14),dp(14))}
   root.addView(input)
   root.addView(button("➤ Отправить") {
+   if(roomPending.contains(key)){alert("Дождись ответа участников комнаты.");return@button}
    val msg=input.text.toString().trim()
-   if(msg.isNotBlank()) {
-    history.put(JSONObject().put("role","Игрок").put("text",msg))
-    prefs.edit().putString(key,history.toString()).apply()
-    val base=prefs.getString("url","").orEmpty().trimEnd('/')
-    val model=prefs.getString("model","").orEmpty()
-    val apiKey=prefs.getString("key","").orEmpty()
-    if(base.isBlank()||model.isBlank()){roomChat(room);alert("Для ответов участников настрой ИИ в параметрах ⚙")}
-    else thread {
-     try {
-      val arr=JSONArray()
-      val personas=members.joinToString("\n"){ it+": "+prefs.getString("persona_$it","").orEmpty() }
-      arr.put(JSONObject().put("role","system").put("content","Ты ведущий групповой ролевой игры. Участники: "+members.joinToString(", ")+". Сюжет: "+room.optString("story")+"\n"+personas+"\nОтвечай по-русски, от лица нескольких персонажей, не управляй действиями игрока."))
-      // Ignore malformed room messages while preserving their original stored JSON.
-      for(i in maxOf(0, history.length()-30) until history.length()){
-       val o=history.optJSONObject(i)?:continue
-       if(!o.has("text") || o.isNull("text"))continue
-       arr.put(JSONObject()
-        .put("role",if(o.optString("role")=="Игрок")"user" else "assistant")
-        .put("content",o.optString("text")))
+   if(msg.isBlank())return@button
+   val updated=savedArray(key)
+   updated.put(JSONObject().put("role","Игрок").put("text",msg.take(20000)))
+   if(!prefs.edit().putString(key,updated.toString()).commit()){
+    alert("Не удалось сохранить сообщение");return@button
+   }
+   requestRoomReply(room,key)
+   roomChat(room)
+  })
+  val last=history.optJSONObject(history.length()-1)?.optString("role")
+  if(RpRoomSafety.canRetry(last,roomPending.contains(key))) {
+   root.addView(button("↻ Повторить ответ участников") {
+    if(roomPending.contains(key))return@button
+    requestRoomReply(room,key)
+    roomChat(room)
+   })
+  }
+ }
+
+ /** Room replies use the same endpoint restrictions as individual chats.
+  * A failed request leaves the player turn on disk for explicit retry.
+  */
+ private fun requestRoomReply(room:JSONObject,key:String) {
+  if(!roomPending.add(key))return
+  val base=prefs.getString("url","").orEmpty()
+  val model=prefs.getString("model","").orEmpty().trim()
+  val apiKey=prefs.getString("key","").orEmpty()
+  if(base.isBlank()||model.isBlank()){
+   roomPending.remove(key)
+   alert("Для ответов участников настрой ИИ в параметрах ⚙")
+   return
+  }
+  val endpoint=try{RpRemotePolicy.endpoint(base,apiKey)}
+   catch(e:IllegalArgumentException){
+    roomPending.remove(key);alert(e.message?:"Неверный адрес модели");return
+   }
+  val snapshot=savedArray(key).toString()
+  val members=room.optString("members").split(",").map{it.trim()}.filter{it.isNotBlank()}
+  val personas=members.joinToString("\n"){it+": "+prefs.getString("persona_$it","").orEmpty().take(4000)}
+  val system="Ты ведущий групповой ролевой игры. Участники: "+members.joinToString(", ")+
+   ". Сюжет: "+room.optString("story").take(4000)+"\n"+personas+
+   "\nОтвечай по-русски от лица персонажей, не управляй действиями игрока."
+  val arr=JSONArray().put(JSONObject().put("role","system").put("content",system))
+  val history=JSONArray(snapshot)
+  for(i in maxOf(0,history.length()-30) until history.length()){
+   val item=history.optJSONObject(i)?:continue
+   val role=item.optString("role")
+   val content=item.opt("text")
+   if(role !in listOf("Игрок","Персонажи") || content !is String || content.isBlank())continue
+   arr.put(JSONObject().put("role",if(role=="Игрок")"user" else "assistant")
+    .put("content",content.take(10000)))
+  }
+  val payload=JSONObject().put("model",model).put("messages",arr)
+   .put("stream",false).toString().toByteArray(Charsets.UTF_8)
+  thread {
+   try {
+    var reply:String?=null
+    for(attempt in 0..2){
+     var connection:HttpURLConnection?=null
+     try{
+      val c=(endpoint.openConnection() as HttpURLConnection).apply{
+       requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000
+       instanceFollowRedirects=false
+       setRequestProperty("Content-Type","application/json")
+       if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")
       }
-      val conn=(URL("$base/chat/completions").openConnection() as HttpURLConnection).apply {requestMethod="POST";doOutput=true;connectTimeout=20000;readTimeout=120000;instanceFollowRedirects=false;setRequestProperty("Content-Type","application/json");if(apiKey.isNotBlank())setRequestProperty("Authorization","Bearer $apiKey")}
-      conn.outputStream.use{it.write(JSONObject().put("model",model).put("messages",arr).put("stream",false).toString().toByteArray())}
-      val response=readModelResponse(if(conn.responseCode in 200..299)conn.inputStream else conn.errorStream)
-      if(conn.responseCode !in 200..299)error("HTTP "+conn.responseCode+": "+response.take(200))
-      val reply=JSONObject(response).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content")
-      runOnUiThread {history.put(JSONObject().put("role","Персонажи").put("text",reply));prefs.edit().putString(key,history.toString()).apply();roomChat(room)}
-     }catch(e:Exception){runOnUiThread{alert("Ошибка модели: "+e.message)}}
+      connection=c
+      c.outputStream.use{it.write(payload)}
+      val status=c.responseCode
+      if(status !in 200..299){
+       if(RpRemotePolicy.shouldRetryStatus(status,attempt)){
+        Thread.sleep(500L*(attempt+1));continue
+       }
+       // Never display the server's error body: it could echo an API key.
+       error("HTTP $status")
+      }
+      val response=readModelResponse(c.inputStream)
+      reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices")
+       .getJSONObject(0).getJSONObject("message").getString("content"))
+      if(reply.isNullOrBlank())error("Модель вернула пустой ответ")
+      break
+     }catch(e:java.io.IOException){
+      if(attempt==2)throw e
+      Thread.sleep(500L*(attempt+1))
+     }finally{connection?.disconnect()}
+    }
+    val answer=reply?:error("Модель не ответила")
+    runOnUiThread {
+     roomPending.remove(key)
+     val current=prefs.getString(key,null)
+     if(!RpRoomSafety.canApplyReply(snapshot,current)){
+      alert("История комнаты изменилась. Устаревший ответ не сохранён.")
+     }else{
+      val updated=JSONArray(current)
+      updated.put(JSONObject().put("role","Персонажи").put("text",answer.take(20000)))
+      if(!prefs.edit().putString(key,updated.toString()).commit())
+       alert("Не удалось сохранить ответ ИИ")
+     }
+     roomChat(room)
+    }
+   }catch(e:Exception){
+    runOnUiThread{
+     roomPending.remove(key)
+     roomChat(room)
+     alert("Не удалось получить ответ модели. Сообщение сохранено — нажми «Повторить ответ участников».")
     }
    }
-  })
+  }
  }
  private fun alert(s:String){AlertDialog.Builder(this).setMessage(s).setPositiveButton("OK",null).show().also {styleDialog(it)}}
  private fun modelInstaller(parent:LinearLayout) {
