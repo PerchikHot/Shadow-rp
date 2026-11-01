@@ -10,8 +10,34 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from rp_context import validate_endpoint
+
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
-TRANSIENT_HTTP = {429, 502, 503, 504}
+MAX_REQUEST_BYTES = 2 * 1024 * 1024
+TRANSIENT_HTTP = {408, 429, 502, 503, 504}
+
+
+def _extract_text(result: dict) -> str:
+    """Accept plain text or standard OpenAI-compatible typed text parts."""
+    try:
+        content = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ValueError("Неверный формат ответа модели") from exc
+    if isinstance(content, str):
+        answer = content
+    elif isinstance(content, list) and 0 < len(content) <= 100:
+        parts = []
+        for part in content:
+            if (not isinstance(part, dict) or part.get("type") != "text"
+                    or not isinstance(part.get("text"), str)):
+                raise ValueError("Неподдерживаемый формат ответа модели")
+            parts.append(part["text"])
+        answer = "\n".join(parts)
+    else:
+        raise ValueError("Неподдерживаемый формат ответа модели")
+    if not answer.strip():
+        raise ValueError("Модель вернула пустой ответ")
+    return answer[:20000]
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -24,11 +50,18 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
                     *, opener=None, sleep=None, attempts: int = 3) -> str:
     if not 1 <= attempts <= 3:
         raise ValueError("Invalid retry count")
-    if not model.strip() or len(model) > 120:
+    if not isinstance(model, str) or not model.strip() or len(model) > 120:
         raise ValueError("Укажи корректное имя модели")
-    url = base.rstrip("/") + "/chat/completions"
+    if not isinstance(api_key, str) or "\r" in api_key or "\n" in api_key:
+        raise ValueError("Некорректный API-ключ")
+    # Enforce endpoint safety even if a new caller bypasses the UI wrapper.
+    url = validate_endpoint(base) + "/chat/completions"
+    if not isinstance(messages, list):
+        raise ValueError("Некорректный контекст диалога")
     payload = json.dumps({"model": model.strip(), "messages": messages},
                          ensure_ascii=False).encode("utf-8")
+    if len(payload) > MAX_REQUEST_BYTES:
+        raise ValueError("Контекст диалога превышает 2 МБ")
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = "Bearer " + api_key
@@ -43,12 +76,11 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
                 raise ValueError("Ответ модели превышает 2 МБ")
             try:
                 result = json.loads(raw)
-                answer = result["choices"][0]["message"]["content"]
-            except (ValueError, KeyError, IndexError, TypeError) as exc:
-                raise ValueError("Неверный формат ответа модели") from exc
-            if not isinstance(answer, str) or not answer.strip():
-                raise ValueError("Модель вернула пустой ответ")
-            return answer[:20000]
+            except (ValueError, UnicodeError) as exc:
+                raise ValueError("Неверный JSON ответа модели") from exc
+            if not isinstance(result, dict):
+                raise ValueError("Неверный формат ответа модели")
+            return _extract_text(result)
         except HTTPError as exc:
             if exc.code not in TRANSIENT_HTTP or attempt + 1 == attempts:
                 raise ValueError(f"Ошибка API: HTTP {exc.code}") from None
