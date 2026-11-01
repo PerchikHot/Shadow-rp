@@ -252,7 +252,7 @@ class App:
             if card is None:
                 matches = []
             else:
-                matches = search_dialogue(card["messages"], query.get())
+                matches = search_dialogue(card["messages"], query.get()[:200])
             listing.delete(0, "end")
             for index, role, preview in matches:
                 speaker = "Ты" if role == "user" else name
