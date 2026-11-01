@@ -11,6 +11,8 @@ internal object RpSceneMemory {
     // masquerade as another top-level speaker in persistent scene memory.
     private fun quote(text: String): String = text.trim().take(MAX_QUOTE)
         .replace("\r\n", "\n").replace('\r', '\n')
+        .replace('\u0085', '\n').replace('\u2028', '\n').replace('\u2029', '\n')
+        .replace(Regex("[\\u202A-\\u202E\\u2066-\\u2069]"), "")
         .replace("\n", "\n│ ")
 
     fun pinLastExchange(memory: String, messages: List<Pair<String, String>>): String {
