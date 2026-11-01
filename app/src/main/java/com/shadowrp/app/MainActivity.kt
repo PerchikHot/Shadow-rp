@@ -283,15 +283,19 @@ class MainActivity : Activity() {
   } ?: throw IllegalArgumentException("Не удалось открыть архив")
  }
 
- private fun applyRpImport(imported: Map<String, RpBackup.Card>) {
+ private fun applyRpImport(imported: Map<String, RpBackup.Card>, keepBoth: Boolean = false) {
   if(localPending.isNotEmpty()) throw IllegalStateException("Дождись завершения ответа ИИ перед импортом")
   // Validate the *combined* archive before writing even one preference.
   // Individually valid imports can exceed 200 cards or 8 MiB after merging.
-  val merged = RpBackup.checkedMerge(rpCards(), imported)
+  val (merged, toWrite) = if (keepBoth) {
+   RpBackup.checkedMergeAsCopies(rpCards(), imported)
+  } else {
+   RpBackup.checkedMerge(rpCards(), imported) to imported
+  }
   val names = merged.keys.toList()
   val editor = prefs.edit()
   editor.putString("characters", JSONArray(names).toString())
-  imported.forEach { (name, card) ->
+  toWrite.forEach { (name, card) ->
    // Old message timestamps refer to a different history after replacement.
    // Remove only timestamps for the overwritten character, not other chats.
    for (index in 0 until (chats[name]?.size ?: 0)) {
@@ -310,7 +314,7 @@ class MainActivity : Activity() {
   if (!editor.commit()) throw IllegalStateException("Не удалось сохранить импорт")
   characters.clear()
   characters.addAll(names)
-  imported.forEach { (name, card) -> chats[name] = card.messages.toMutableList() }
+  toWrite.forEach { (name, card) -> chats[name] = card.messages.toMutableList() }
   profile()
   alert("Импортировано персонажей: " + imported.size)
  }
@@ -739,11 +743,15 @@ class MainActivity : Activity() {
   if(resultCode==Activity.RESULT_OK && data?.data!=null && requestCode==rpImportPicker) {
    try {
     val imported = RpBackup.decode(readRpArchive(data.data!!))
-    val collisions = imported.keys.count { it in characters }
+    val existingNames = characters.map { it.lowercase(java.util.Locale.ROOT) }.toSet()
+    val collisions = imported.keys.count { it.lowercase(java.util.Locale.ROOT) in existingNames }
     AlertDialog.Builder(this).setTitle("Импорт Shadow RP")
-     .setMessage("Импортировать " + imported.size + " персонажей? Совпадающих имён: " +
-      collisions + ". Их карточки и истории будут заменены. Остальные персонажи сохранятся. Сделай экспорт перед импортом.")
-     .setPositiveButton("Импортировать") { _, _ ->
+     .setMessage("Персонажей: " + imported.size + ". Совпадающих имён: " + collisions +
+      ". Можно сохранить обе истории с отдельными именами или заменить совпадающие карточки. Импорт не затрагивает модели и API-ключи.")
+     .setPositiveButton("Сохранить обе") { _, _ ->
+      try { applyRpImport(imported, keepBoth = true) }
+      catch(e: Exception) { alert("Ошибка сохранения: " + e.message) }
+     }.setNeutralButton("Заменить совпадения") { _, _ ->
       try { applyRpImport(imported) }
       catch(e: Exception) { alert("Ошибка сохранения: " + e.message) }
      }.setNegativeButton("Отмена", null).show().also { styleDialog(it) }
