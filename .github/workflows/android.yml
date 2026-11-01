@@ -26,6 +26,8 @@ jobs:
           python3 -m pip install --quiet Pillow
           python3 tools/build_icons.py
           python3 tools/build_icons.py --verify
+      - name: Test APK signing and upgrade safeguards
+        run: python3 -m unittest discover -s tools -p 'test_verify_apk_upgrade.py'
       - name: Test portable RP backups and build debug APK
         run: /opt/gradle-8.9/bin/gradle testDebugUnitTest assembleDebug --no-daemon
       - name: Verify launcher icons are packaged into APK
@@ -61,6 +63,26 @@ jobs:
         with:
           name: ShadowRP-signed-release-apk
           path: app/build/outputs/apk/release/*.apk
+      - name: Verify published APK can be upgraded without deleting user data
+        if: github.ref == 'refs/heads/main' && steps.signing.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -x "$APKSIGNER" && test -x "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          if gh release view shadow-rp-android --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            mkdir -p /tmp/shadow-previous
+            gh release download shadow-rp-android -p ShadowRP-Android.apk \
+              -D /tmp/shadow-previous --repo "$GITHUB_REPOSITORY"
+            python3 tools/verify_apk_upgrade.py \
+              --apksigner "$APKSIGNER" --aapt "$AAPT" \
+              --previous /tmp/shadow-previous/ShadowRP-Android.apk \
+              --candidate "$APK"
+          fi
       - name: Publish signed APK to GitHub Releases
         # Never overwrite an installable signed release with a debug APK.
         if: github.ref == 'refs/heads/main' && steps.signing.outputs.enabled == 'true'
