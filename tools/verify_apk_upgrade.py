@@ -13,14 +13,14 @@ from pathlib import Path
 
 def signature_digests(output: str) -> frozenset[str]:
     values = re.findall(
-        r"Signer #\\d+ certificate SHA-256 digest:\\s*([0-9a-fA-F]{64})",
+        r"Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F]{64})",
         output, flags=re.IGNORECASE,
     )
     return frozenset(value.lower() for value in values)
 
 
 def version_code(output: str) -> int:
-    match = re.search(r"versionCode='(\\d+)'", output)
+    match = re.search(r"versionCode='(\d+)'", output)
     if not match:
         raise ValueError("Cannot read APK versionCode")
     return int(match.group(1))
