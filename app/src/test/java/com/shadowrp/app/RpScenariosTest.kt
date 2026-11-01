@@ -6,7 +6,7 @@ import org.junit.Test
 
 class RpScenariosTest {
     @Test fun scenePresetsHaveValidDescriptions() {
-        assertEquals(4, RpScenarios.templates.size)
+        assertEquals(6, RpScenarios.templates.size)
         for (index in RpScenarios.templates.indices) {
             val (name, description) = RpScenarios.choose(index)
             assertTrue(name.isNotBlank())
@@ -15,7 +15,7 @@ class RpScenariosTest {
     }
 
     @Test fun invalidPresetIsRejected() {
-        for (index in listOf(-1, 4, 99)) {
+        for (index in listOf(-1, 6, 99)) {
             try {
                 RpScenarios.choose(index)
                 throw AssertionError("Invalid scenario accepted")
