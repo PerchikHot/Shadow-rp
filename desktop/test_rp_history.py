@@ -1,0 +1,53 @@
+"""Headless tests for RP dialogue search and non-destructive rewind."""
+import unittest
+from rp_history import search_dialogue, rewind_to_user_turn
+
+
+def sample():
+    return {"characters": {
+        "Алиса": {"description": "Пилот", "scenario": "Космос",
+                  "memory": "Старая сцена",
+                  "messages": [
+                      {"role": "user", "content": "Встреча у маяка"},
+                      {"role": "assistant", "content": "Я помню маяк"},
+                      {"role": "user", "content": "Отправляемся к звёздам"},
+                      {"role": "assistant", "content": "Полетели!"}]},
+        "Боб": {"description": "Друг", "messages": [
+            {"role": "user", "content": "Не меняй меня"}]}}}
+
+
+class HistoryTests(unittest.TestCase):
+    def test_search_is_case_insensitive_recent_first_and_bounded(self):
+        messages = sample()["characters"]["Алиса"]["messages"]
+        self.assertEqual([x[0] for x in search_dialogue(messages, "МАЯК")], [1, 0])
+        self.assertEqual([x[0] for x in search_dialogue(messages, "")], [3, 2, 1, 0])
+        self.assertEqual(len(search_dialogue(messages, "", limit=2)), 2)
+        self.assertEqual(search_dialogue(messages, "несуществующее"), [])
+
+    def test_rewind_keeps_player_turn_and_other_characters(self):
+        original = sample()
+        updated = rewind_to_user_turn(original, "Алиса", 2)
+        self.assertEqual(len(updated["characters"]["Алиса"]["messages"]), 3)
+        self.assertEqual(updated["characters"]["Алиса"]["messages"][-1]["role"], "user")
+        self.assertEqual(updated["characters"]["Алиса"]["memory"], "Старая сцена")
+        self.assertEqual(updated["characters"]["Боб"], original["characters"]["Боб"])
+        self.assertEqual(len(original["characters"]["Алиса"]["messages"]), 4)
+
+    def test_rejects_assistant_turn_missing_character_and_last_turn(self):
+        for character, index in [("Алиса", 1), ("Алиса", -1),
+                                 ("Алиса", 4), ("Неизвестный", 0),
+                                 ("Боб", 0), ("Алиса", True)]:
+            with self.subTest(character=character, index=index):
+                with self.assertRaises(ValueError):
+                    rewind_to_user_turn(sample(), character, index)
+
+    def test_rejects_invalid_search_limits_and_input(self):
+        for query, limit in [("x" * 201, 50), ("a", 0), ("a", 101)]:
+            with self.assertRaises(ValueError):
+                search_dialogue([], query, limit)
+        with self.assertRaises(ValueError):
+            search_dialogue(None, "test")
+
+
+if __name__ == "__main__":
+    unittest.main()
