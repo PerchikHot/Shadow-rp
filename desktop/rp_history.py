@@ -46,3 +46,35 @@ def rewind_to_user_turn(data: dict, character: str, turn_index: int):
     clean["characters"][character]["messages"] = messages[:turn_index + 1]
     encode_backup(clean)
     return clean
+
+def branch_from_user_turn(data: dict, character: str, turn_index: int):
+    """Create a separate playable timeline; never truncate the original chat.
+
+    Only the selected user's turn and its predecessors are copied. Pinned
+    memories can mention events later in the original timeline, so the branch
+    deliberately starts with empty pinned memory; the original is untouched.
+    """
+    clean = validate_backup(data)
+    if character not in clean["characters"]:
+        raise ValueError("Персонаж не найден")
+    messages = clean["characters"][character]["messages"]
+    if (type(turn_index) is not int or not 0 <= turn_index < len(messages)
+            or messages[turn_index]["role"] != "user"):
+        raise ValueError("Выбери реплику игрока для новой ветки")
+    if turn_index == len(messages) - 1:
+        raise ValueError("Для новой ветки выбери более раннюю реплику")
+    occupied = {name.casefold() for name in clean["characters"]}
+    new_name = None
+    for number in range(2, 202):
+        suffix = f" (ветка {number})"
+        candidate = character[:100 - len(suffix)].rstrip() + suffix
+        if candidate.casefold() not in occupied:
+            new_name = candidate
+            break
+    if new_name is None:
+        raise ValueError("Не удалось выбрать имя новой ветки")
+    source = clean["characters"][character]
+    copy = {**source, "memory": "", "messages": [dict(m) for m in messages[:turn_index + 1]]}
+    clean["characters"][new_name] = copy
+    encode_backup(clean)
+    return clean, new_name
