@@ -25,6 +25,18 @@ class HistoryTests(unittest.TestCase):
         self.assertEqual(len(search_dialogue(messages, "", limit=2)), 2)
         self.assertEqual(search_dialogue(messages, "несуществующее"), [])
 
+    def test_search_can_filter_speaker_without_changing_transcript(self):
+        messages = sample()["characters"]["Алиса"]["messages"]
+        original = [dict(item) for item in messages]
+        self.assertEqual([x[0] for x in search_dialogue(messages, "role:player маяк")], [0])
+        self.assertEqual([x[0] for x in search_dialogue(messages, "role:character маяк")], [1])
+        self.assertEqual([x[0] for x in search_dialogue(messages, "role:игрок")], [2, 0])
+        self.assertEqual([x[0] for x in search_dialogue(messages, "role:assistant")], [3, 1])
+        self.assertEqual(search_dialogue(messages, "role:player несуществующее"), [])
+        with self.assertRaises(ValueError):
+            search_dialogue(messages, "role:admin маяк")
+        self.assertEqual(messages, original)
+
     def test_rewind_keeps_player_turn_and_other_characters(self):
         original = sample()
         updated = rewind_to_user_turn(original, "Алиса", 2)
