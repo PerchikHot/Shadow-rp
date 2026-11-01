@@ -74,3 +74,35 @@ def export_character(data, name: str) -> bytes:
     if not isinstance(name, str) or name not in clean["characters"]:
         raise ValueError("Выбери существующего персонажа для экспорта")
     return encode_backup({"characters": {name: clean["characters"][name]}})
+
+
+def merge_backups_as_copies(existing, incoming):
+    """Import portable characters without overwriting an existing chat.
+
+    Colliding names get deterministic "(импорт N)" suffixes. Reserve all
+    incoming names before renaming so a generated suffix cannot shadow a
+    different imported character. Validate the final 8 MiB archive first.
+    """
+    old = validate_backup(existing)["characters"]
+    new = validate_backup(incoming)["characters"]
+    result = dict(old)
+    occupied = {name.casefold() for name in old}
+    reserved = occupied | {name.casefold() for name in new}
+    for name, card in new.items():
+        if name.casefold() not in occupied:
+            result[name] = card
+            occupied.add(name.casefold())
+            continue
+        for index in range(2, MAX_CHARACTERS + 2):
+            suffix = f" (импорт {index})"
+            candidate = name[:100 - len(suffix)].rstrip() + suffix
+            if candidate.casefold() not in reserved:
+                result[candidate] = card
+                occupied.add(candidate.casefold())
+                reserved.add(candidate.casefold())
+                break
+        else:
+            raise ValueError("Нет свободного имени для импортированного персонажа")
+    merged = {"characters": result}
+    encode_backup(merged)
+    return merged
