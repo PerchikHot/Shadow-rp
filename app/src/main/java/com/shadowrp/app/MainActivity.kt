@@ -94,19 +94,44 @@ class MainActivity : Activity() {
   return content
  }
  private fun item(parent:LinearLayout,title:String,subtitle:String="",onClick:()->Unit) {
-  val card=LinearLayout(this).apply { orientation=1; background=shape(panel,22f);setPadding(10,10,10,10);elevation=dp(2).toFloat() }
-  card.addView(text(title,17f,Color.WHITE,true))
+  val card=LinearLayout(this).apply {
+   orientation=1
+   background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+    intArrayOf(Color.rgb(27,49,83),Color.rgb(15,26,48))).apply {
+     cornerRadius=dp(19).toFloat()
+     setStroke(dp(1),Color.rgb(52,86,135))
+   }
+   setPadding(dp(14),dp(11),dp(14),dp(11))
+   elevation=dp(3).toFloat()
+   isClickable=true
+   isFocusable=true
+  }
+  val heading=LinearLayout(this).apply { gravity=Gravity.CENTER_VERTICAL }
+  heading.addView(text(title,17f,Color.WHITE,true),LinearLayout.LayoutParams(0,-2,1f))
+  heading.addView(text("›",25f,Color.rgb(118,196,255)))
+  card.addView(heading)
   if(subtitle.isNotBlank())card.addView(text(subtitle,13f,muted))
-  val lp=LinearLayout.LayoutParams(-1,-2).apply { setMargins(4,5,4,5) }
-  parent.addView(card,lp);card.setOnClickListener { onClick() }
+  val lp=LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(4),dp(6),dp(4),dp(6)) }
+  parent.addView(card,lp)
+  card.setOnClickListener { onClick() }
  }
  private fun nav(selected:Int) {
   val row=LinearLayout(this).apply { setPadding(0,dp(8),0,dp(10)) }
   val names=listOf("⌂\nГлавная","◈\nКаталог","＋\nСоздать","☏\nЧаты","♙\nПрофиль")
   names.forEachIndexed { i,name ->
    val view=button(name) { when(i){0->home();1->catalog();2->studio();3->chatList();else->profile()} }
-   view.textSize=16f;view.setTextColor(if(i==selected)blue else muted);view.setPadding(dp(2),dp(20),dp(2),dp(20));view.gravity=Gravity.CENTER
-   row.addView(view,LinearLayout.LayoutParams(0,-2,1f))
+   view.textSize=14f
+   view.setTextColor(if(i==selected)Color.WHITE else muted)
+   view.setPadding(dp(2),dp(14),dp(2),dp(14))
+   view.gravity=Gravity.CENTER
+   view.background=GradientDrawable().apply {
+    cornerRadius=dp(15).toFloat()
+    setColor(if(i==selected)Color.rgb(34,83,149) else Color.rgb(15,27,47))
+    if(i==selected)setStroke(dp(1),Color.rgb(102,189,255))
+   }
+   row.addView(view,LinearLayout.LayoutParams(0,-2,1f).apply {
+    setMargins(dp(2),0,dp(2),0)
+   })
   }
   root.addView(row)
  }
