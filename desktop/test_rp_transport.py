@@ -86,6 +86,43 @@ class TransportTests(unittest.TestCase):
                                 opener=client, sleep=lambda _: None)
             self.assertEqual(len(client.requests), 1)
 
+    def test_typed_text_parts_from_compatible_models(self):
+        parts = {"choices": [{"message": {"content": [
+            {"type": "text", "text": "Первый абзац"},
+            {"type": "text", "text": "Второй абзац"}]}}]}
+        client = Client(json.dumps(parts, ensure_ascii=False).encode("utf-8"))
+        self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
+                                         opener=client, sleep=lambda _: None),
+                         "Первый абзац\\nВторой абзац".replace("\\n", "\n"))
+        for invalid in ([{"type": "image_url", "image_url": "x"}],
+                        [{"type": "text", "text": None}], []):
+            body = json.dumps({"choices": [{"message": {"content": invalid}}]}).encode()
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                chat_completion("https://example.test/v1", "", "model", [],
+                                opener=Client(body), sleep=lambda _: None)
+
+    def test_transport_enforces_https_and_bounded_request_before_network(self):
+        for endpoint in ("http://example.test/v1",
+                         "https://user:secret@example.test/v1",
+                         "https://example.test/v1?api_key=secret"):
+            with self.subTest(endpoint=endpoint), self.assertRaises(ValueError):
+                chat_completion(endpoint, "private", "model", [],
+                                opener=Client(), sleep=lambda _: None)
+        with self.assertRaisesRegex(ValueError, "2 МБ"):
+            chat_completion("https://example.test/v1", "", "model",
+                            [{"role": "user", "content": "x" * (3 * 1024 * 1024)}],
+                            opener=Client(), sleep=lambda _: None)
+        with self.assertRaises(ValueError):
+            chat_completion("https://example.test/v1", "key\\nX-Evil: yes",
+                            "model", [], opener=Client(), sleep=lambda _: None)
+
+    def test_request_timeout_http_408_is_retried(self):
+        client = Client(http_error(408), ok("Продолжаем"))
+        self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
+                                         opener=client, sleep=lambda _: None),
+                         "Продолжаем")
+        self.assertEqual(len(client.requests), 2)
+
     def test_response_length_is_bounded(self):
         client = Client(ok("a" * 25000))
         result = chat_completion("https://example.test/v1", "", "model", [],
