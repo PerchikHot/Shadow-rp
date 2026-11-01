@@ -101,6 +101,47 @@ internal object RpBackup {
         return merged
     }
 
+    /** Android parity with Windows 'keep both' import. The returned second map
+     * contains only renamed/new incoming cards to write to preferences.
+     * Reserve all incoming names before generating suffixes, so no import can
+     * overwrite a different incoming card or an existing conversation.
+     */
+    fun checkedMergeAsCopies(
+        existing: Map<String, Card>, incoming: Map<String, Card>
+    ): Pair<Map<String, Card>, Map<String, Card>> {
+        encode(existing)
+        encode(incoming)
+        val merged = LinkedHashMap(existing)
+        val toWrite = linkedMapOf<String, Card>()
+        val occupied = existing.keys.map { it.lowercase(java.util.Locale.ROOT) }.toMutableSet()
+        val reserved = (existing.keys + incoming.keys)
+            .map { it.lowercase(java.util.Locale.ROOT) }.toMutableSet()
+        incoming.forEach { (name, card) ->
+            var candidate = name
+            if (candidate.lowercase(java.util.Locale.ROOT) in occupied) {
+                var found = false
+                for (number in 2..MAX_CHARACTERS + 1) {
+                    val suffix = " (импорт $number)"
+                    val next = name.take(100 - suffix.length).trimEnd() + suffix
+                    if (next.lowercase(java.util.Locale.ROOT) !in reserved) {
+                        candidate = next
+                        found = true
+                        break
+                    }
+                }
+                require(found) { "Нет свободного имени для импортированного персонажа" }
+            }
+            val key = candidate.lowercase(java.util.Locale.ROOT)
+            require(key !in occupied) { "Повторяющееся имя персонажа" }
+            merged[candidate] = card
+            toWrite[candidate] = card
+            occupied.add(key)
+            reserved.add(key)
+        }
+        encode(merged) // Full preflight before Android writes a single preference.
+        return merged to toWrite
+    }
+
     private fun checkName(name: String) {
         require(name.isNotBlank() && name.length <= 100) { "Некорректное имя персонажа" }
     }
