@@ -13,7 +13,7 @@ from pathlib import Path
 
 def signature_digests(output: str) -> frozenset[str]:
     values = re.findall(
-        r"Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F]{64})",
+        r"(?:Signer #\d+|V\d+(?:\.\d+)? Signer:)\s*certificate SHA-256 digest:\s*([0-9a-fA-F]{64})",
         output, flags=re.IGNORECASE,
     )
     return frozenset(value.lower() for value in values)
