@@ -35,9 +35,11 @@ internal object RpRemotePolicy {
         require(maxMessages in 1..60 && charBudget in 1000..120000)
         val selected = mutableListOf<Pair<String, String>>()
         var remaining = charBudget
-        for ((role, raw) in history.takeLast(maxMessages).asReversed()) {
+        for ((role, raw) in history.asReversed().asSequence()
+            .filter { it.first in setOf("user", "assistant") && it.second.isNotBlank() }
+            .take(maxMessages)) {
             if (role !in setOf("user", "assistant") || raw.isBlank()) continue
-            var content = raw.take(10000)
+            var content = raw.takeLast(10000)
             if (content.length > remaining) {
                 if (selected.isNotEmpty()) break
                 content = content.takeLast(remaining)
