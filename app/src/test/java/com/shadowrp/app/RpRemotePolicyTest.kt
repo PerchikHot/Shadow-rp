@@ -24,8 +24,29 @@ class RpRemotePolicyTest {
         }
     }
 
+
+    @Test fun boundsLongSingleAndGroupChatsWithoutChangingHistory() {
+        val history = (1..50).map { index ->
+            (if (index % 2 == 0) "assistant" else "user") to ("turn$index:" + "a".repeat(1600))
+        }
+        val before = history.toList()
+        val compact = RpRemotePolicy.boundedHistory(history)
+        assertEquals(before, history)
+        assertTrue(compact.size <= 30)
+        assertTrue(compact.sumOf { it.second.length } <= 24000)
+        assertEquals(history.last().first, compact.last().first)
+        assertEquals(history.last().second, compact.last().second)
+        assertEquals("user", RpRemotePolicy.boundedHistory(
+            listOf("system" to "secret", "user" to "hello")).single().first)
+        assertEquals(1000, RpRemotePolicy.boundedHistory(
+            listOf("user" to "x".repeat(20000)), charBudget = 1000
+        ).single().second.length)
+        assertTrue(RpRemotePolicy.boundedHistory(
+            listOf("assistant" to " ", "system" to "ignore")).isEmpty())
+    }
+
     @Test fun retriesOnlyTemporaryServerErrors() {
-        for (code in listOf(429, 502, 503, 504)) {
+        for (code in listOf(408, 429, 502, 503, 504)) {
             assertTrue(RpRemotePolicy.shouldRetryStatus(code, 0))
             assertTrue(RpRemotePolicy.shouldRetryStatus(code, 1))
             assertFalse(RpRemotePolicy.shouldRetryStatus(code, 2))

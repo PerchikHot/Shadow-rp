@@ -1449,8 +1449,9 @@ class MainActivity : Activity() {
     arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
     // Keep a bounded recent dialogue; pinned memory and scenario remain in
     // the system message even when older turns leave the context window.
-    snapshot.takeLast(30).filter { it.first in listOf("user", "assistant") }
-     .forEach { arr.put(JSONObject().put("role",it.first).put("content",it.second.take(10000))) }
+    RpRemotePolicy.boundedHistory(snapshot).forEach {
+     arr.put(JSONObject().put("role",it.first).put("content",it.second))
+    }
     val data=JSONObject().put("model",model).put("messages",arr).put("stream",false).toString()
     // API keys must not travel over unencrypted remote HTTP or in URLs.
     val endpoint = RpRemotePolicy.endpoint(base, key)
@@ -1722,13 +1723,16 @@ class MainActivity : Activity() {
    "\nОтвечай по-русски от лица персонажей, не управляй действиями игрока."
   val arr=JSONArray().put(JSONObject().put("role","system").put("content",system))
   val history=JSONArray(snapshot)
-  for(i in maxOf(0,history.length()-30) until history.length()){
+  val roomTurns=mutableListOf<Pair<String,String>>()
+  for(i in maxOf(0,history.length()-60) until history.length()){
    val item=history.optJSONObject(i)?:continue
    val role=item.optString("role")
    val content=item.opt("text")
    if(role !in listOf("Игрок","Персонажи") || content !is String || content.isBlank())continue
-   arr.put(JSONObject().put("role",if(role=="Игрок")"user" else "assistant")
-    .put("content",content.take(10000)))
+   roomTurns.add((if(role=="Игрок")"user" else "assistant") to content)
+  }
+  RpRemotePolicy.boundedHistory(roomTurns).forEach {
+   arr.put(JSONObject().put("role",it.first).put("content",it.second))
   }
   val payload=JSONObject().put("model",model).put("messages",arr)
    .put("stream",false).toString().toByteArray(Charsets.UTF_8)
