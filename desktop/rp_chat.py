@@ -42,6 +42,17 @@ class App:
         root.title("Shadow RP — ИИ-ролевой чат")
         root.geometry("1050x700")
         root.configure(bg=BG)
+        root.minsize(760, 520)
+        # Shared dark-blue visual language for every actual Windows button,
+        # including dynamically created character and history controls.
+        root.option_add("*Button.background", "#20385E")
+        root.option_add("*Button.foreground", FG)
+        root.option_add("*Button.activeBackground", "#345C93")
+        root.option_add("*Button.activeForeground", "#FFFFFF")
+        root.option_add("*Button.relief", "flat")
+        root.option_add("*Button.borderWidth", 0)
+        root.option_add("*Button.font", ("Segoe UI", 10, "bold"))
+        root.option_add("*Button.cursor", "hand2")
         sidebar = tk.Frame(root, bg=PANEL, width=235)
         sidebar.pack(side="left", fill="y")
         tk.Label(sidebar, text="SHADOW RP", bg=PANEL, fg=BLUE, font=("Segoe UI", 18, "bold")).pack(pady=18)
@@ -66,6 +77,12 @@ class App:
         self.title.pack(anchor="w")
         self.history = scrolledtext.ScrolledText(main, bg=PANEL, fg=FG, wrap="word", state="disabled", font=("Segoe UI", 11), borderwidth=0)
         self.history.pack(fill="both", expand=True, pady=10)
+        self.history.tag_configure("player_name",
+            foreground="#85CAFF", font=("Segoe UI", 11, "bold"))
+        self.history.tag_configure("character_name",
+            foreground="#C2B0FF", font=("Segoe UI", 11, "bold"))
+        self.history.tag_configure("message", foreground=FG,
+            spacing3=10)
         config = tk.Frame(main, bg=BG)
         config.pack(fill="x")
         self.endpoint = tk.Entry(config, width=35)
@@ -168,10 +185,13 @@ class App:
         if self.active:
             card = self.data["characters"][self.active]
             if not card["messages"] and card.get("greeting", "").strip():
-                self.history.insert("end", f"{self.active}: {card['greeting']}\n\n")
+                self.history.insert("end", f"{self.active}: ", "character_name")
+                self.history.insert("end", f"{card['greeting']}\n\n", "message")
             for msg in card["messages"]:
                 speaker = "Ты" if msg["role"] == "user" else self.active
-                self.history.insert("end", f"{speaker}: {msg['content']}\n\n")
+                name_tag = "player_name" if msg["role"] == "user" else "character_name"
+                self.history.insert("end", f"{speaker}: ", name_tag)
+                self.history.insert("end", f"{msg['content']}\n\n", "message")
         self.history.config(state="disabled")
         self.history.see("end")
         # A failed request leaves the user turn intact, so retry it without
