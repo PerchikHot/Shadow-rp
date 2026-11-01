@@ -40,6 +40,21 @@ class RpBackupTest {
         }
     }
 
+    @Test fun rejectControlCharactersInPortableCharacterNames() {
+        val card = RpBackup.Card(emptyMap(), emptyList())
+        for (name in listOf("Алиса\nБета", "Герой\u0000", "Персонаж\t2")) {
+            try {
+                RpBackup.encode(mapOf(name to card))
+                fail("Control character accepted in name")
+            } catch (_: IllegalArgumentException) { }
+            val raw = """{"characters":{${org.json.JSONObject.quote(name)}:{}}}"""
+            try {
+                RpBackup.decode(raw.toByteArray(Charsets.UTF_8))
+                fail("Control character accepted from portable archive")
+            } catch (_: IllegalArgumentException) { }
+        }
+    }
+
     @Test fun rejectOversizedArchive() {
         try {
             RpBackup.decode(ByteArray(RpBackup.MAX_BYTES + 1))

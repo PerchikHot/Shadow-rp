@@ -143,7 +143,13 @@ internal object RpBackup {
     }
 
     private fun checkName(name: String) {
-        require(name.isNotBlank() && name.length <= 100) { "Некорректное имя персонажа" }
+        // Character names become local preference keys and visible chat labels.
+        // Reject control characters instead of creating invisible duplicate
+        // names or multi-line entries that break the character picker.
+        require(name.isNotBlank() && name.length <= 100 &&
+            name.none { it.code < 32 || it.code == 127 }) {
+            "Некорректное имя персонажа"
+        }
     }
 
     private fun checkMessage(role: String, content: String) {
