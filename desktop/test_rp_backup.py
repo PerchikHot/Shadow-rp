@@ -1,5 +1,5 @@
 import unittest
-from rp_backup import encode_backup, decode_backup, merge_backups
+from rp_backup import encode_backup, decode_backup, merge_backups, export_character
 
 
 class BackupTests(unittest.TestCase):
@@ -44,6 +44,34 @@ class BackupTests(unittest.TestCase):
         incoming = {"characters": {"new" + str(i): {"messages": []} for i in range(60)}}
         with self.assertRaises(ValueError):
             merge_backups(old, incoming)
+
+    def test_export_only_selected_character_preserves_portable_fields(self):
+        data = {"characters": {
+            "Алиса": {"description": "Пилот", "appearance": "Синий плащ",
+                      "scenario": "Космос", "memory": "Маяк",
+                      "greeting": "Привет", "protocol": "Не ломай характер",
+                      "messages": [{"role": "user", "content": "В путь"}]},
+            "Боб": {"description": "Личная переписка",
+                    "messages": [{"role": "user", "content": "Секрет"}]}
+        }}
+        raw = export_character(data, "Алиса")
+        restored = decode_backup(raw)
+        self.assertEqual(set(restored["characters"]), {"Алиса"})
+        self.assertEqual(restored["characters"]["Алиса"],
+                         decode_backup(encode_backup(data))["characters"]["Алиса"])
+        self.assertNotIn("Секрет", raw.decode("utf-8"))
+        # Existing chats on the destination survive a one-character import.
+        merged = merge_backups({"characters": {"Боб": data["characters"]["Боб"]}},
+                               restored)
+        self.assertEqual(set(merged["characters"]), {"Алиса", "Боб"})
+        self.assertEqual(len(data["characters"]), 2)
+
+    def test_export_missing_character_never_produces_archive(self):
+        for invalid in ("Неизвестный", "", None):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    export_character({"characters": {"Алиса": {"messages": []}}},
+                                     invalid)
 
     def test_reject_bad_role(self):
         with self.assertRaises(ValueError):

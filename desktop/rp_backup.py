@@ -62,3 +62,15 @@ def merge_backups(existing, incoming):
     merged = {"characters": {**old, **new}}
     encode_backup(merged)
     return merged
+
+
+def export_character(data, name: str) -> bytes:
+    """Portable one-character archive for Android/Windows transfer.
+
+    Do not include unrelated characters, even if their private histories
+    would fit in the archive. The ordinary importer merges this safely.
+    """
+    clean = validate_backup(data)
+    if not isinstance(name, str) or name not in clean["characters"]:
+        raise ValueError("Выбери существующего персонажа для экспорта")
+    return encode_backup({"characters": {name: clean["characters"][name]}})

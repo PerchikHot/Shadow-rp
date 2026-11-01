@@ -4,7 +4,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
-from rp_backup import encode_backup, decode_backup, merge_backups, MAX_BYTES
+from rp_backup import encode_backup, decode_backup, merge_backups, export_character, MAX_BYTES
 from rp_storage import load_data, save_data
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
@@ -57,6 +57,7 @@ class App:
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="Экспорт персонажа", command=self.export_active_character).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Импорт чатов", command=self.import_chats).pack(fill="x", padx=10, pady=5)
         main = tk.Frame(root, bg=BG)
@@ -91,6 +92,25 @@ class App:
         if self.recovered_backup:
             self.status.config(text="Восстановлено из резервной копии: основной файл повреждён")
         self.refresh()
+
+    def export_active_character(self):
+        """Share only the selected character, without other private chats."""
+        if not self.active:
+            messagebox.showwarning("Экспорт", "Сначала выбери персонажа.", parent=self.root)
+            return
+        path = filedialog.asksaveasfilename(
+            parent=self.root, title="Экспорт персонажа Shadow RP",
+            defaultextension=".json", initialfile="shadow-rp-character.json",
+            filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            # Validate before writing: failed exports must not truncate files.
+            raw = export_character(self.data, self.active)
+            Path(path).write_bytes(raw)
+            self.status.config(text="Персонаж экспортирован для Android/Windows")
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Ошибка экспорта", str(exc), parent=self.root)
 
     def export_chats(self):
         path = filedialog.asksaveasfilename(
