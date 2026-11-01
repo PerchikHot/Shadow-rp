@@ -16,6 +16,10 @@ class ApkUpgradeTests(unittest.TestCase):
             signature_digests("Signer #1 certificate SHA-256 digest: " + digest),
             frozenset([digest.lower()]),
         )
+        self.assertEqual(
+            signature_digests("V2 Signer: certificate SHA-256 digest: " + digest),
+            frozenset([digest.lower()]),
+        )
 
     def test_version_code_parsing_is_strict(self):
         self.assertEqual(version_code("package: name='com.shadowrp.app' versionCode='50'"), 50)
