@@ -61,15 +61,15 @@ def build_rp_messages(description: str, scenario: str, memory: str,
     # messages. This bounds long-running roleplay costs on both local and
     # remote OpenAI-compatible models without modifying saved transcripts.
     candidates = []
-    for item in messages[-limit:]:
+    for item in messages:
         if not isinstance(item, dict):
             continue
         role, content = item.get("role"), item.get("content")
         if role in ("user", "assistant") and isinstance(content, str) and content.strip():
-            candidates.append({"role": role, "content": content[:10000]})
+            candidates.append({"role": role, "content": content[-10000:]})
     history = []
     remaining = history_char_budget
-    for turn in reversed(candidates):
+    for turn in reversed(candidates[-limit:]):
         content = turn["content"]
         if len(content) > remaining:
             if history:
