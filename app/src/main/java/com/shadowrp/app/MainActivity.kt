@@ -1166,7 +1166,7 @@ class MainActivity : Activity() {
   val digest=java.security.MessageDigest.getInstance("SHA-256")
    .digest(name.toByteArray(Charsets.UTF_8))
    .joinToString("") { "%02x".format(it.toInt() and 0xff) }
-  return android.util.AtomicFile(File(filesDir,"rp-rewind-$"+"{digest}.json"))
+  return android.util.AtomicFile(File(filesDir,"rp-rewind-${digest}.json"))
  }
  private fun saveRpRewindCheckpoint(name:String) {
   val card=rpCards()[name]?:throw IllegalArgumentException("Персонаж не найден")
@@ -1243,8 +1243,8 @@ class MainActivity : Activity() {
         val editor=prefs.edit()
         val array=JSONArray()
         shortened.forEach{(role,content)->array.put(JSONObject().put("role",role).put("content",content))}
-        editor.putString("chat_$"+"{name}",array.toString())
-        for(i in shortened.size until snapshot.size)editor.remove("chat_time_$"+"{name}_$"+"{i}")
+        editor.putString("chat_${name}",array.toString())
+        for(i in shortened.size until snapshot.size)editor.remove("chat_time_${name}_${i}")
         if(!editor.commit())throw IllegalStateException("Не удалось сохранить откат")
         chats[name]=shortened.toMutableList()
         dialog.dismiss()
