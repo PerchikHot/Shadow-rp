@@ -34,7 +34,8 @@ def validate_endpoint(endpoint: str) -> str:
 def build_rp_messages(description: str, scenario: str, memory: str,
                       messages: list[dict], limit: int = 30, *,
                       appearance: str = "", greeting: str = "",
-                      protocol: str = "") -> list[dict]:
+                      protocol: str = "",
+                      history_char_budget: int = 24000) -> list[dict]:
     """Build bounded RP context, preserving all six portable character-card fields.
 
     These fields are exported by Android; Windows must not silently ignore them.
@@ -42,6 +43,8 @@ def build_rp_messages(description: str, scenario: str, memory: str,
     """
     if not 1 <= limit <= 60:
         raise ValueError("Invalid history limit")
+    if type(history_char_budget) is not int or not 1000 <= history_char_budget <= 120000:
+        raise ValueError("Invalid history character budget")
     system = (
         "You are a fictional roleplay character. Remain in character. "
         "Respect the established scene and continuity. Do not invent past "
@@ -54,11 +57,27 @@ def build_rp_messages(description: str, scenario: str, memory: str,
         "USER-PINNED MEMORY (facts explicitly provided by the player):\n"
         + str(memory)[:4000]
     )
-    history = []
+    # Prefer the newest complete turns instead of sending up to 60 huge
+    # messages. This bounds long-running roleplay costs on both local and
+    # remote OpenAI-compatible models without modifying saved transcripts.
+    candidates = []
     for item in messages[-limit:]:
         if not isinstance(item, dict):
             continue
         role, content = item.get("role"), item.get("content")
         if role in ("user", "assistant") and isinstance(content, str) and content.strip():
-            history.append({"role": role, "content": content[:10000]})
+            candidates.append({"role": role, "content": content[:10000]})
+    history = []
+    remaining = history_char_budget
+    for turn in reversed(candidates):
+        content = turn["content"]
+        if len(content) > remaining:
+            if history:
+                break  # Never send an incomplete older exchange.
+            content = content[-remaining:]  # Always retain the newest turn.
+        history.append({"role": turn["role"], "content": content})
+        remaining -= len(content)
+        if remaining == 0:
+            break
+    history.reverse()
     return [{"role": "system", "content": system}, *history]
