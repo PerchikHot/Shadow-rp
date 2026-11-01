@@ -2,7 +2,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from rp_storage import load_data, save_data
+from rp_storage import load_data, save_data, create_import_checkpoint
 from rp_backup import MAX_BYTES
 
 
@@ -47,6 +47,27 @@ class StorageTests(unittest.TestCase):
                     {"role": "system", "content": "invalid"}]}}})
             self.assertEqual(path.read_bytes(), old)
             self.assertFalse(path.with_name("chats.json.tmp").exists())
+
+    def test_import_checkpoint_is_unique_and_preserves_original_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chats.json"
+            original = data("first")
+            first = create_import_checkpoint(path, original)
+            second = create_import_checkpoint(path, original)
+            self.assertNotEqual(first, second)
+            save_data(path, data("imported"))
+            save_data(path, data("later"))
+            self.assertEqual(load_data(first)[0], original)
+            self.assertEqual(load_data(second)[0], original)
+            self.assertEqual(load_data(path)[0], data("later"))
+
+    def test_invalid_import_checkpoint_does_not_write_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chats.json"
+            with self.assertRaises(ValueError):
+                create_import_checkpoint(path, {"characters": {"bad": {
+                    "messages": [{"role": "system", "content": "secret"}]}}})
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
     def test_oversized_primary_falls_back_to_backup(self):
         with tempfile.TemporaryDirectory() as tmp:
