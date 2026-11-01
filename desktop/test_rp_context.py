@@ -35,6 +35,22 @@ class RpContextTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_rp_messages("", "", "", [], limit=0)
 
+    def test_long_roleplay_context_stays_within_budget(self):
+        turns = [{"role": "user" if i % 2 == 0 else "assistant",
+                  "content": str(i) + ":" + "x" * 9000} for i in range(40)]
+        result = build_rp_messages("Character", "Scene", "Pinned fact", turns)
+        self.assertIn("Pinned fact", result[0]["content"])
+        self.assertLessEqual(sum(len(x["content"]) for x in result[1:]), 24000)
+        self.assertEqual(result[-1]["content"], turns[-1]["content"])
+        self.assertEqual(result[-2]["content"], turns[-2]["content"])
+        self.assertLess(len(result), 31)
+        self.assertEqual(turns[0]["content"], "0:" + "x" * 9000)
+
+    def test_invalid_context_budgets_rejected(self):
+        for budget in (0, -1, True, 120001, "24000"):
+            with self.subTest(budget=budget), self.assertRaises(ValueError):
+                build_rp_messages("", "", "", [], history_char_budget=budget)
+
     def test_android_character_card_fields_reach_windows_model(self):
         """Imported Android appearance, greeting and RP rules affect the prompt."""
         from unittest.mock import patch
