@@ -14,7 +14,22 @@ def search_dialogue(messages: list[dict], query: str, limit: int = 50):
         raise ValueError("Некорректный запрос поиска")
     if not 1 <= limit <= 100 or len(query) > 200:
         raise ValueError("Слишком длинный запрос поиска")
+    # Optional speaker filters work in the existing Windows search field.
+    # "role:player маяк" searches only player lines, while
+    # "role:character маяк" searches only the character's responses.
     needle = query.strip().casefold()
+    role_filter = None
+    aliases = {
+        "role:player": "user", "role:user": "user",
+        "role:игрок": "user", "role:character": "assistant",
+        "role:assistant": "assistant", "role:персонаж": "assistant",
+    }
+    first, separator, remainder = needle.partition(" ")
+    if first in aliases:
+        role_filter = aliases[first]
+        needle = remainder.strip() if separator else ""
+    elif first.startswith("role:"):
+        raise ValueError("Неизвестный фильтр участника")
     results = []
     for index in range(len(messages) - 1, -1, -1):
         message = messages[index]
@@ -22,6 +37,8 @@ def search_dialogue(messages: list[dict], query: str, limit: int = 50):
             continue
         role, content = message.get("role"), message.get("content")
         if role not in ("user", "assistant") or not isinstance(content, str):
+            continue
+        if role_filter is not None and role != role_filter:
             continue
         if needle and needle not in content.casefold():
             continue
