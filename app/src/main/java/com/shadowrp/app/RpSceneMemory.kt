@@ -7,6 +7,12 @@ internal object RpSceneMemory {
     const val MAX_MEMORY = 4000
     private const val MAX_QUOTE = 500
 
+    // Keep multiline dialogue readable without allowing a quoted line to
+    // masquerade as another top-level speaker in persistent scene memory.
+    private fun quote(text: String): String = text.trim().take(MAX_QUOTE)
+        .replace("\r\n", "\n").replace('\r', '\n')
+        .replace("\n", "\n│ ")
+
     fun pinLastExchange(memory: String, messages: List<Pair<String, String>>): String {
         require(memory.length <= MAX_MEMORY) { "Память слишком длинная; отредактируй её вручную." }
         require(messages.size >= 2) { "Для закрепления нужна завершённая сцена из двух реплик." }
@@ -17,8 +23,8 @@ internal object RpSceneMemory {
             "Последняя сцена ещё не завершена ответом персонажа."
         }
         val note = "Сцена, подтверждённая игроком (дословные фрагменты):\n" +
-            "Игрок: " + userText.trim().take(MAX_QUOTE) + "\n" +
-            "Персонаж: " + assistantText.trim().take(MAX_QUOTE)
+            "Игрок: " + quote(userText) + "\n" +
+            "Персонаж: " + quote(assistantText)
         if (memory.contains(note)) return memory
         val updated = memory.trimEnd() + (if (memory.isNotBlank()) "\n\n" else "") + note
         require(updated.length <= MAX_MEMORY) {
