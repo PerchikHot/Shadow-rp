@@ -9,6 +9,12 @@ MAX_PINNED_MEMORY = 4000
 MAX_QUOTE = 500
 
 
+def _quote(text: str) -> str:
+    """Indent continuation lines so a quote cannot spoof a speaker header."""
+    return (text.strip()[:MAX_QUOTE].replace("\r\n", "\n")
+            .replace("\r", "\n").replace("\n", "\n│ "))
+
+
 def pin_last_exchange(memory: str, messages: list[dict]) -> str:
     if not isinstance(memory, str) or len(memory) > MAX_PINNED_MEMORY:
         raise ValueError("Память слишком длинная; отредактируй её вручную.")
@@ -23,8 +29,8 @@ def pin_last_exchange(memory: str, messages: list[dict]) -> str:
         raise ValueError("Последняя сцена ещё не завершена ответом персонажа.")
     note = (
         "Сцена, подтверждённая игроком (дословные фрагменты):\n"
-        "Игрок: " + user["content"].strip()[:MAX_QUOTE] + "\n"
-        "Персонаж: " + assistant["content"].strip()[:MAX_QUOTE]
+        "Игрок: " + _quote(user["content"]) + "\n"
+        "Персонаж: " + _quote(assistant["content"])
     )
     if note in memory:
         return memory
