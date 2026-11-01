@@ -890,6 +890,7 @@ class MainActivity : Activity() {
    card.addView(edit)
    b.addView(card,LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(5),dp(7),dp(5),dp(7))})
   }
+  item(b,"✦ Выбрать шаблон сценария","Новые сюжетные начала; история и память сохраняются") {chooseRpScenario(name)}
   item(b,"📌 Запомнить последнюю сцену","Только по твоему подтверждению; переносится в Windows") {pinScene(name)}
   item(b,"🖼  Изображение персонажа","Выбрать свой портрет из галереи") {chooseAvatar(name)}
   item(b,"✦  Отзывы","Комментарии об этом персонаже") {comments(name)}
@@ -897,6 +898,19 @@ class MainActivity : Activity() {
    textSize=20f;background=shape(Color.rgb(35,89,191),18f)
    setPadding(dp(14),dp(19),dp(14),dp(19))
   },LinearLayout.LayoutParams(-1,-2).apply {setMargins(dp(10),dp(4),dp(10),dp(10))})
+ }
+ private fun chooseRpScenario(name:String) {
+  val titles=RpScenarios.templates.map { it.first }.toTypedArray()
+  AlertDialog.Builder(this).setTitle("✦ Сюжет для $name")
+   .setItems(titles) { _,index ->
+    val (title,description)=RpScenarios.choose(index)
+    AlertDialog.Builder(this).setTitle(title)
+     .setMessage(description+"\\n\\nЗаменить только сценарий? Переписка и память останутся.")
+     .setPositiveButton("Применить") { _,_ ->
+      prefs.edit().putString("scenario_$name",description).apply()
+      characterDetail(name)
+     }.setNegativeButton("Отмена",null).show().also {styleDialog(it)}
+   }.setNegativeButton("Закрыть",null).show().also {styleDialog(it)}
  }
  private fun editCharacterField(name:String,label:String,key:String) {
   init(label)

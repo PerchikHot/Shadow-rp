@@ -11,6 +11,7 @@ from rp_memory import pin_last_exchange
 from rp_history import search_dialogue, rewind_to_user_turn
 from rp_reply_safety import card_context, can_apply_reply
 from rp_transport import chat_completion
+from rp_scenarios import SCENARIOS, scenario_by_index
 
 DATA = Path(os.environ.get("APPDATA", str(Path.home()))) / "ShadowRP" / "chats.json"
 BG, PANEL, FG, BLUE = "#080f20", "#172640", "#edf5ff", "#60baff"
@@ -85,6 +86,7 @@ class App:
         tk.Button(sidebar, text="Приветствие", command=lambda: self.edit_field("greeting", "Приветствие", "Первая реплика персонажа:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Правила RP", command=lambda: self.edit_field("protocol", "Правила RP", "Стиль речи и правила поведения персонажа:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(sidebar, text="✦ Шаблоны сценариев", command=self.choose_scenario).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(sidebar, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
@@ -266,6 +268,43 @@ class App:
             item[field] = value[:4000]
             save(self.data)
             self.status.config(text="Сохранено локально. Память меняется только вручную.")
+
+    def choose_scenario(self):
+        """Offer scene starters without altering messages or pinned memory."""
+        if not self.active or self.pending:
+            messagebox.showwarning("Сценарии", "Выбери персонажа и дождись ответа ИИ.")
+            return
+        popup = tk.Toplevel(self.root)
+        popup.title("Shadow RP • Сценарии")
+        popup.configure(bg=BG)
+        popup.geometry("640x480")
+        popup.transient(self.root)
+        tk.Label(popup, text="ВЫБЕРИ НАЧАЛО ИСТОРИИ", bg=BG, fg=BLUE,
+                 font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=20, pady=(18, 6))
+        tk.Label(popup, text="История и закреплённая память не изменяются.",
+                 bg=BG, fg=FG).pack(anchor="w", padx=20, pady=(0, 14))
+        for index, (title, description) in enumerate(SCENARIOS):
+            row = tk.Frame(popup, bg=PANEL)
+            row.pack(fill="x", padx=18, pady=5)
+            tk.Button(row, text=title, width=20,
+                      command=lambda i=index: self.apply_scenario(i, popup)).pack(
+                          side="left", padx=10, pady=10)
+            tk.Label(row, text=description[:115] + "…", bg=PANEL, fg=FG,
+                     wraplength=340, justify="left").pack(side="left", padx=6)
+
+    def apply_scenario(self, index, popup):
+        if not self.active or self.pending:
+            return
+        title, description = scenario_by_index(index)
+        if not messagebox.askyesno("Заменить сценарий?",
+                f"{title}\\n\\n{description}\\n\\nИзменится только сценарий выбранного персонажа.",
+                parent=popup):
+            return
+        self.data["characters"][self.active]["scenario"] = description
+        save(self.data)
+        popup.destroy()
+        self.refresh()
+        self.status.config(text=f"Сценарий «{title}» сохранён; память и история на месте")
 
     def pin_scene(self):
         """Only the player's explicit approval can change long-term memory."""
