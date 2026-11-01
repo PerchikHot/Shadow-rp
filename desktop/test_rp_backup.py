@@ -24,7 +24,8 @@ class BackupTests(unittest.TestCase):
     def test_portable_names_reject_control_characters_on_both_platforms(self):
         # Android RpBackup.checkName rejects these before writing preferences.
         # Windows must not export an archive Android will refuse to import.
-        for name in ("Алиса\\nБета", "Герой\\x00", "Персонаж\\t2", "Ник\\x7f"):
+        for name in ("Алиса" + chr(10) + "Бета", "Герой" + chr(0),
+                     "Персонаж" + chr(9) + "2", "Ник" + chr(127)):
             with self.subTest(name=repr(name)):
                 payload = {"characters": {name: {"messages": []}}}
                 with self.assertRaises(ValueError):
