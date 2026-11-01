@@ -4,7 +4,8 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, scrolledtext
-from rp_backup import encode_backup, decode_backup, merge_backups, export_character, MAX_BYTES
+from rp_backup import (encode_backup, decode_backup, merge_backups,
+                       merge_backups_as_copies, export_character, MAX_BYTES)
 from rp_storage import load_data, save_data, create_import_checkpoint
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
@@ -181,16 +182,24 @@ class App:
             with open(path, "rb") as source:
                 raw = source.read(MAX_BYTES + 1)
             imported = decode_backup(raw)
-            merged = merge_backups(self.data, imported)
             count = len(imported["characters"])
-            collisions = len(set(imported["characters"]) & set(self.data["characters"]))
-            if not messagebox.askyesno(
-                "Импорт", f"Импортировать {count} персонажей? Совпадающих имён: "
-                f"{collisions}. Их карточки и истории будут заменены, остальные "
-                "персонажи останутся. Перед импортом будет создана отдельная "
-                "резервная копия всех текущих чатов.",
-                parent=self.root):
+            collisions = len({name.casefold() for name in imported["characters"]} &
+                             {name.casefold() for name in self.data["characters"]})
+            # Yes = replace same-name chats, No = import as separate copies,
+            # Cancel = keep everything unchanged. Both modes are validated
+            # before writing any file and preserve a pre-import checkpoint.
+            choice = messagebox.askyesnocancel(
+                "Импорт Shadow RP",
+                f"Персонажей в архиве: {count}. Совпадений: {collisions}.\\n\\n"
+                "Да — заменить совпадающие карточки и истории.\\n"
+                "Нет — сохранить обе версии с суффиксом «(импорт N)».\\n"
+                "Отмена — ничего не изменять.\\n\\n"
+                "Перед импортом будет создана резервная копия.",
+                parent=self.root)
+            if choice is None:
                 return
+            merged = (merge_backups(self.data, imported) if choice
+                      else merge_backups_as_copies(self.data, imported))
             checkpoint = create_import_checkpoint(DATA, self.data)
             save(merged)
             self.data = merged
