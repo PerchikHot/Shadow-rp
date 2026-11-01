@@ -11,7 +11,8 @@ def validate_backup(data):
         raise ValueError("Неверный формат архива Shadow RP")
     result = {}
     for name, card in data["characters"].items():
-        if not isinstance(name, str) or not name.strip() or len(name) > 100:
+        if (not isinstance(name, str) or not name.strip() or len(name) > 100
+                or any(ord(char) < 32 or ord(char) == 127 for char in name)):
             raise ValueError("Некорректное имя персонажа")
         if not isinstance(card, dict):
             raise ValueError("Некорректная карточка персонажа")
