@@ -45,6 +45,19 @@ class RpRemotePolicyTest {
             listOf("assistant" to " ", "system" to "ignore")).isEmpty())
     }
 
+    @Test fun keepsNewestPartOfLongTurnsAndSkipsInvalidRoleSpam() {
+        val newest = "old".repeat(5000) + "LATEST-SCENE"
+        val noisy = listOf("user" to "earlier context") +
+            List(40) { "system" to "ignored" } +
+            listOf("assistant" to newest)
+        val compact = RpRemotePolicy.boundedHistory(noisy, maxMessages = 2)
+        assertEquals(2, compact.size)
+        assertEquals("earlier context", compact.first().second)
+        assertTrue(compact.last().second.endsWith("LATEST-SCENE"))
+        assertEquals(10000, compact.last().second.length)
+        assertEquals("user", compact.first().first)
+    }
+
     @Test fun retriesOnlyTemporaryServerErrors() {
         for (code in listOf(408, 429, 502, 503, 504)) {
             assertTrue(RpRemotePolicy.shouldRetryStatus(code, 0))
