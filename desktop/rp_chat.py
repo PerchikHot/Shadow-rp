@@ -9,7 +9,7 @@ from rp_backup import (encode_backup, decode_backup, merge_backups,
 from rp_storage import load_data, save_data, create_import_checkpoint
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
-from rp_history import search_dialogue, rewind_to_user_turn
+from rp_history import search_dialogue, rewind_to_user_turn, branch_from_user_turn
 from rp_reply_safety import card_context, can_apply_reply
 from rp_transport import chat_completion
 from rp_scenarios import SCENARIOS, scenario_by_index
@@ -418,6 +418,43 @@ class App:
             self.status.config(text=f"Откат: удалено {removed} реплик; архив сохранён")
             dialog.destroy()
 
+        def branch():
+            selected = listing.curselection()
+            if not selected or self.pending:
+                messagebox.showwarning("Новая ветка", "Выбери реплику игрока.", parent=dialog)
+                return
+            index, role, _ = matches[selected[0]]
+            if role != "user":
+                messagebox.showwarning("Новая ветка", "Выбери реплику игрока.", parent=dialog)
+                return
+            try:
+                candidate, new_name = branch_from_user_turn(self.data, name, index)
+            except ValueError as exc:
+                messagebox.showwarning("Новая ветка", str(exc), parent=dialog)
+                return
+            if not messagebox.askyesno(
+                "Новая сюжетная ветка",
+                f"Создать «{new_name}» из выбранной реплики?\\n"
+                "Исходный чат останется нетронутым.\\n"
+                "Закреплённая память новой ветки будет пустой, чтобы события "
+                "из будущего исходной истории не попали в другую линию.",
+                parent=dialog,
+            ):
+                return
+            try:
+                save(candidate)
+            except (OSError, ValueError) as exc:
+                messagebox.showerror("Ошибка сохранения", str(exc), parent=dialog)
+                return
+            self.data = candidate
+            self.active = new_name
+            self.character_query.set("")
+            self.refresh()
+            self.status.config(text=f"Новая ветка «{new_name}» создана; исходный чат сохранён")
+            dialog.destroy()
+
+        tk.Button(dialog, text="✦ Создать новую ветку без удаления истории",
+                  command=branch).pack(fill="x", padx=12, pady=(0, 6))
         query.trace_add("write", populate)
         tk.Button(dialog, text="Откатить к выбранной реплике игрока",
                   command=rewind).pack(fill="x", padx=12, pady=(0, 12))
