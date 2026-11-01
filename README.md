@@ -58,4 +58,6 @@ Their workflows have been disabled. They are **not** Shadow RP deliverables.
 2. Search for a word from an older turn; results show the newest matching turns first.
 3. Select a **player** turn and confirm rewind. The selected turn remains as the last message, ready for **Повторить ответ**.
 4. Verify other characters and their conversations are unchanged. Import `%APPDATA%\\ShadowRP\\chats-rewind-checkpoint.json` to restore the previous history if needed.
-5. Search and rewind are desktop features in this build; Android import/export remains compatible, but Android does not yet expose this timeline UI.
+5. On Android, open a character chat and tap **⌕ Поиск и откат переписки**. Search is case-insensitive and shows up to 50 recent matches. Only player turns can be selected for rewind. Confirm the change; the selected player turn stays in the chat, and **↻ Повторить ответ ИИ** can generate a new continuation.
+6. Before Android changes the chat, it atomically saves a private JSON checkpoint for that character. The chat then shows **↶ Восстановить переписку до отката**. Restoration requires confirmation and changes only the selected character; other characters and their pinned memories remain intact.
+7. Android checkpoints are local app-private files, not automatic cloud backups; uninstalling the app may delete them. Export a full portable JSON archive before major changes. Rewinding is disabled while the model is generating. Android on-device UI and recovery still require real-device verification.
