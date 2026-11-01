@@ -163,18 +163,40 @@ class MainActivity : Activity() {
   val center=LinearLayout(this).apply {
    orientation=1;gravity=Gravity.CENTER;setPadding(dp(20),0,dp(20),0)
   }
+  // Layer the agreed blue-eyed hooded icon over a luminous blue halo.
+  // The icon remains the actual Android launcher artwork, not a placeholder.
+  val logoSize=minOf(dp(244), (resources.displayMetrics.widthPixels*0.70f).toInt())
+  val emblem=android.widget.FrameLayout(this)
+  val halo=android.view.View(this).apply {
+   background=GradientDrawable().apply {
+    shape=GradientDrawable.OVAL
+    setColor(Color.rgb(11,37,74))
+    setStroke(dp(2),Color.rgb(55,148,224))
+   }
+   alpha=0.65f
+  }
+  emblem.addView(halo,android.widget.FrameLayout.LayoutParams(
+   logoSize-dp(18),logoSize-dp(18),Gravity.CENTER))
   val logo=ImageView(this).apply {
    setImageResource(R.drawable.shadow_icon)
    scaleType=ImageView.ScaleType.FIT_CENTER
    contentDescription="Shadow RP — персонаж в капюшоне с голубыми глазами"
   }
-  center.addView(logo,LinearLayout.LayoutParams(dp(244),dp(244)))
+  emblem.addView(logo,android.widget.FrameLayout.LayoutParams(
+   logoSize,logoSize,Gravity.CENTER))
+  center.addView(emblem,LinearLayout.LayoutParams(logoSize,logoSize))
   val label=text("SHADOW RP",30f,Color.rgb(231,246,255),true).apply {
    gravity=Gravity.CENTER;letterSpacing=0.12f
   }
   center.addView(label)
   center.addView(text("ТВОЯ ИСТОРИЯ. ТВОИ ПЕРСОНАЖИ.",12f,
    Color.rgb(124,198,246)).apply{gravity=Gravity.CENTER;letterSpacing=0.09f})
+  center.addView(space(24))
+  val enter=button("ПРОДОЛЖИТЬ  ›") { /* bound below */ }.apply {
+   contentDescription="Перейти к персонажам и чатам"
+   setPadding(dp(32),dp(12),dp(32),dp(12))
+  }
+  center.addView(enter)
   backdrop.addView(center,android.widget.FrameLayout.LayoutParams(-1,-1))
   val footer=text("VEYRION  •  ROLEPLAY AI",11f,Color.rgb(99,151,191)).apply {
    gravity=Gravity.CENTER
@@ -183,12 +205,21 @@ class MainActivity : Activity() {
    -1,dp(62),Gravity.BOTTOM))
   setContentView(backdrop)
   val handler=Handler(Looper.getMainLooper())
-  // Delayed splash callbacks must not touch views after Activity destruction.
-  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},800)
-  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},890)
-  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},1420)
-  handler.postDelayed({if(!isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},1500)
-  handler.postDelayed({if(!isFinishing && !isDestroyed)home()},1800)
+  var splashFinished=false
+  val finishSplash:()->Unit = {
+   if(!splashFinished && !isFinishing && !isDestroyed) {
+    splashFinished=true
+    home()
+   }
+  }
+  enter.setOnClickListener { finishSplash() }
+  // The user can skip immediately. Delayed callbacks must not override
+  // a chat screen opened after the splash has already been dismissed.
+  handler.postDelayed({if(!splashFinished && !isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},800)
+  handler.postDelayed({if(!splashFinished && !isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},890)
+  handler.postDelayed({if(!splashFinished && !isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon_blink)},1420)
+  handler.postDelayed({if(!splashFinished && !isFinishing && !isDestroyed)logo.setImageResource(R.drawable.shadow_icon)},1500)
+  handler.postDelayed({finishSplash()},1800)
  }
  private fun load() {
   // Corrupted preferences must not prevent startup; preserve stored bytes for recovery.
