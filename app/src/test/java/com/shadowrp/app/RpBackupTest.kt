@@ -88,4 +88,34 @@ class RpBackupTest {
         } catch (_: java.nio.charset.CharacterCodingException) { }
     }
 
+    @Test fun importAsCopiesPreservesBothHistoriesAndIncomingNames() {
+        fun card(text: String) = RpBackup.Card(
+            mapOf("description" to text), listOf("user" to text))
+        val existing = linkedMapOf(
+            "Алиса" to card("old"),
+            "Алиса (импорт 2)" to card("older copy"))
+        val incoming = linkedMapOf(
+            "Алиса" to card("new"),
+            "Алиса (импорт 3)" to card("incoming reserved"))
+        val (merged, added) = RpBackup.checkedMergeAsCopies(existing, incoming)
+        assertEquals("old", merged["Алиса"]?.fields?.get("description"))
+        assertEquals("older copy", merged["Алиса (импорт 2)"]?.fields?.get("description"))
+        assertEquals("incoming reserved", merged["Алиса (импорт 3)"]?.fields?.get("description"))
+        assertEquals("new", merged["Алиса (импорт 4)"]?.fields?.get("description"))
+        assertEquals(setOf("Алиса (импорт 3)", "Алиса (импорт 4)"), added.keys)
+        assertEquals(2, existing.size)
+        assertEquals(2, incoming.size)
+        assertEquals(merged, RpBackup.decode(RpBackup.encode(merged)))
+    }
+
+    @Test fun copyImportFailsWithoutMutatingExistingWhenOverLimit() {
+        val existing = (0 until 200).associate { "old-$it" to RpBackup.Card(emptyMap(), emptyList()) }
+        val incoming = mapOf("new" to RpBackup.Card(emptyMap(), emptyList()))
+        try {
+            RpBackup.checkedMergeAsCopies(existing, incoming)
+            fail("Over-limit copy import accepted")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(200, existing.size)
+    }
+
 }
