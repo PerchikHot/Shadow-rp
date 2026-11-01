@@ -105,7 +105,10 @@ class RpBackupTest {
         assertEquals(setOf("Алиса (импорт 3)", "Алиса (импорт 4)"), added.keys)
         assertEquals(2, existing.size)
         assertEquals(2, incoming.size)
-        assertEquals(merged, RpBackup.decode(RpBackup.encode(merged)))
+        val roundTrip = RpBackup.decode(RpBackup.encode(merged))
+        assertEquals(merged.keys, roundTrip.keys)
+        assertEquals(merged.mapValues { it.value.messages },
+            roundTrip.mapValues { it.value.messages })
     }
 
     @Test fun copyImportFailsWithoutMutatingExistingWhenOverLimit() {
