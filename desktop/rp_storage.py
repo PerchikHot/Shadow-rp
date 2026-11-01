@@ -5,6 +5,7 @@ of the archive. Never replace a good backup with invalid primary data.
 """
 from __future__ import annotations
 import os
+from uuid import uuid4
 from pathlib import Path
 from rp_backup import decode_backup, encode_backup, MAX_BYTES
 
@@ -58,3 +59,27 @@ def save_data(path: Path, data):
     if previous is not None:
         _atomic_write(path.with_suffix(".bak"), previous)
     _atomic_write(path, raw)
+
+
+def create_import_checkpoint(path: Path, data) -> Path:
+    """Preserve the complete pre-import history in a separate recoverable JSON.
+
+    The rolling .bak is not enough: later saves can overwrite it. Validate
+    before creating a checkpoint and never replace an earlier snapshot.
+    """
+    raw = encode_backup(data)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for _ in range(5):
+        checkpoint = path.with_name("chats-before-import-" + uuid4().hex + ".json")
+        try:
+            with checkpoint.open("xb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            return checkpoint
+        except FileExistsError:
+            continue
+        except BaseException:
+            checkpoint.unlink(missing_ok=True)
+            raise
+    raise FileExistsError("Не удалось создать уникальную резервную копию")
