@@ -55,6 +55,23 @@ class RpBackupTest {
         }
     }
 
+    @Test fun caseOnlyCollisionRequiresExplicitCopyMode() {
+        val old = RpBackup.Card(mapOf("description" to "Старая история"),
+            listOf("user" to "Привет"))
+        val newer = RpBackup.Card(mapOf("description" to "Новая история"),
+            listOf("assistant" to "Ответ"))
+        val existing = mapOf("Алиса" to old)
+        val incoming = mapOf("АЛИСА" to newer)
+        try {
+            RpBackup.checkedMerge(existing, incoming)
+            fail("Case-only duplicate was silently imported")
+        } catch (_: IllegalArgumentException) { }
+        val (merged, added) = RpBackup.checkedMergeAsCopies(existing, incoming)
+        assertEquals(2, merged.size)
+        assertEquals(old, merged["Алиса"])
+        assertEquals(1, added.size)
+    }
+
     @Test fun rejectOversizedArchive() {
         try {
             RpBackup.decode(ByteArray(RpBackup.MAX_BYTES + 1))
