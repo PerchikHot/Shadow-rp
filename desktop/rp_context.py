@@ -7,8 +7,21 @@ from urllib.parse import urlsplit
 
 
 def validate_endpoint(endpoint: str) -> str:
+    if not isinstance(endpoint, str):
+        raise ValueError("API URL must be text")
     value = endpoint.strip().rstrip("/")
+    # urllib silently strips CR/LF/TAB in some Python versions. Reject them
+    # before parsing so a pasted endpoint cannot change its actual host/path.
+    if (not value or len(value) > 2048 or
+            any(ord(char) <= 32 or ord(char) == 127 for char in value)):
+        raise ValueError("API URL contains whitespace or control characters")
     parsed = urlsplit(value)
+    # Do not allow encoded path separators or dot-segment traversal. A proxy
+    # may normalize these differently from the local client.
+    if (any(segment in (".", "..") for segment in parsed.path.split("/")) or
+            "%2f" in parsed.path.lower() or "%5c" in parsed.path.lower() or
+            "\\" in parsed.path):
+        raise ValueError("Unsafe API path")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("API URL must not contain credentials, query or fragment")
     if not parsed.hostname or not parsed.netloc:
