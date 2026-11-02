@@ -36,6 +36,19 @@ class RpRemotePolicyTest {
         assertEquals(4, dialogue.size)
     }
 
+    @Test fun importedCharacterOnlyPrefixDoesNotPolluteAndroidContext() {
+        val dialogue = listOf(
+            "assistant" to "Older greeting",
+            "assistant" to "Old character-only line",
+            "user" to "Start this scene",
+            "assistant" to "Scene answer")
+        assertEquals(dialogue.takeLast(2),
+            RpRemotePolicy.boundedHistory(dialogue, maxMessages = 3))
+        assertEquals(dialogue.subList(1, 2),
+            RpRemotePolicy.boundedHistory(dialogue.take(2), maxMessages = 2))
+        assertEquals(4, dialogue.size)
+    }
+
     @Test fun rejectsUnsafeEndpointPathsWithoutBreakingLocalLanModels() {
         assertEquals("http://192.168.1.5:1234/v1/chat/completions",
             RpRemotePolicy.endpoint("http://192.168.1.5:1234/v1", "").toString())
