@@ -13,7 +13,7 @@ def _quote(text: str) -> str:
     """Indent continuation lines so a quote cannot spoof a speaker header."""
     # Unicode line separators also render as new lines in many chat views.
     # Strip bidi formatting controls that could visually reverse speaker tags.
-    sanitized = (text.strip()[:MAX_QUOTE].replace("\r\n", "\n")
+    sanitized = (text.strip().replace("\r\n", "\n")
                  .replace("\r", "\n").replace("\u0085", "\n")
                  .replace("\u2028", "\n").replace("\u2029", "\n"))
     # Remove invisible control characters that can visually alter speaker
@@ -24,7 +24,7 @@ def _quote(text: str) -> str:
         (*range(0x00, 0x09), *range(0x0B, 0x0D),
          *range(0x0E, 0x20), 0x7F, 0x200B, 0xFEFF,
          *range(0x202A, 0x202F), *range(0x2066, 0x206A))})
-    return sanitized.replace("\n", "\n│ ")
+    return sanitized.strip()[:MAX_QUOTE].replace("\n", "\n│ ")
 
 
 def pin_last_exchange(memory: str, messages: list[dict]) -> str:
@@ -39,10 +39,14 @@ def pin_last_exchange(memory: str, messages: list[dict]) -> str:
             or not isinstance(assistant.get("content"), str)
             or not user["content"].strip() or not assistant["content"].strip()):
         raise ValueError("Последняя сцена ещё не завершена ответом персонажа.")
+    player_quote = _quote(user["content"])
+    character_quote = _quote(assistant["content"])
+    if not player_quote.strip() or not character_quote.strip():
+        raise ValueError("Пустую после очистки сцену нельзя закрепить.")
     note = (
         "Сцена, подтверждённая игроком (дословные фрагменты):\n"
-        "Игрок: " + _quote(user["content"]) + "\n"
-        "Персонаж: " + _quote(assistant["content"])
+        "Игрок: " + player_quote + "\n"
+        "Персонаж: " + character_quote
     )
     if note in memory:
         return memory

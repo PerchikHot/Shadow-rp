@@ -77,4 +77,20 @@ class RpSceneMemoryTest {
         )))
     }
 
+
+    @Test fun invisiblePrefixCannotEraseMeaningfulScene() {
+        val pinned = RpSceneMemory.pinLastExchange("", listOf(
+            "user" to ("\u200B".repeat(600) + "Встретимся на рассвете"),
+            "assistant" to "Я буду ждать"
+        ))
+        assertTrue(pinned.contains("Игрок: Встретимся на рассвете"))
+    }
+
+    @Test fun controlOnlyExchangeIsNotPinned() {
+        try {
+            RpSceneMemory.pinLastExchange("", listOf(
+                "user" to "\u200B\uFEFF", "assistant" to "Ответ"))
+            fail("Invisible-only message must not become persistent memory")
+        } catch (_: IllegalArgumentException) { }
+    }
 }

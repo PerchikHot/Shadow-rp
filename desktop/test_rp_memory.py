@@ -62,5 +62,18 @@ class MemoryTests(unittest.TestCase):
         for control in ("\u0000", "\u0007", "\u007f", "\u200b", "\ufeff", "\u202e"):
             self.assertNotIn(control, note)
 
+
+    def test_invisible_prefix_does_not_erase_real_scene(self):
+        turns = [{"role": "user", "content": "\u200b" * 600 + "Встретимся на рассвете"},
+                 {"role": "assistant", "content": "Я буду ждать"}]
+        note = pin_last_exchange("", turns)
+        self.assertIn("Игрок: Встретимся на рассвете", note)
+
+    def test_control_only_message_cannot_be_pinned(self):
+        turns = [{"role": "user", "content": "\u200b\ufeff"},
+                 {"role": "assistant", "content": "Ответ"}]
+        with self.assertRaises(ValueError):
+            pin_last_exchange("", turns)
+
 if __name__ == "__main__":
     unittest.main()
