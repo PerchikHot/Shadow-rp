@@ -89,7 +89,7 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
         if (not isinstance(turn, dict) or
                 turn.get("role") not in ("system", "user", "assistant") or
                 not isinstance(turn.get("content"), str) or
-                not turn["content"].strip() or len(turn["content"]) > 120000):
+                not turn["content"].strip()):
             raise ValueError("Некорректный контекст диалога")
     payload = json.dumps({"model": model.strip(), "messages": messages},
                          ensure_ascii=False).encode("utf-8")
