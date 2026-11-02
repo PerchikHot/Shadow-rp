@@ -17,6 +17,7 @@ internal object RpRemotePolicy {
         require(rawPath.split('/').none { it == "." || it == ".." } &&
             !rawPath.contains("%2f", ignoreCase = true) &&
             !rawPath.contains("%5c", ignoreCase = true) &&
+            !rawPath.contains("%2e", ignoreCase = true) &&
             !rawPath.contains('\\')) { "Небезопасный путь API" }
         val scheme = uri.scheme?.lowercase()
         val host = uri.host?.lowercase()
