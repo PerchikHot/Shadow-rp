@@ -48,6 +48,16 @@ class HistoryTests(unittest.TestCase):
         self.assertTrue(result[0][2].startswith("…"))
         self.assertTrue(result[0][2].endswith("…"))
 
+    def test_search_preview_handles_casefold_expanding_unicode(self):
+        # Each ß adds one position in casefolded text. Search previews
+        # must slice the original string, not the expanded index.
+        scene = ("Straße " * 100) + "СИНИЙ МАЯК" + (" конец" * 20)
+        matches = search_dialogue([{"role": "assistant", "content": scene}], "синий маяк")
+        self.assertEqual(len(matches), 1)
+        self.assertIn("СИНИЙ МАЯК", matches[0][2])
+        self.assertLessEqual(len(matches[0][2]), 162)
+        self.assertEqual(len(search_dialogue([{"role": "user", "content": "Straße"}], "STRASSE")), 1)
+
     def test_rewind_keeps_player_turn_and_other_characters(self):
         original = sample()
         updated = rewind_to_user_turn(original, "Алиса", 2)
