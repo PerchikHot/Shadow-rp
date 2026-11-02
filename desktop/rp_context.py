@@ -80,4 +80,12 @@ def build_rp_messages(description: str, scenario: str, memory: str,
         if remaining == 0:
             break
     history.reverse()
+    # A budget or turn-count cutoff can otherwise start with a character
+    # reply while silently omitting the player's question immediately before
+    # it. Drop only that orphaned oldest reply; never drop the latest turn.
+    # Saved history remains untouched and the next model call stays coherent.
+    if len(history) > 1 and history[0]["role"] == "assistant":
+        preceding = len(candidates) - len(history) - 1
+        if preceding >= 0 and candidates[preceding]["role"] == "user":
+            history.pop(0)
     return [{"role": "system", "content": system}, *history]
