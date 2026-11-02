@@ -14,7 +14,8 @@ from rp_context import validate_endpoint
 
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 MAX_REQUEST_BYTES = 2 * 1024 * 1024
-TRANSIENT_HTTP = {408, 429, 502, 503, 504}
+# Temporary upstream failures should not end a long-running RP scene.
+TRANSIENT_HTTP = {408, 429, 500, 502, 503, 504, 521, 522, 524}
 
 
 def _extract_text(result: dict) -> str:
