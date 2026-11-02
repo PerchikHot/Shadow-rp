@@ -27,6 +27,12 @@ def _extract_text(result: dict) -> str:
         content = result["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise ValueError("Неверный формат ответа модели") from exc
+    # A provider may return HTTP 200 with a cut-off or filtered answer.
+    # Never append a partial scene as though the character finished speaking.
+    choice = result["choices"][0]
+    finish_reason = choice.get("finish_reason")
+    if finish_reason in ("length", "content_filter"):
+        raise ValueError("Модель не завершила ответ; сократи контекст или проверь настройки")
     if isinstance(content, str):
         answer = content
     elif isinstance(content, list) and 0 < len(content) <= 100:
