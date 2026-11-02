@@ -25,6 +25,34 @@ class RpRemotePolicyTest {
     }
 
 
+    @Test fun excludesOrphanedOldestReplyFromAndroidModelContext() {
+        val dialogue = listOf(
+            "user" to "Old question", "assistant" to "Old answer",
+            "user" to "New question", "assistant" to "New answer")
+        assertEquals(dialogue.takeLast(2),
+            RpRemotePolicy.boundedHistory(dialogue, maxMessages = 3))
+        assertEquals(dialogue.takeLast(1),
+            RpRemotePolicy.boundedHistory(dialogue, maxMessages = 1))
+        assertEquals(4, dialogue.size)
+    }
+
+    @Test fun rejectsUnsafeEndpointPathsWithoutBreakingLocalLanModels() {
+        assertEquals("http://192.168.1.5:1234/v1/chat/completions",
+            RpRemotePolicy.endpoint("http://192.168.1.5:1234/v1", "").toString())
+        for (value in listOf(
+            "https://api.example.org/v1/../admin",
+            "https://api.example.org/v1/%2fadmin",
+            "https://api.example.org/v1/%5cadmin",
+            "https://api.example.org/v1" + 10.toChar() + "/chat",
+            "https://api.example.org/v1/chat completions"
+        )) {
+            try {
+                RpRemotePolicy.endpoint(value, "secret")
+                fail("Should reject unsafe URL")
+            } catch (_: IllegalArgumentException) {}
+        }
+    }
+
     @Test fun boundsLongSingleAndGroupChatsWithoutChangingHistory() {
         val history = (1..50).map { index ->
             (if (index % 2 == 0) "assistant" else "user") to ("turn$index:" + "a".repeat(1600))
