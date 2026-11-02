@@ -36,7 +36,9 @@ internal object RpBackup {
                 val value = card.fields[field] ?: ""
                 require(value.length <= MAX_FIELD) { "Слишком длинное поле $field" }
                 if (field == "lorebook") RpLorebook.parse(value)
-                item.put(field, value)
+                if (field != "lorebook" || card.fields.containsKey(field)) {
+                    item.put(field, value)
+                }
             }
             require(card.messages.size <= MAX_MESSAGES) { "Слишком длинная история" }
             val messages = JSONArray()
@@ -74,7 +76,8 @@ internal object RpBackup {
             }
             val item = characters.optJSONObject(name)
                 ?: throw IllegalArgumentException("Некорректная карточка персонажа")
-            val values = fields.associateWith { field ->
+            val values = fields.filter { it != "lorebook" || item.has(it) }
+                .associateWith { field ->
                 if (!item.has(field)) "" else {
                     val value = item.opt(field)
                     require(value is String && value.length <= MAX_FIELD) { "Некорректное поле $field" }
