@@ -24,7 +24,17 @@ internal object RpHistory {
             if (role != "user" && role != "assistant") continue
             if (roleFilter != null && role != roleFilter) continue
             if (needle.isNotEmpty() && !content.contains(needle, ignoreCase = true)) continue
-            result.add(Match(index, role, content.replace(Regex("\\s+"), " ").take(160)))
+            // Long scenes often mention the searched event near the end.
+            // Center the preview around the match so it is visible in the UI.
+            val matchAt = if (needle.isEmpty()) 0
+                else content.indexOf(needle, ignoreCase = true).coerceAtLeast(0)
+            val from = (matchAt - 48).coerceAtLeast(0)
+            val to = (from + 160).coerceAtMost(content.length)
+            val snippet = content.substring(from, to)
+                .replace(Regex("\\s+"), " ").trim()
+            val preview = (if (from > 0) "…" else "") + snippet +
+                (if (to < content.length) "…" else "")
+            result.add(Match(index, role, preview))
             if (result.size == limit) break
         }
         return result
