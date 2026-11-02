@@ -63,6 +63,22 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(delays, [3.0])
         self.assertEqual(len(client.requests), 2)
 
+    def test_transient_model_server_errors_retry_but_bad_request_does_not(self):
+        for code in (500, 502, 503, 504, 521, 522, 524):
+            with self.subTest(status=code):
+                delays = []
+                client = Client(http_error(code), ok("Сцена продолжается"))
+                answer = chat_completion("https://example.test/v1", "", "model", [],
+                                         opener=client, sleep=delays.append)
+                self.assertEqual(answer, "Сцена продолжается")
+                self.assertEqual(len(client.requests), 2)
+                self.assertEqual(delays, [1.0])
+        client = Client(http_error(400))
+        with self.assertRaisesRegex(ValueError, "HTTP 400"):
+            chat_completion("https://example.test/v1", "", "model", [],
+                            opener=client, sleep=lambda _: None)
+        self.assertEqual(len(client.requests), 1)
+
     def test_rejects_unauthorized_without_retry_or_leaking_body(self):
         client = Client(http_error(401))
         with self.assertRaisesRegex(ValueError, "HTTP 401") as ctx:
