@@ -20,6 +20,7 @@ def validate_endpoint(endpoint: str) -> str:
     # may normalize these differently from the local client.
     if (any(segment in (".", "..") for segment in parsed.path.split("/")) or
             "%2f" in parsed.path.lower() or "%5c" in parsed.path.lower() or
+            "%2e" in parsed.path.lower() or
             "\\" in parsed.path):
         raise ValueError("Unsafe API path")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
