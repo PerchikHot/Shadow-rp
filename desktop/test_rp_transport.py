@@ -202,6 +202,19 @@ class TransportTests(unittest.TestCase):
                          "Продолжаем")
         self.assertEqual(len(client.requests), 2)
 
+    def test_truncated_or_filtered_model_reply_is_not_saved_as_complete(self):
+        for reason in ("length", "content_filter"):
+            body = json.dumps({"choices": [{
+                "finish_reason": reason,
+                "message": {"content": "Незаконченная сцена..."},
+            }]}).encode()
+            client = Client(body)
+            with self.subTest(reason=reason), self.assertRaisesRegex(
+                    ValueError, "не завершила ответ"):
+                chat_completion("https://example.test/v1", "", "model", [],
+                                opener=client, sleep=lambda _: None)
+            self.assertEqual(len(client.requests), 1)
+
     def test_response_length_is_bounded(self):
         client = Client(ok("a" * 25000))
         result = chat_completion("https://example.test/v1", "", "model", [],
