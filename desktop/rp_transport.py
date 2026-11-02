@@ -85,13 +85,19 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
         raise ValueError("Некорректный контекст диалога")
     # Never forward imported arbitrary objects or hidden tool instructions
     # as API messages. RP history contains only text from these three roles.
-    for turn in messages:
+    cleaned_messages = []
+    for index, turn in enumerate(messages):
         if (not isinstance(turn, dict) or
                 turn.get("role") not in ("system", "user", "assistant") or
                 not isinstance(turn.get("content"), str) or
-                not turn["content"].strip()):
+                not turn["content"].strip() or
+                (turn["role"] == "system" and index != 0)):
             raise ValueError("Некорректный контекст диалога")
-    payload = json.dumps({"model": model.strip(), "messages": messages},
+        # Imported Android/Windows backups can include timestamps and local
+        # UI metadata. Send only the OpenAI-compatible wire fields; never
+        # forward arbitrary imported keys to the model endpoint.
+        cleaned_messages.append({"role": turn["role"], "content": turn["content"]})
+    payload = json.dumps({"model": model.strip(), "messages": cleaned_messages},
                          ensure_ascii=False).encode("utf-8")
     if len(payload) > MAX_REQUEST_BYTES:
         raise ValueError("Контекст диалога превышает 2 МБ")
