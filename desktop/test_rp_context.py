@@ -117,6 +117,24 @@ class RpContextTests(unittest.TestCase):
         self.assertIn("p" * 4000, system)
         self.assertNotIn("p" * 4001, system)
 
+    def test_endpoint_rejects_ambiguous_paths_and_control_characters(self):
+        for value in (
+            "https://api.example.org/v1\\n.evil",
+            "https://api.example.org/v1\\r/chat",
+            "https://api.example.org/v1\\t/chat",
+            "https://api.example.org/v1/../admin",
+            "https://api.example.org/v1/%2fadmin",
+            "https://api.example.org/v1/%5cadmin",
+            "https://api.example.org/v1\\\\admin",
+            "https://api.example.org/v1/chat completions",
+            None,
+            "https://api.example.org/" + "x" * 2100,
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_endpoint(value)
+        self.assertEqual(validate_endpoint(" https://api.example.org/v1/ "),
+                         "https://api.example.org/v1")
+
     def test_endpoint_requires_https_or_explicit_loopback_port(self):
         for value in ("https://api.example.org/v1", "http://localhost:1234/v1",
                       "http://127.0.0.1:11434/v1", "http://[::1]:8080/v1"):
