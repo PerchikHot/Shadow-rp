@@ -165,7 +165,10 @@ class MainActivity : Activity() {
   }
   // Layer the agreed blue-eyed hooded icon over a luminous blue halo.
   // The icon remains the actual Android launcher artwork, not a placeholder.
-  val logoSize=minOf(dp(244), (resources.displayMetrics.widthPixels*0.70f).toInt())
+  // Landscape phones and split-screen must not crop the logo or action.
+  val logoSize=minOf(dp(244),
+   (resources.displayMetrics.widthPixels*0.70f).toInt(),
+   (resources.displayMetrics.heightPixels*0.37f).toInt())
   val emblem=android.widget.FrameLayout(this)
   val halo=android.view.View(this).apply {
    background=GradientDrawable().apply {
@@ -1040,8 +1043,41 @@ class MainActivity : Activity() {
   b.addView(tabs)
   val searchButton=button("⌕  Поиск по персонажам и аниме"){catalog()}.apply{gravity=Gravity.LEFT;background=shape(Color.rgb(18,35,62),14f)}
   b.addView(searchButton)
+  val recent=characters.filter { chats[it]?.isNotEmpty()==true }
+   .sortedByDescending { lastChatActivity(it) }
+  // A real home-screen hero, not a blank list under the system splash.
+  // Continue opens the latest conversation without navigating the catalog.
+  val heroCard=LinearLayout(this).apply {
+   orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL
+   setPadding(dp(12),dp(14),dp(12),dp(14))
+   background=GradientDrawable(GradientDrawable.Orientation.TL_BR,
+    intArrayOf(Color.rgb(21,63,105),Color.rgb(8,23,48))).apply {
+     cornerRadius=dp(20).toFloat()
+     setStroke(dp(1),Color.rgb(78,167,231))
+   }
+  }
+  heroCard.addView(ImageView(this).apply {
+   setImageResource(R.drawable.shadow_icon)
+   contentDescription="Герой Shadow RP с голубыми глазами"
+   scaleType=ImageView.ScaleType.FIT_CENTER
+  },LinearLayout.LayoutParams(dp(86),dp(102)))
+  val heroText=LinearLayout(this).apply {
+   orientation=LinearLayout.VERTICAL;setPadding(dp(9),0,0,0)
+  }
+  heroText.addView(text("ТВОЯ ИСТОРИЯ ПРОДОЛЖАЕТСЯ",15f,Color.WHITE,true))
+  heroText.addView(text(
+   if(recent.isEmpty()) "Выбери персонажа и начни новую историю"
+   else "Последний диалог: ${recent.first()}",13f,muted))
+  heroText.addView(button(
+   if(recent.isEmpty()) "ОТКРЫТЬ КАТАЛОГ  ›" else "ПРОДОЛЖИТЬ ЧАТ  ›"
+  ) { if(recent.isEmpty()) catalog() else chat(recent.first()) }.apply {
+   gravity=Gravity.CENTER;setPadding(dp(8),dp(10),dp(8),dp(10))
+  })
+  heroCard.addView(heroText,LinearLayout.LayoutParams(0,-2,1f))
+  b.addView(heroCard,LinearLayout.LayoutParams(-1,-2).apply {
+   setMargins(dp(5),dp(12),dp(5),dp(8))
+  })
   b.addView(text("Для вас",22f,Color.WHITE,true))
-  val recent=characters.filter { chats[it]?.isNotEmpty()==true }.sortedByDescending { lastChatActivity(it) }
   shelf(b,"Продолжить общение",recent.take(8))
   shelf(b,"✦ Популярные героини",listOf("Цунаде","Йоруичи Сихоин","Сакура Харуно","Хината Хьюга","Альфа","Дельта"))
   animeRoster.map{it[1]}.distinct().take(5).forEach { title ->
