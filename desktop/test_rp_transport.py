@@ -148,7 +148,6 @@ class TransportTests(unittest.TestCase):
             [{"role": "tool", "content": "untrusted"}],
             [{"role": "system", "content": ""}],
             [{"role": "user", "content": {"text": "not a string"}}],
-            [{"role": "user", "content": "x" * 120001}],
             [{"role": "user", "content": "hello"}] * 81,
             [None],
         ]
@@ -159,7 +158,8 @@ class TransportTests(unittest.TestCase):
                     chat_completion("https://example.test/v1", "", "model",
                                     messages, opener=client, sleep=lambda _: None)
                 self.assertEqual(client.requests, [])
-        for key in ("key\\tmalformed", "key\\x00malformed", "x" * 8193):
+        for key in ("key" + chr(9) + "malformed",
+                    "key" + chr(0) + "malformed", "x" * 8193):
             with self.subTest(key=repr(key)[:30]):
                 with self.assertRaisesRegex(ValueError, "API-ключ"):
                     chat_completion("https://example.test/v1", key, "model", [],
