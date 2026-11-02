@@ -339,6 +339,9 @@ class MainActivity : Activity() {
     val key = if (field == "description") "persona" else field
     editor.putString(key + "_" + name, value)
    }
+   // A legacy archive has no lorebook; replacing a card must not keep
+   // unrelated conditional facts from the previously installed character.
+   if (!card.fields.containsKey("lorebook")) editor.remove("lorebook_" + name)
    val history = JSONArray()
    card.messages.forEach { (role, content) ->
     history.put(JSONObject().put("role", role).put("content", content))
