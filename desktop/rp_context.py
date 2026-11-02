@@ -23,7 +23,7 @@ def validate_endpoint(endpoint: str) -> str:
             "%2e" in parsed.path.lower() or
             "\\" in parsed.path):
         raise ValueError("Unsafe API path")
-    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
         raise ValueError("API URL must not contain credentials, query or fragment")
     if not parsed.hostname or not parsed.netloc:
         raise ValueError("Invalid API endpoint")
