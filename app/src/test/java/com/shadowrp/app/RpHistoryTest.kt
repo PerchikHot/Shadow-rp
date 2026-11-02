@@ -32,6 +32,17 @@ class RpHistoryTest {
         } catch (_: IllegalArgumentException) { }
     }
 
+    @Test fun longSceneSearchShowsMatchingEventNotOnlyOpeningText() {
+        val scene = "Начало сцены. " + "тихий лес ".repeat(30) +
+            "СИНИЙ ПОРТАЛ открылся " + "далеко ".repeat(40)
+        val found = RpHistory.search(listOf("assistant" to scene), "синий портал")
+        assertEquals(1, found.size)
+        assertTrue(found.single().preview.contains("СИНИЙ ПОРТАЛ"))
+        assertTrue(found.single().preview.length <= 162)
+        assertTrue(found.single().preview.startsWith("…"))
+        assertTrue(found.single().preview.endsWith("…"))
+    }
+
     @Test fun rewindKeepsSelectedPlayerTurnAndDoesNotMutateSource() {
         val result = RpHistory.rewind(history, 2)
         assertEquals(history.take(3), result)
