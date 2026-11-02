@@ -72,6 +72,26 @@ class RpBackupTest {
         assertEquals(1, added.size)
     }
 
+    @Test fun rejectCaseOnlyDuplicatesInsideOnePortableArchive() {
+        val card = RpBackup.Card(emptyMap(), emptyList())
+        try {
+            RpBackup.encode(linkedMapOf("Алиса" to card, "АЛИСА" to card))
+            fail("Ambiguous case-only names must not be exported")
+        } catch (_: IllegalArgumentException) { }
+        val raw = """{"characters":{"Алиса":{},"АЛИСА":{}}}"""
+        try {
+            RpBackup.decode(raw.toByteArray(Charsets.UTF_8))
+            fail("Ambiguous imported names must not overwrite chat history")
+        } catch (_: IllegalArgumentException) { }
+        // The copy importer must reject an internally ambiguous incoming
+        // archive before writing any character preferences.
+        try {
+            RpBackup.checkedMergeAsCopies(emptyMap(),
+                linkedMapOf("Алиса" to card, "АЛИСА" to card))
+            fail("Copy mode cannot resolve ambiguous source names")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun rejectOversizedArchive() {
         try {
             RpBackup.decode(ByteArray(RpBackup.MAX_BYTES + 1))
