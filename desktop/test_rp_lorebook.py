@@ -11,6 +11,20 @@ class LorebookTests(unittest.TestCase):
         self.assertEqual("", resolve_lorebook(lore, [{"role": "user", "content": "Маяк"}] +
                          [{"role": "assistant", "content": "тишина"}] * 8))
 
+    def test_model_replies_cannot_self_activate_lore(self):
+        lore = "Портал => Скрытый проход\nМаяк => Потух"
+        self.assertEqual("", resolve_lorebook(lore, [
+            {"role": "assistant", "content": "Портал находится у реки"}
+        ]))
+        self.assertEqual("Маяк: Потух", resolve_lorebook(lore, [
+            {"role": "assistant", "content": "Портал находится у реки"},
+            {"role": "user", "content": "Посмотрим на маяк"}
+        ]))
+        self.assertEqual("", resolve_lorebook(lore, [
+            {"role": "user", "content": "Маяк"},
+            *[{"role": "assistant", "content": "Маяк"} for _ in range(8)]
+        ]))
+
     def test_invalid_and_ambiguous_rules(self):
         for raw in ("без разделителя", "А => текст",
                     "Портал => факт\nпортал => другой",

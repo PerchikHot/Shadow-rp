@@ -34,8 +34,9 @@ internal object RpLorebook {
 
     fun resolve(raw: String, history: List<Pair<String, String>>): String {
         val entries = parse(raw)
+        // Assistant replies may quote lore; only player turns activate it.
         val recent = history.takeLast(8)
-            .filter { it.first == "user" || it.first == "assistant" }
+            .filter { it.first == "user" }
             .joinToString(" ") { it.second.takeLast(2000) }.takeLast(4000)
         if (recent.isBlank()) return ""
         val selected = mutableListOf<String>()

@@ -14,6 +14,17 @@ class RpLorebookTest {
         assertEquals(2, RpLorebook.parse(lore).size)
     }
 
+    @Test fun assistantRepliesNeverReactivateLore() {
+        val lore = "Портал => Скрытый проход\nМаяк => Потух"
+        assertEquals("", RpLorebook.resolve(lore,
+            listOf("assistant" to "Портал находится у реки")))
+        assertEquals("Маяк: Потух", RpLorebook.resolve(lore,
+            listOf("assistant" to "Портал находится у реки",
+                "user" to "Посмотрим на маяк")))
+        assertEquals("", RpLorebook.resolve(lore,
+            listOf("user" to "Маяк") + List(8) { "assistant" to "Маяк" }))
+    }
+
     @Test fun rejectsAmbiguousOrOversizedEntries() {
         for (raw in listOf("без разделителя", "А => текст",
             "Портал => факт\nпортал => другой",

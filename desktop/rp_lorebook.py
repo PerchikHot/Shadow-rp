@@ -31,9 +31,10 @@ def parse_lorebook(raw):
 
 def resolve_lorebook(raw, messages):
     entries = parse_lorebook(raw)
+    # Only player turns activate lore: model replies can repeat lore keywords.
     recent = " ".join(str(msg.get("content", ""))[-2000:]
                       for msg in messages[-8:]
-                      if isinstance(msg, dict) and msg.get("role") in ("user", "assistant"))[-4000:]
+                      if isinstance(msg, dict) and msg.get("role") == "user")[-4000:]
     if not recent.strip():
         return ""
     lines, remaining = [], MAX_CONTEXT
