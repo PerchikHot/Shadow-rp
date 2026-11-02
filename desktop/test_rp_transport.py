@@ -143,6 +143,28 @@ class TransportTests(unittest.TestCase):
             chat_completion("https://example.test/v1", "key\nX-Evil: yes",
                             "model", [], opener=Client(), sleep=lambda _: None)
 
+    def test_imported_chat_messages_are_validated_before_network(self):
+        bad = [
+            [{"role": "tool", "content": "untrusted"}],
+            [{"role": "system", "content": ""}],
+            [{"role": "user", "content": {"text": "not a string"}}],
+            [{"role": "user", "content": "x" * 120001}],
+            [{"role": "user", "content": "hello"}] * 81,
+            [None],
+        ]
+        for messages in bad:
+            with self.subTest(messages=str(messages)[:50]):
+                client = Client()
+                with self.assertRaisesRegex(ValueError, "контекст"):
+                    chat_completion("https://example.test/v1", "", "model",
+                                    messages, opener=client, sleep=lambda _: None)
+                self.assertEqual(client.requests, [])
+        for key in ("key\\tmalformed", "key\\x00malformed", "x" * 8193):
+            with self.subTest(key=repr(key)[:30]):
+                with self.assertRaisesRegex(ValueError, "API-ключ"):
+                    chat_completion("https://example.test/v1", key, "model", [],
+                                    opener=Client(), sleep=lambda _: None)
+
     def test_request_timeout_http_408_is_retried(self):
         client = Client(http_error(408), ok("Продолжаем"))
         self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
