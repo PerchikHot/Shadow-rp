@@ -4,6 +4,16 @@ from rp_backup import (encode_backup, decode_backup, merge_backups,
 
 
 class BackupTests(unittest.TestCase):
+    def test_rejects_duplicate_json_keys_before_import(self):
+        # A repeated key must never silently discard an earlier history.
+        for raw in (
+            b'{"characters":{"Alice":{"messages":[]},"Alice":{"messages":[]}}}',
+            b'{"characters":{"Alice":{"messages":[{"role":"user","content":"one","content":"two"}]}}}',
+            b'{"characters":{},"characters":{"Bob":{}}}',
+        ):
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                decode_backup(raw)
+
     def test_round_trip(self):
         data = {"characters": {"Алиса": {"description": "Героиня", "scenario": "Лес", "memory": "Встреча", "messages": [{"role": "user", "content": "Привет"}, {"role": "assistant", "content": "Здравствуй"}]}}}
         self.assertEqual(decode_backup(encode_backup(data)), data)

@@ -42,10 +42,26 @@ def validate_backup(data):
     return {"characters": result}
 
 
+def _unique_json_object(pairs):
+    """Never silently overwrite duplicate character names or dialogue fields.
+
+    Python's default json.loads keeps the last duplicate key, potentially
+    deleting an earlier character/history before the import confirmation UI.
+    Android's JSONObject parser also rejects duplicate object keys.
+    """
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Архив содержит повторяющиеся JSON-поля")
+        result[key] = value
+    return result
+
+
 def decode_backup(raw):
     if len(raw) > MAX_BYTES:
         raise ValueError("Архив больше 8 МБ")
-    return validate_backup(json.loads(raw.decode("utf-8")))
+    return validate_backup(json.loads(raw.decode("utf-8"),
+                                      object_pairs_hook=_unique_json_object))
 
 
 def encode_backup(data):

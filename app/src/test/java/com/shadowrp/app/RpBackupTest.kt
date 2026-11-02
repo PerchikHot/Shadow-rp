@@ -4,6 +4,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RpBackupTest {
+    @Test fun duplicateJsonKeysCannotOverwritePortableChatHistory() {
+        // Match the strict Windows JSON importer: duplicate object keys
+        // must not silently discard a character or a message field.
+        val invalid = listOf(
+            """{"characters":{"Alice":{},"Alice":{}}}""",
+            """{"characters":{"Alice":{"messages":[{"role":"user","content":"one","content":"two"}]}}}""",
+            """{"characters":{},"characters":{"Bob":{}}}"""
+        )
+        invalid.forEach { raw ->
+            try {
+                RpBackup.decode(raw.toByteArray(Charsets.UTF_8))
+                fail("Duplicate JSON field silently replaced history")
+            } catch (_: org.json.JSONException) {
+                // JSONObject rejects duplicate keys before creating a Card.
+            } catch (_: IllegalArgumentException) {
+                // Some Android org.json versions wrap parser failures.
+            }
+        }
+    }
+
     @Test fun crossPlatformRoundTrip() {
         val fields = mapOf(
             "description" to "Детектив", "scenario" to "Ночной поезд",
