@@ -125,6 +125,8 @@ class RpContextTests(unittest.TestCase):
             "https://api.example.org/v1/../admin",
             "https://api.example.org/v1/%2fadmin",
             "https://api.example.org/v1/%5cadmin",
+            "https://api.example.org/v1/%2e%2e/admin",
+            "https://api.example.org/v1/.%2e/admin",
             "https://api.example.org/v1\\\\admin",
             "https://api.example.org/v1/chat completions",
             None,
