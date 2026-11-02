@@ -25,8 +25,12 @@ internal object RpBackup {
     fun encode(cards: Map<String, Card>): ByteArray {
         require(cards.size <= MAX_CHARACTERS) { "Слишком много персонажей" }
         val characters = JSONObject()
+        val encodedNames = mutableSetOf<String>()
         cards.forEach { (name, card) ->
             checkName(name)
+            require(encodedNames.add(name.lowercase(java.util.Locale.ROOT))) {
+                "В архиве есть персонажи с одинаковыми именами без учёта регистра"
+            }
             val item = JSONObject()
             fields.forEach { field ->
                 val value = card.fields[field] ?: ""
@@ -59,10 +63,14 @@ internal object RpBackup {
             ?: throw IllegalArgumentException("Неверный формат архива Shadow RP")
         require(characters.length() <= MAX_CHARACTERS) { "Слишком много персонажей" }
         val result = linkedMapOf<String, Card>()
+        val decodedNames = mutableSetOf<String>()
         val names = characters.keys()
         while (names.hasNext()) {
             val name = names.next()
             checkName(name)
+            require(decodedNames.add(name.lowercase(java.util.Locale.ROOT))) {
+                "Неоднозначные имена персонажей в архиве"
+            }
             val item = characters.optJSONObject(name)
                 ?: throw IllegalArgumentException("Некорректная карточка персонажа")
             val values = fields.associateWith { field ->
