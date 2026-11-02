@@ -16,8 +16,14 @@ def _quote(text: str) -> str:
     sanitized = (text.strip()[:MAX_QUOTE].replace("\r\n", "\n")
                  .replace("\r", "\n").replace("\u0085", "\n")
                  .replace("\u2028", "\n").replace("\u2029", "\n"))
+    # Remove invisible control characters that can visually alter speaker
+    # attribution. Preserve ordinary line breaks and the Unicode characters
+    # of the roleplay itself. Keep this identical to Android's quote().
+    sanitized = sanitized.replace("\t", " ")
     sanitized = sanitized.translate({code: None for code in
-        (*range(0x202A, 0x202F), *range(0x2066, 0x206A))})
+        (*range(0x00, 0x09), *range(0x0B, 0x0D),
+         *range(0x0E, 0x20), 0x7F, 0x200B, 0xFEFF,
+         *range(0x202A, 0x202F), *range(0x2066, 0x206A))})
     return sanitized.replace("\n", "\n│ ")
 
 

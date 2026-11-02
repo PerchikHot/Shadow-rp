@@ -12,7 +12,8 @@ internal object RpSceneMemory {
     private fun quote(text: String): String = text.trim().take(MAX_QUOTE)
         .replace("\r\n", "\n").replace('\r', '\n')
         .replace('\u0085', '\n').replace('\u2028', '\n').replace('\u2029', '\n')
-        .replace(Regex("[\\u202A-\\u202E\\u2066-\\u2069]"), "")
+        .replace('\t', ' ')
+        .replace(Regex("[\\u0000-\\u0008\\u000B-\\u000C\\u000E-\\u001F\\u007F\\u200B\\uFEFF\\u202A-\\u202E\\u2066-\\u2069]"), "")
         .replace("\n", "\n│ ")
 
     fun pinLastExchange(memory: String, messages: List<Pair<String, String>>): String {

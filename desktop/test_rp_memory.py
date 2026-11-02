@@ -51,5 +51,16 @@ class MemoryTests(unittest.TestCase):
         self.assertNotIn("\u202e", note)
         self.assertNotIn("\u2066", note)
 
+    def test_invisible_controls_are_not_persisted_in_pinned_scenes(self):
+        turns = [
+            {"role": "user", "content": "Привет\u0000\u200b\tмир\ufeff"},
+            {"role": "assistant", "content": "Ответ\u0007\u007f\u202e"},
+        ]
+        note = pin_last_exchange("", turns)
+        self.assertIn("Игрок: Привет мир", note)
+        self.assertIn("Персонаж: Ответ", note)
+        for control in ("\u0000", "\u0007", "\u007f", "\u200b", "\ufeff", "\u202e"):
+            self.assertNotIn(control, note)
+
 if __name__ == "__main__":
     unittest.main()
