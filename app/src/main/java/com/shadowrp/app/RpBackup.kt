@@ -15,7 +15,7 @@ internal object RpBackup {
     private const val MAX_MESSAGES = 10000
     private const val MAX_FIELD = 30000
     private const val MAX_MESSAGE = 20000
-    private val fields = listOf("description", "scenario", "memory", "appearance", "greeting", "protocol")
+    private val fields = listOf("description", "scenario", "memory", "appearance", "greeting", "protocol", "lorebook")
 
     data class Card(
         val fields: Map<String, String>,
@@ -35,6 +35,7 @@ internal object RpBackup {
             fields.forEach { field ->
                 val value = card.fields[field] ?: ""
                 require(value.length <= MAX_FIELD) { "Слишком длинное поле $field" }
+                if (field == "lorebook") RpLorebook.parse(value)
                 item.put(field, value)
             }
             require(card.messages.size <= MAX_MESSAGES) { "Слишком длинная история" }
@@ -77,7 +78,7 @@ internal object RpBackup {
                 if (!item.has(field)) "" else {
                     val value = item.opt(field)
                     require(value is String && value.length <= MAX_FIELD) { "Некорректное поле $field" }
-                    value
+                    value.also { if (field == "lorebook") RpLorebook.parse(it) }
                 }
             }
             val messages = item.optJSONArray("messages")

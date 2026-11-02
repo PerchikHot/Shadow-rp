@@ -2,7 +2,7 @@
 
 The Android client performs the same snapshot check before saving a reply.
 """
-CARD_FIELDS = ("description", "scenario", "memory", "appearance", "greeting", "protocol")
+CARD_FIELDS = ("description", "scenario", "memory", "appearance", "greeting", "protocol", "lorebook")
 
 
 def card_context(card: dict) -> tuple:

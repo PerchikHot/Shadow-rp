@@ -1,5 +1,6 @@
 """Validated Shadow RP chat backup format. Never import executable content."""
 import json
+from rp_lorebook import parse_lorebook
 
 MAX_BYTES = 8 * 1024 * 1024
 MAX_CHARACTERS = 200
@@ -30,10 +31,12 @@ def validate_backup(data):
                 raise ValueError("Некорректное сообщение")
             clean.append({"role": msg["role"], "content": msg["content"]})
         entry = {"messages": clean}
-        for field in ("description", "scenario", "memory", "appearance", "greeting", "protocol"):
+        for field in ("description", "scenario", "memory", "appearance", "greeting", "protocol", "lorebook"):
             value = card.get(field, "")
             if not isinstance(value, str) or len(value) > 30000:
                 raise ValueError("Некорректное поле " + field)
+            if field == "lorebook":
+                parse_lorebook(value)
             if field in ("description", "scenario", "memory") or field in card:
                 entry[field] = value
         result[name] = entry

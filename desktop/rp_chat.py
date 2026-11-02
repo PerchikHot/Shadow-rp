@@ -9,6 +9,7 @@ from rp_backup import (encode_backup, decode_backup, merge_backups,
 from rp_storage import load_data, save_data, create_import_checkpoint
 from rp_context import build_rp_messages, validate_endpoint
 from rp_memory import pin_last_exchange
+from rp_lorebook import parse_lorebook
 from rp_history import search_dialogue, rewind_to_user_turn, branch_from_user_turn
 from rp_reply_safety import card_context, can_apply_reply
 from rp_transport import chat_completion
@@ -35,12 +36,13 @@ def save(data):
 
 
 def generate(endpoint, api_key, model, description, messages, scenario="", memory="",
-             *, appearance="", greeting="", protocol=""):
+             *, appearance="", greeting="", protocol="", lorebook=""):
     base = validate_endpoint(endpoint)
     return chat_completion(
         base, api_key, model,
         build_rp_messages(description, scenario, memory, messages,
-                          appearance=appearance, greeting=greeting, protocol=protocol))
+                          appearance=appearance, greeting=greeting, protocol=protocol,
+                          lorebook=lorebook))
 
 
 class App:
@@ -109,6 +111,7 @@ class App:
         tk.Button(actions_inner, text="Сценарий", command=lambda: self.edit_field("scenario", "Сценарий", "Мир, ситуация, сюжет:")).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="✦ Шаблоны сценариев", command=self.choose_scenario).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Закреплённая память", command=lambda: self.edit_field("memory", "Память", "Подтверждённые факты и события:")).pack(fill="x", padx=10, pady=5)
+        tk.Button(actions_inner, text="▤ Лорбук мира", command=self.edit_lorebook).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Экспорт персонажа", command=self.export_active_character).pack(fill="x", padx=10, pady=5)
@@ -299,6 +302,37 @@ class App:
             item[field] = value[:4000]
             save(self.data)
             self.status.config(text="Сохранено локально. Память меняется только вручную.")
+
+    def edit_lorebook(self):
+        """Edit per-character conditional facts in a multiline dialog."""
+        if not self.active:
+            return
+        name = self.active
+        popup = tk.Toplevel(self.root)
+        popup.title("Лорбук • " + name)
+        popup.geometry("650x450")
+        popup.configure(bg=BG)
+        tk.Label(popup, text="Ключ => факт (одна запись на строку). До 40 записей.",
+                 bg=BG, fg=FG).pack(anchor="w", padx=14, pady=10)
+        editor = tk.Text(popup, wrap="word", bg=PANEL, fg=FG,
+                         insertbackground=FG, font=("Segoe UI", 12))
+        editor.pack(fill="both", expand=True, padx=14, pady=8)
+        editor.insert("1.0", self.data["characters"][name].get("lorebook", ""))
+        def apply():
+            raw = editor.get("1.0", "end-1c")
+            try:
+                parse_lorebook(raw)
+            except ValueError as exc:
+                messagebox.showerror("Лорбук", str(exc), parent=popup)
+                return
+            if name not in self.data["characters"]:
+                messagebox.showerror("Лорбук", "Персонаж больше не существует", parent=popup)
+                return
+            self.data["characters"][name]["lorebook"] = raw
+            save(self.data)
+            popup.destroy()
+            self.refresh()
+        tk.Button(popup, text="Сохранить лорбук", command=apply).pack(pady=10)
 
     def choose_scenario(self):
         """Offer scene starters without altering messages or pinned memory."""
@@ -518,12 +552,14 @@ class App:
         appearance = item.get("appearance", "")
         greeting = item.get("greeting", "")
         protocol = item.get("protocol", "")
+        lorebook = item.get("lorebook", "")
 
         def work():
             try:
                 answer = generate(endpoint, key, model, description, snapshot,
                                   scenario, memory, appearance=appearance,
-                                  greeting=greeting, protocol=protocol)
+                                  greeting=greeting, protocol=protocol,
+                                  lorebook=lorebook)
                 error = None
             except Exception as exc:
                 answer, error = None, str(exc)

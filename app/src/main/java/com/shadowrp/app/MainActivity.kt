@@ -293,7 +293,7 @@ class MainActivity : Activity() {
  }
 
  private fun rpCards(): Map<String, RpBackup.Card> = characters.associateWith { name ->
-  val values = listOf("description", "scenario", "memory", "appearance", "greeting", "protocol")
+  val values = listOf("description", "scenario", "memory", "appearance", "greeting", "protocol", "lorebook")
    .associateWith { field ->
     val key = if (field == "description") "persona" else field
     prefs.getString(key + "_" + name, "").orEmpty()
@@ -1170,7 +1170,7 @@ class MainActivity : Activity() {
   item(b,"♧ Создать групповой чат","Выбрать участников из своих переписок") { createRoom() }
   item(b,"♙ Моя личность","Имя, биография и роль игрока") { editIdentity() }
   item(b,"▣ Создать изображение","Пока доступен просмотр промпта по истории") { imagePrompt() }
-  item(b,"▤ Лорбук","Планируется в следующих обновлениях") { AlertDialog.Builder(this).setMessage("Редактор лорбука ещё не реализован.").setPositiveButton("OK",null).show().also {styleDialog(it)} }
+  item(b,"▤ Лорбук","Условные факты мира для выбранного персонажа") { editLorebook(active) }
   nav(2)
  }
  private fun createCharacter() {
@@ -1251,6 +1251,7 @@ class MainActivity : Activity() {
   profileRow.addView(button("⋮"){characterDetail(name)})
   b.addView(profileRow)
   b.addView(button("📌 Запомнить сцену") { pinScene(name) })
+  b.addView(button("▤ Лорбук мира") { editLorebook(name) })
   b.addView(button("⌕ Поиск и откат переписки") { searchRpHistory(name) })
   if (rpRewindCheckpoint(name).baseFile.exists()) {
    b.addView(button("↶ Восстановить переписку до отката") { restoreRpRewind(name) })
@@ -1410,6 +1411,29 @@ class MainActivity : Activity() {
   render("")
   dialog.show();styleDialog(dialog)
  }
+ private fun editLorebook(name:String) {
+  val layout=LinearLayout(this).apply {orientation=1;setPadding(dp(14),dp(12),dp(14),dp(12))}
+  layout.addView(text("Одна запись на строку: ключ => подтверждённый факт. " +
+   "Факт попадёт в контекст ИИ только если ключ встретился в последних репликах. " +
+   "До 40 записей, без автоматического запоминания.",15f,muted))
+  val field=visibleField("Лорбук • $name",prefs.getString("lorebook_$name","").orEmpty(),layout)
+  val dialog=AlertDialog.Builder(this).setTitle("▤ Лорбук • $name")
+   .setView(ScrollView(this).apply {addView(layout)})
+   .setPositiveButton("Сохранить",null).setNegativeButton("Отмена",null).create()
+  dialog.setOnShowListener {
+   dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+    val value=field.text.toString()
+    try {RpLorebook.parse(value)}
+    catch(e:IllegalArgumentException){field.error=e.message;return@setOnClickListener}
+    if(!prefs.edit().putString("lorebook_$name",value).commit()){
+     field.error="Не удалось сохранить лорбук";return@setOnClickListener
+    }
+    dialog.dismiss()
+    if(active==name)chat(name)
+   }
+  }
+  dialog.show();styleDialog(dialog)
+ }
  private fun pinScene(name:String) {
   if(localPending.contains(name)){alert("Дождись завершения ответа ИИ.");return}
   val history=chats[name]?.toList().orEmpty()
@@ -1447,7 +1471,8 @@ class MainActivity : Activity() {
    memory=prefs.getString("memory_$name","").orEmpty(),
    identity=prefs.getString("identity_name","Игрок").orEmpty(),
    history=history,
-   qwen3=file.name.contains("qwen3",ignoreCase=true)
+   qwen3=file.name.contains("qwen3",ignoreCase=true),
+   lorebook=RpLorebook.resolve(prefs.getString("lorebook_$name","").orEmpty(),history)
   )
   thread {
    try{
@@ -1482,7 +1507,10 @@ class MainActivity : Activity() {
    try {
     val arr=JSONArray()
     val persona=listOf("Характер: "+prefs.getString("persona_$name","").orEmpty(),"Внешность: "+prefs.getString("appearance_$name","").orEmpty(),"Сценарий: "+prefs.getString("scenario_$name","").orEmpty(),"Начальная ситуация: "+prefs.getString("opening_$name","").orEmpty(),"Правила: "+prefs.getString("protocol_$name","").orEmpty(),"Память: "+prefs.getString("memory_$name","").orEmpty()).joinToString("\n") + "\nИгрок: " + prefs.getString("identity_name","Игрок").orEmpty() + ". " + prefs.getString("identity_bio","").orEmpty()
-    arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
+    val lore=RpLorebook.resolve(prefs.getString("lorebook_$name","").orEmpty(),snapshot)
+    arr.put(JSONObject().put("role","system").put("content","Ты играешь роль персонажа $name. $persona " +
+     (if(lore.isNotBlank()) "Подтверждённые факты мира по текущей сцене:\n$lore\n" else "") +
+     "Отвечай по-русски, поддерживай сюжет, сохраняй характер."))
     // Keep a bounded recent dialogue; pinned memory and scenario remain in
     // the system message even when older turns leave the context window.
     RpRemotePolicy.boundedHistory(snapshot).forEach {

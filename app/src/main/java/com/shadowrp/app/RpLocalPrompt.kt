@@ -7,7 +7,8 @@ internal object RpLocalPrompt {
     fun build(
         name: String, persona: String, appearance: String, scenario: String,
         protocol: String, memory: String, identity: String,
-        history: List<Pair<String, String>>, qwen3: Boolean
+        history: List<Pair<String, String>>, qwen3: Boolean,
+        lorebook: String = ""
     ): String {
         val system = "Ты ${name.take(60)}, персонаж RP. " +
             "Характер: ${persona.take(120)}. " +
@@ -15,6 +16,7 @@ internal object RpLocalPrompt {
             "Сценарий: ${scenario.take(110)}. " +
             "Правила: ${protocol.take(75)}. " +
             "Закреплённая память игрока: ${memory.take(180)}. " +
+            "Актуальные записи лорбука: ${lorebook.take(130)}. " +
             "Игрок: ${identity.take(50)}. " +
             "Продолжай сюжет по-русски от лица персонажа. Не придумывай прошлые встречи."
         val recent = history.takeLast(3).filter { it.first == "user" || it.first == "assistant" }

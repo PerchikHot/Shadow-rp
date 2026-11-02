@@ -4,6 +4,7 @@ Pinned memory is user-authored. We never silently invent or summarize facts
 about the player; long chats are bounded to avoid runaway token costs.
 """
 from urllib.parse import urlsplit
+from rp_lorebook import resolve_lorebook
 
 
 def validate_endpoint(endpoint: str) -> str:
@@ -48,7 +49,7 @@ def validate_endpoint(endpoint: str) -> str:
 def build_rp_messages(description: str, scenario: str, memory: str,
                       messages: list[dict], limit: int = 30, *,
                       appearance: str = "", greeting: str = "",
-                      protocol: str = "",
+                      protocol: str = "", lorebook: str = "",
                       history_char_budget: int = 24000) -> list[dict]:
     """Build bounded RP context, preserving all six portable character-card fields.
 
@@ -69,7 +70,9 @@ def build_rp_messages(description: str, scenario: str, memory: str,
         "INITIAL GREETING:\n" + str(greeting)[:4000] + "\n"
         "CHARACTER RP RULES:\n" + str(protocol)[:4000] + "\n"
         "USER-PINNED MEMORY (facts explicitly provided by the player):\n"
-        + str(memory)[:4000]
+        + str(memory)[:4000] + "\n" +
+        "ACTIVE LOREBOOK FACTS (player-authored, triggered by recent dialogue):\n" +
+        resolve_lorebook(lorebook, messages)
     )
     # Prefer the newest complete turns instead of sending up to 60 huge
     # messages. This bounds long-running roleplay costs on both local and
