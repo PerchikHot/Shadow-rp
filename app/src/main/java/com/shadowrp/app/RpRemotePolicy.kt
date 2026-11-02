@@ -6,8 +6,18 @@ import java.net.URL
 /** No credentials in URL, no API key sent to an unencrypted remote server. */
 internal object RpRemotePolicy {
     fun endpoint(base: String, apiKey: String): URL {
-        val uri = try { URI(base.trim()) }
+        val normalized = base.trim().trimEnd('/')
+        require(normalized.isNotEmpty() && normalized.length <= 2048 &&
+            normalized.none { it.isWhitespace() || it.code < 32 || it.code == 127 }) {
+            "URL модели содержит недопустимые символы"
+        }
+        val uri = try { URI(normalized) }
             catch (_: Exception) { throw IllegalArgumentException("Неверный URL модели") }
+        val rawPath = uri.rawPath.orEmpty()
+        require(rawPath.split('/').none { it == "." || it == ".." } &&
+            !rawPath.contains("%2f", ignoreCase = true) &&
+            !rawPath.contains("%5c", ignoreCase = true) &&
+            !rawPath.contains('\\')) { "Небезопасный путь API" }
         val scheme = uri.scheme?.lowercase()
         val host = uri.host?.lowercase()
         require(scheme == "https" || scheme == "http") { "Используй HTTPS или HTTP локальной модели" }
@@ -22,7 +32,7 @@ internal object RpRemotePolicy {
         require(!uri.path.orEmpty().endsWith("/chat/completions")) {
             "Укажи базовый адрес API, без /chat/completions"
         }
-        return URL(base.trim().trimEnd('/') + "/chat/completions")
+        return URL(normalized + "/chat/completions")
     }
 
     /** Retain the newest complete RP turns under a predictable context budget.
@@ -48,7 +58,19 @@ internal object RpRemotePolicy {
             remaining -= content.length
             if (remaining == 0) break
         }
-        return selected.asReversed()
+        val result = selected.asReversed().toMutableList()
+        // If the oldest retained reply lost its preceding player question
+        // to the message/character budget, do not feed an orphaned answer
+        // back to the model. Preserve a single newest turn as-is.
+        if (result.size > 1 && result.first().first == "assistant") {
+            val valid = history.filter { it.first in setOf("user", "assistant") &&
+                it.second.isNotBlank() }
+            val previous = valid.size - result.size - 1
+            if (previous >= 0 && valid[previous].first == "user") {
+                result.removeAt(0)
+            }
+        }
+        return result
     }
 
     fun shouldRetryStatus(status: Int, attempt: Int): Boolean =
