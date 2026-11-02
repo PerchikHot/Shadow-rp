@@ -43,6 +43,15 @@ class RpHistoryTest {
         assertTrue(found.single().preview.endsWith("…"))
     }
 
+    @Test fun unicodeExpansionsKeepAndroidAndDesktopSearchInSync() {
+        val scene = "Straße ".repeat(100) + "СИНИЙ МАЯК" + " конец".repeat(20)
+        val matches = RpHistory.search(listOf("assistant" to scene), "синий маяк")
+        assertEquals(1, matches.size)
+        assertTrue(matches.single().preview.contains("СИНИЙ МАЯК"))
+        assertTrue(matches.single().preview.length <= 162)
+        assertEquals(1, RpHistory.search(listOf("user" to "Straße"), "STRASSE").size)
+    }
+
     @Test fun rewindKeepsSelectedPlayerTurnAndDoesNotMutateSource() {
         val result = RpHistory.rewind(history, 2)
         assertEquals(history.take(3), result)
