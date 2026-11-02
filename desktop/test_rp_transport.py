@@ -215,11 +215,14 @@ class TransportTests(unittest.TestCase):
                                 opener=client, sleep=lambda _: None)
             self.assertEqual(len(client.requests), 1)
 
-    def test_response_length_is_bounded(self):
+    def test_response_length_is_bounded_without_silent_truncation(self):
         client = Client(ok("a" * 25000))
-        result = chat_completion("https://example.test/v1", "", "model", [],
-                                 opener=client, sleep=lambda _: None)
-        self.assertEqual(len(result), 20000)
+        with self.assertRaisesRegex(ValueError, "слишком длинный"):
+            chat_completion("https://example.test/v1", "", "model", [],
+                            opener=client, sleep=lambda _: None)
+        self.assertEqual(len(client.requests), 1)
+        self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
+                                         opener=Client(ok("a" * 20000))), "a" * 20000)
 
 
 class RetryUiTests(unittest.TestCase):

@@ -47,7 +47,12 @@ def _extract_text(result: dict) -> str:
         raise ValueError("Неподдерживаемый формат ответа модели")
     if not answer.strip():
         raise ValueError("Модель вернула пустой ответ")
-    return answer[:20000]
+    # Silently cutting a long response in the middle of a sentence corrupts
+    # RP continuity and persists an invented stopping point. Leave the last
+    # player turn available for retry instead of saving a partial reply.
+    if len(answer) > 20000:
+        raise ValueError("Ответ модели слишком длинный; сократи контекст или лимит ответа")
+    return answer
 
 
 def _retry_after_delay(header: str, attempt: int) -> float:
