@@ -158,6 +158,8 @@ class RpContextTests(unittest.TestCase):
             self.assertEqual(validate_endpoint(value), value)
         for value in ("http://api.example.org/v1", "http://localhost/v1",
                       "https://user:pass@api.example.org/v1",
+            "https://@api.example.org/v1",
+            "https://:pass@api.example.org/v1",
                       "https://api.example.org/v1?token=secret",
                       "https://api.example.org/v1#fragment",
                       "file:///tmp/model", "https://api.example.org/v1/chat/completions"):
