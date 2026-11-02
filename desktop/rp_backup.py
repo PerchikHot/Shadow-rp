@@ -60,6 +60,13 @@ def merge_backups(existing, incoming):
     """
     old = validate_backup(existing)["characters"]
     new = validate_backup(incoming)["characters"]
+    # A name differing only in case must not create a second, visually
+    # indistinguishable character. Use "import as copies" instead.
+    existing_names = {name.casefold(): name for name in old}
+    for name in new:
+        previous = existing_names.get(name.casefold())
+        if previous is not None and previous != name:
+            raise ValueError("Имя персонажа отличается только регистром; импортируй как копию")
     merged = {"characters": {**old, **new}}
     encode_backup(merged)
     return merged
