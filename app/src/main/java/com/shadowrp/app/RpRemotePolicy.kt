@@ -60,6 +60,8 @@ internal object RpRemotePolicy {
     fun retryDelayMillis(header: String?, attempt: Int): Long {
         val fallback = 500L * (attempt.coerceIn(0, 2) + 1)
         val seconds = header?.trim()?.toLongOrNull() ?: return fallback
-        return seconds.coerceIn(0L, 3L) * 1000L
+        // Negative Retry-After is malformed, not a request to retry at once.
+        if (seconds < 0L) return fallback
+        return seconds.coerceAtMost(3L) * 1000L
     }
 }
