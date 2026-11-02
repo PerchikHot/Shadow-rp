@@ -63,13 +63,12 @@ internal object RpRemotePolicy {
         // If the oldest retained reply lost its preceding player question
         // to the message/character budget, do not feed an orphaned answer
         // back to the model. Preserve a single newest turn as-is.
-        if (result.size > 1 && result.first().first == "assistant") {
-            val valid = history.filter { it.first in setOf("user", "assistant") &&
-                it.second.isNotBlank() }
-            val previous = valid.size - result.size - 1
-            if (previous >= 0 && valid[previous].first == "user") {
-                result.removeAt(0)
-            }
+        // Imported and resumed chats may contain consecutive character
+        // replies. A cutoff must not start with orphaned assistant turns,
+        // regardless of the role that preceded the truncated window.
+        // Preserve the newest reply if no player turn survives at all.
+        while (result.size > 1 && result.first().first == "assistant") {
+            result.removeAt(0)
         }
         return result
     }
