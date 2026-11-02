@@ -44,7 +44,18 @@ def search_dialogue(messages: list[dict], query: str, limit: int = 50):
             continue
         # Show the matching event rather than always the first 160 chars of
         # a long scene. Preserve bounded output and never modify dialogue.
-        match_at = content.casefold().find(needle) if needle else 0
+        # casefold() can expand a character (e.g. ß -> ss). Its match
+        # offset is therefore not necessarily an offset into the original
+        # message. Map it back before slicing a long scene for preview.
+        folded_offset = content.casefold().find(needle) if needle else 0
+        match_at = 0
+        if folded_offset > 0:
+            offset = 0
+            for position, char in enumerate(content):
+                if offset + len(char.casefold()) > folded_offset:
+                    match_at = position
+                    break
+                offset += len(char.casefold())
         start = max(0, match_at - 48)
         end = min(len(content), start + 160)
         preview = ("…" if start else "") + " ".join(content[start:end].split())
