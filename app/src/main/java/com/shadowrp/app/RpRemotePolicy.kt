@@ -2,6 +2,9 @@ package com.shadowrp.app
 
 import java.net.URI
 import java.net.URL
+import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 /** No credentials in URL, no API key sent to an unencrypted remote server. */
 internal object RpRemotePolicy {
@@ -76,14 +79,27 @@ internal object RpRemotePolicy {
     fun shouldRetryStatus(status: Int, attempt: Int): Boolean =
         attempt in 0..1 && status in setOf(408, 429, 500, 502, 503, 504, 521, 522, 524)
 
-    /** Bound Retry-After so a busy provider cannot freeze a RP session.
-     * Runs only on background worker threads, never on Android's UI thread.
+    /** Respect both delta-seconds and RFC 7231 HTTP dates from providers.
+     * Cap interactive retries at three seconds and never expose response text.
+     * The clock parameter makes date-based rate limits deterministic in tests.
      */
-    fun retryDelayMillis(header: String?, attempt: Int): Long {
+    fun retryDelayMillis(
+        header: String?, attempt: Int, nowMillis: Long = System.currentTimeMillis()
+    ): Long {
         val fallback = 500L * (attempt.coerceIn(0, 2) + 1)
-        val seconds = header?.trim()?.toLongOrNull() ?: return fallback
-        // Negative Retry-After is malformed, not a request to retry at once.
-        if (seconds < 0L) return fallback
-        return seconds.coerceAtMost(3L) * 1000L
+        val raw = header?.trim().orEmpty()
+        if (raw.isEmpty()) return fallback
+        val seconds = raw.toDoubleOrNull()
+        if (seconds != null) {
+            if (!seconds.isFinite() || seconds < 0.0) return fallback
+            return (seconds.coerceAtMost(3.0) * 1000.0).toLong()
+        }
+        return try {
+            val target = ZonedDateTime.parse(
+                raw, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
+            (target - nowMillis).coerceIn(0L, 3000L)
+        } catch (_: Exception) {
+            fallback
+        }
     }
 }
