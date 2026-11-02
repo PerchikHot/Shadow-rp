@@ -95,6 +95,16 @@ internal object RpBackup {
      * Never mutate the caller's maps when a collision is rejected.
      */
     fun checkedMerge(existing: Map<String, Card>, incoming: Map<String, Card>): Map<String, Card> {
+        // A case-only name collision is ambiguous in the character picker.
+        // The caller can explicitly choose "keep both" instead of silently
+        // creating a second visually identical conversation.
+        val oldNames = existing.keys.associateBy { it.lowercase(java.util.Locale.ROOT) }
+        incoming.keys.forEach { name ->
+            val previous = oldNames[name.lowercase(java.util.Locale.ROOT)]
+            require(previous == null || previous == name) {
+                "Имя персонажа отличается только регистром; импортируй как копию"
+            }
+        }
         val merged = LinkedHashMap(existing)
         merged.putAll(incoming)
         encode(merged) // validates names, fields, roles, history and total size
