@@ -1476,8 +1476,8 @@ class MainActivity : Activity() {
        error("HTTP $status")
       }
       val response=readModelResponse(c.inputStream)
-      reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices")
-       .getJSONObject(0).getJSONObject("message").getString("content"))
+      reply=RpReplySafety.extractContent(JSONObject(response).getJSONArray("choices")
+       .getJSONObject(0).getJSONObject("message").opt("content"))
       break
      }catch(e:java.io.IOException){
       if(attempt==2)throw e
@@ -1759,8 +1759,8 @@ class MainActivity : Activity() {
        error("HTTP $status")
       }
       val response=readModelResponse(c.inputStream)
-      reply=RpReplySafety.clean(JSONObject(response).getJSONArray("choices")
-       .getJSONObject(0).getJSONObject("message").getString("content"))
+      reply=RpReplySafety.extractContent(JSONObject(response).getJSONArray("choices")
+       .getJSONObject(0).getJSONObject("message").opt("content"))
       if(reply.isNullOrBlank())error("Модель вернула пустой ответ")
       break
      }catch(e:java.io.IOException){

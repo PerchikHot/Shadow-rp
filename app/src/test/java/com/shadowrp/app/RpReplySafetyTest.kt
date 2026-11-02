@@ -1,5 +1,7 @@
 package com.shadowrp.app
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -13,6 +15,24 @@ class RpReplySafetyTest {
         assertFalse(RpReplySafety.canApply(listOf("assistant" to "Старый ответ"),
             listOf("assistant" to "Старый ответ")))
         assertFalse(RpReplySafety.canApply(emptyList(), emptyList()))
+    }
+
+    @Test fun acceptsTypedTextPartsAndRejectsNonTextModelOutput() {
+        val parts = JSONArray().put(JSONObject().put("type", "text").put("text", "Первый"))
+            .put(JSONObject().put("type", "text").put("text", "Второй"))
+        assertEquals("Первый\nВторой", RpReplySafety.extractContent(parts))
+        assertEquals("Привет", RpReplySafety.extractContent(" Привет "))
+        for (bad in listOf(
+            JSONArray(), JSONArray().put(JSONObject().put("type", "image_url")
+                .put("image_url", "https://example.org")), JSONArray().put("bad"),
+            JSONArray().put(JSONObject().put("type", "text").put("text", 42)),
+            JSONObject.NULL, null
+        )) {
+            try {
+                RpReplySafety.extractContent(bad)
+                fail("Unsupported model reply must be rejected")
+            } catch (_: IllegalArgumentException) {}
+        }
     }
 
     @Test fun boundsModelOutputAndRejectsEmptyReplies() {
