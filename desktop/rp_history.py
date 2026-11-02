@@ -42,7 +42,14 @@ def search_dialogue(messages: list[dict], query: str, limit: int = 50):
             continue
         if needle and needle not in content.casefold():
             continue
-        preview = " ".join(content.split())[:160]
+        # Show the matching event rather than always the first 160 chars of
+        # a long scene. Preserve bounded output and never modify dialogue.
+        match_at = content.casefold().find(needle) if needle else 0
+        start = max(0, match_at - 48)
+        end = min(len(content), start + 160)
+        preview = ("…" if start else "") + " ".join(content[start:end].split())
+        if end < len(content):
+            preview += "…"
         results.append((index, role, preview))
         if len(results) >= limit:
             break
