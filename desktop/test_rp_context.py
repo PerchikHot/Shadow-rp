@@ -119,9 +119,9 @@ class RpContextTests(unittest.TestCase):
 
     def test_endpoint_rejects_ambiguous_paths_and_control_characters(self):
         for value in (
-            "https://api.example.org/v1\\n.evil",
-            "https://api.example.org/v1\\r/chat",
-            "https://api.example.org/v1\\t/chat",
+            "https://api.example.org/v1" + chr(10) + ".evil",
+            "https://api.example.org/v1" + chr(13) + "/chat",
+            "https://api.example.org/v1" + chr(9) + "/chat",
             "https://api.example.org/v1/../admin",
             "https://api.example.org/v1/%2fadmin",
             "https://api.example.org/v1/%5cadmin",
