@@ -107,6 +107,23 @@ class RpRemotePolicyTest {
         assertEquals(500L, RpRemotePolicy.retryDelayMillis("invalid", 0))
         assertEquals(1000L, RpRemotePolicy.retryDelayMillis(null, 1))
         assertEquals(1500L, RpRemotePolicy.retryDelayMillis("-1", 2))
+        assertEquals(1250L, RpRemotePolicy.retryDelayMillis("1.25", 0))
+        assertEquals(500L, RpRemotePolicy.retryDelayMillis("NaN", 0))
+        // RFC 7231 HTTP-date is a common Retry-After format. Use a fixed
+        // clock so tests do not depend on the CI runner's current time.
+        val now = 1793635200000L
+        val future = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+            java.time.Instant.ofEpochMilli(now + 2000L)
+                .atZone(java.time.ZoneOffset.UTC))
+        val later = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+            java.time.Instant.ofEpochMilli(now + 60000L)
+                .atZone(java.time.ZoneOffset.UTC))
+        val past = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+            java.time.Instant.ofEpochMilli(now - 60000L)
+                .atZone(java.time.ZoneOffset.UTC))
+        assertEquals(2000L, RpRemotePolicy.retryDelayMillis(future, 0, now))
+        assertEquals(3000L, RpRemotePolicy.retryDelayMillis(later, 0, now))
+        assertEquals(0L, RpRemotePolicy.retryDelayMillis(past, 0, now))
     }
 
     @Test fun retriesOnlyTemporaryServerErrors() {
