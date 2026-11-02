@@ -51,6 +51,17 @@ class BackupTests(unittest.TestCase):
         self.assertIn("Оригинальная история",
             copies["characters"]["Алиса"]["messages"][0]["content"])
 
+    def test_import_rejects_case_only_duplicates_inside_source_archive(self):
+        existing = {"characters": {"Боб": {"messages": []}}}
+        incoming = {"characters": {
+            "Алиса": {"messages": [{"role": "user", "content": "first"}]},
+            "АЛИСА": {"messages": [{"role": "user", "content": "second"}]},
+        }}
+        for importer in (merge_backups, merge_backups_as_copies):
+            with self.subTest(importer=importer.__name__), self.assertRaises(ValueError):
+                importer(existing, incoming)
+        self.assertEqual(set(existing["characters"]), {"Боб"})
+
     def test_merge_preserves_unrelated_characters(self):
         old = {"characters": {
             "Алиса": {"description": "old", "messages": []},

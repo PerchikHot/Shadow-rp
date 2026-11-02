@@ -52,6 +52,21 @@ def encode_backup(data):
     return raw
 
 
+def _reject_ambiguous_import_names(characters):
+    """Reject case-only duplicates inside one imported archive.
+
+    They would otherwise create visually indistinguishable chats on Android
+    and Windows, or make a later case-insensitive merge silently ambiguous.
+    Existing local archives are not modified by this check.
+    """
+    seen = set()
+    for name in characters:
+        key = name.casefold()
+        if key in seen:
+            raise ValueError("Архив содержит персонажей с одинаковыми именами без учёта регистра")
+        seen.add(key)
+
+
 def merge_backups(existing, incoming):
     """Keep unrelated characters, replace colliding names only after UI confirmation.
 
@@ -60,6 +75,7 @@ def merge_backups(existing, incoming):
     """
     old = validate_backup(existing)["characters"]
     new = validate_backup(incoming)["characters"]
+    _reject_ambiguous_import_names(new)
     # A name differing only in case must not create a second, visually
     # indistinguishable character. Use "import as copies" instead.
     existing_names = {name.casefold(): name for name in old}
@@ -93,6 +109,7 @@ def merge_backups_as_copies(existing, incoming):
     """
     old = validate_backup(existing)["characters"]
     new = validate_backup(incoming)["characters"]
+    _reject_ambiguous_import_names(new)
     result = dict(old)
     occupied = {name.casefold() for name in old}
     reserved = occupied | {name.casefold() for name in new}
