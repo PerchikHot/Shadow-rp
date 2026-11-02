@@ -76,12 +76,21 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
         raise ValueError("Invalid retry count")
     if not isinstance(model, str) or not model.strip() or len(model) > 120:
         raise ValueError("Укажи корректное имя модели")
-    if not isinstance(api_key, str) or "\r" in api_key or "\n" in api_key:
+    if (not isinstance(api_key, str) or len(api_key) > 8192 or
+            any(ord(char) < 32 or ord(char) == 127 for char in api_key)):
         raise ValueError("Некорректный API-ключ")
     # Enforce endpoint safety even if a new caller bypasses the UI wrapper.
     url = validate_endpoint(base) + "/chat/completions"
-    if not isinstance(messages, list):
+    if not isinstance(messages, list) or len(messages) > 80:
         raise ValueError("Некорректный контекст диалога")
+    # Never forward imported arbitrary objects or hidden tool instructions
+    # as API messages. RP history contains only text from these three roles.
+    for turn in messages:
+        if (not isinstance(turn, dict) or
+                turn.get("role") not in ("system", "user", "assistant") or
+                not isinstance(turn.get("content"), str) or
+                not turn["content"].strip() or len(turn["content"]) > 120000):
+            raise ValueError("Некорректный контекст диалога")
     payload = json.dumps({"model": model.strip(), "messages": messages},
                          ensure_ascii=False).encode("utf-8")
     if len(payload) > MAX_REQUEST_BYTES:
