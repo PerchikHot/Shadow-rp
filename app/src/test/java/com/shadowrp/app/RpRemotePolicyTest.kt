@@ -42,7 +42,8 @@ class RpRemotePolicyTest {
         for (value in listOf(
             "https://api.example.org/v1/../admin",
             "https://api.example.org/v1/%2fadmin",
-            "https://api.example.org/v1/%5cadmin",
+            "https://api.example.org/v1/%5cadmin", "https://api.example.org/v1/%2e%2e/admin",
+            "https://api.example.org/v1/.%2e/admin",
             "https://api.example.org/v1" + 10.toChar() + "/chat",
             "https://api.example.org/v1/chat completions"
         )) {
