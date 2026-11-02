@@ -98,8 +98,10 @@ def build_rp_messages(description: str, scenario: str, memory: str,
     # reply while silently omitting the player's question immediately before
     # it. Drop only that orphaned oldest reply; never drop the latest turn.
     # Saved history remains untouched and the next model call stays coherent.
-    if len(history) > 1 and history[0]["role"] == "assistant":
-        preceding = len(candidates) - len(history) - 1
-        if preceding >= 0 and candidates[preceding]["role"] == "user":
-            history.pop(0)
+    # An assistant-only prefix can also follow another assistant (e.g. a
+    # resumed scene or imported chat). Drop every orphaned leading reply,
+    # not only those whose omitted predecessor happened to be a player turn.
+    # Keep a single newest reply when there is no player turn in the window.
+    while len(history) > 1 and history[0]["role"] == "assistant":
+        history.pop(0)
     return [{"role": "system", "content": system}, *history]
