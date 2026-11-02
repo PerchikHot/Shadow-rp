@@ -10,6 +10,9 @@ def validate_backup(data):
     if not isinstance(data, dict) or not isinstance(data.get("characters"), dict):
         raise ValueError("Неверный формат архива Shadow RP")
     result = {}
+    # Validate even standalone exports: Android rejects case-only duplicate
+    # cards, so Windows must never create an archive it cannot import.
+    _reject_ambiguous_import_names(data["characters"])
     for name, card in data["characters"].items():
         if (not isinstance(name, str) or not name.strip() or len(name) > 100
                 or any(ord(char) < 32 or ord(char) == 127 for char in name)):
