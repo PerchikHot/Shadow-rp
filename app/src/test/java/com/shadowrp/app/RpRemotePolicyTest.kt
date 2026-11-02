@@ -58,13 +58,22 @@ class RpRemotePolicyTest {
         assertEquals("user", compact.first().first)
     }
 
+    @Test fun retryAfterIsBoundedAndNeverBlocksTheUiIndefinitely() {
+        assertEquals(3000L, RpRemotePolicy.retryDelayMillis("600", 0))
+        assertEquals(2000L, RpRemotePolicy.retryDelayMillis("2", 0))
+        assertEquals(0L, RpRemotePolicy.retryDelayMillis("0", 1))
+        assertEquals(500L, RpRemotePolicy.retryDelayMillis("invalid", 0))
+        assertEquals(1000L, RpRemotePolicy.retryDelayMillis(null, 1))
+        assertEquals(1500L, RpRemotePolicy.retryDelayMillis("-1", 2))
+    }
+
     @Test fun retriesOnlyTemporaryServerErrors() {
-        for (code in listOf(408, 429, 502, 503, 504)) {
+        for (code in listOf(408, 429, 500, 502, 503, 504, 521, 522, 524)) {
             assertTrue(RpRemotePolicy.shouldRetryStatus(code, 0))
             assertTrue(RpRemotePolicy.shouldRetryStatus(code, 1))
             assertFalse(RpRemotePolicy.shouldRetryStatus(code, 2))
         }
-        for (code in listOf(301, 400, 401, 403, 404, 500)) {
+        for (code in listOf(301, 400, 401, 403, 404)) {
             assertFalse(RpRemotePolicy.shouldRetryStatus(code, 0))
         }
     }

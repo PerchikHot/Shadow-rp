@@ -2,10 +2,12 @@
 import io
 import json
 import unittest
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from email.message import Message
 from urllib.error import HTTPError, URLError
 
-from rp_transport import chat_completion
+from rp_transport import chat_completion, _retry_after_delay
 
 
 class Response:
@@ -62,6 +64,15 @@ class TransportTests(unittest.TestCase):
                                          opener=client, sleep=delays.append), "Ответ")
         self.assertEqual(delays, [3.0])
         self.assertEqual(len(client.requests), 2)
+
+    def test_retry_after_supports_http_dates_and_bad_headers(self):
+        future = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=90),
+                                 usegmt=True)
+        self.assertEqual(_retry_after_delay(future, 0), 3.0)
+        self.assertEqual(_retry_after_delay("900", 0), 3.0)
+        self.assertEqual(_retry_after_delay("0", 0), 0.0)
+        self.assertEqual(_retry_after_delay("not a date", 1), 2.0)
+        self.assertEqual(_retry_after_delay("NaN", 0), 1.0)
 
     def test_transient_model_server_errors_retry_but_bad_request_does_not(self):
         for code in (500, 502, 503, 504, 521, 522, 524):

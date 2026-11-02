@@ -52,5 +52,14 @@ internal object RpRemotePolicy {
     }
 
     fun shouldRetryStatus(status: Int, attempt: Int): Boolean =
-        attempt in 0..1 && status in setOf(408, 429, 502, 503, 504)
+        attempt in 0..1 && status in setOf(408, 429, 500, 502, 503, 504, 521, 522, 524)
+
+    /** Bound Retry-After so a busy provider cannot freeze a RP session.
+     * Runs only on background worker threads, never on Android's UI thread.
+     */
+    fun retryDelayMillis(header: String?, attempt: Int): Long {
+        val fallback = 500L * (attempt.coerceIn(0, 2) + 1)
+        val seconds = header?.trim()?.toLongOrNull() ?: return fallback
+        return seconds.coerceIn(0L, 3L) * 1000L
+    }
 }

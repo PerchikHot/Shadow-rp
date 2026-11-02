@@ -1471,7 +1471,8 @@ class MainActivity : Activity() {
       if(status !in 200..299) {
        // Never show or store an error body: it may echo credentials.
        if(RpRemotePolicy.shouldRetryStatus(status,attempt)){
-        Thread.sleep(500L*(attempt+1));continue
+        Thread.sleep(RpRemotePolicy.retryDelayMillis(c.getHeaderField("Retry-After"),attempt))
+        continue
        }
        error("HTTP $status")
       }
@@ -1753,7 +1754,8 @@ class MainActivity : Activity() {
       val status=c.responseCode
       if(status !in 200..299){
        if(RpRemotePolicy.shouldRetryStatus(status,attempt)){
-        Thread.sleep(500L*(attempt+1));continue
+        Thread.sleep(RpRemotePolicy.retryDelayMillis(c.getHeaderField("Retry-After"),attempt))
+        continue
        }
        // Never display the server's error body: it could echo an API key.
        error("HTTP $status")

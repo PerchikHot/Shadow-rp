@@ -6,7 +6,10 @@ keys or raw server error bodies. A model response is capped before JSON decode.
 from __future__ import annotations
 
 import json
+import math
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -39,6 +42,26 @@ def _extract_text(result: dict) -> str:
     if not answer.strip():
         raise ValueError("Модель вернула пустой ответ")
     return answer[:20000]
+
+
+def _retry_after_delay(header: str, attempt: int) -> float:
+    """Honor delta-seconds and RFC 7231 dates, capped for interactive RP."""
+    fallback = float(attempt + 1)
+    if not header:
+        return fallback
+    try:
+        value = float(header)
+        if math.isfinite(value):
+            return min(3.0, max(0.0, value))
+    except (ValueError, OverflowError):
+        pass
+    try:
+        date = parsedate_to_datetime(header)
+        if date.tzinfo is None:
+            return fallback
+        return min(3.0, max(0.0, (date - datetime.now(timezone.utc)).total_seconds()))
+    except (ValueError, TypeError, OverflowError, IndexError):
+        return fallback
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -87,11 +110,7 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
                 raise ValueError(f"Ошибка API: HTTP {exc.code}") from None
             # Respect Retry-After but cap delays so the UI stays responsive.
             header = exc.headers.get("Retry-After", "") if exc.headers else ""
-            try:
-                delay = min(3.0, max(0.0, float(header)))
-            except ValueError:
-                delay = float(attempt + 1)
-            wait(delay)
+            wait(_retry_after_delay(header, attempt))
         except (URLError, TimeoutError, ConnectionError) as exc:
             if attempt + 1 == attempts:
                 raise ValueError("Нет соединения с моделью; проверь адрес и сеть") from None
