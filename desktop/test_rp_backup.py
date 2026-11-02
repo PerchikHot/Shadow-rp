@@ -38,6 +38,19 @@ class BackupTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             encode_backup({"characters": {"A": {"appearance": ["invalid"]}}})
 
+    def test_case_only_name_collision_requires_explicit_copy_import(self):
+        existing = {"characters": {"Алиса": {"messages": [
+            {"role": "user", "content": "Оригинальная история"}]}}}
+        incoming = {"characters": {"АЛИСА": {"messages": [
+            {"role": "assistant", "content": "Другая история"}]}}}
+        with self.assertRaises(ValueError):
+            merge_backups(existing, incoming)
+        self.assertIn("Алиса", existing["characters"])
+        copies = merge_backups_as_copies(existing, incoming)
+        self.assertEqual(len(copies["characters"]), 2)
+        self.assertIn("Оригинальная история",
+            copies["characters"]["Алиса"]["messages"][0]["content"])
+
     def test_merge_preserves_unrelated_characters(self):
         old = {"characters": {
             "Алиса": {"description": "old", "messages": []},
