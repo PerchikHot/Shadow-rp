@@ -37,6 +37,17 @@ class HistoryTests(unittest.TestCase):
             search_dialogue(messages, "role:admin маяк")
         self.assertEqual(messages, original)
 
+    def test_long_scene_search_preview_contains_the_matching_event(self):
+        scene = "Начало сцены. " + "тихий лес " * 30 + (
+            "СИНИЙ ПОРТАЛ открылся ") + "далеко " * 40
+        result = search_dialogue([{"role": "assistant", "content": scene}],
+                                 "синий портал")
+        self.assertEqual(len(result), 1)
+        self.assertIn("СИНИЙ ПОРТАЛ", result[0][2])
+        self.assertLessEqual(len(result[0][2]), 162)
+        self.assertTrue(result[0][2].startswith("…"))
+        self.assertTrue(result[0][2].endswith("…"))
+
     def test_rewind_keeps_player_turn_and_other_characters(self):
         original = sample()
         updated = rewind_to_user_turn(original, "Алиса", 2)
