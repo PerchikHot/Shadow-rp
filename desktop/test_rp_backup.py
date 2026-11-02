@@ -62,6 +62,16 @@ class BackupTests(unittest.TestCase):
                 importer(existing, incoming)
         self.assertEqual(set(existing["characters"]), {"Боб"})
 
+    def test_windows_export_rejects_case_only_names_before_android_transfer(self):
+        ambiguous = {"characters": {
+            "Алиса": {"messages": []}, "АЛИСА": {"messages": []},
+        }}
+        with self.assertRaises(ValueError):
+            encode_backup(ambiguous)
+        import json
+        with self.assertRaises(ValueError):
+            decode_backup(json.dumps(ambiguous, ensure_ascii=False).encode("utf-8"))
+
     def test_merge_preserves_unrelated_characters(self):
         old = {"characters": {
             "Алиса": {"description": "old", "messages": []},
