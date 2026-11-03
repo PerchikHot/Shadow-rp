@@ -20,6 +20,17 @@ class MalformedChoicesTests(unittest.TestCase):
                         "role": "assistant", "content": "Calling a function",
                         "function_call": function_call}}]})
 
+    def test_invalid_unicode_and_control_characters_are_not_persisted(self):
+        for content in ("Сцена\\x00", "Текст\\x1b[31m", "Текст\\x7f", "Сцена\\ud800"):
+            with self.subTest(content=repr(content)), self.assertRaises(ValueError):
+                _extract_text({"choices": [{"message": {"role": "assistant",
+                    "content": content}, "finish_reason": "stop"}]})
+
+    def test_multiline_dialogue_remains_supported(self):
+        dialogue = "Первая строка\\n\\tВторая строка"
+        self.assertEqual(_extract_text({"choices": [{"message": {
+            "role": "assistant", "content": dialogue}, "finish_reason": "stop"}]}), dialogue)
+
     def test_valid_reply_still_works(self):
         self.assertEqual(
             _extract_text({"choices": [{"message": {
