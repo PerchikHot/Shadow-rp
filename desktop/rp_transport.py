@@ -133,7 +133,7 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
         # cross-platform backups and confuse model providers.
         content = turn["content"]
         if len(content) > 200000 or any(
-                (ord(ch) < 32 and ch not in "\\n\\r\\t") or ord(ch) == 127
+                (ord(ch) < 32 and ch not in "\n\r\t") or ord(ch) == 127
                 for ch in content):
             raise ValueError("Контекст содержит недопустимые символы")
         try:
