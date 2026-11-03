@@ -128,6 +128,18 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
                 not turn["content"].strip() or
                 (turn["role"] == "system" and index != 0)):
             raise ValueError("Некорректный контекст диалога")
+        # Reject malformed imported text before JSON encoding or network I/O.
+        # json.dumps otherwise escapes lone surrogates, which can corrupt
+        # cross-platform backups and confuse model providers.
+        content = turn["content"]
+        if len(content) > 200000 or any(
+                (ord(ch) < 32 and ch not in "\\n\\r\\t") or ord(ch) == 127
+                for ch in content):
+            raise ValueError("Контекст содержит недопустимые символы")
+        try:
+            content.encode("utf-8", errors="strict")
+        except UnicodeEncodeError:
+            raise ValueError("Контекст содержит повреждённый Unicode") from None
         # Imported Android/Windows backups can include timestamps and local
         # UI metadata. Send only the OpenAI-compatible wire fields; never
         # forward arbitrary imported keys to the model endpoint.
