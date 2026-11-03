@@ -12,6 +12,14 @@ class MalformedChoicesTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     _extract_text({"choices": choices})
 
+    def test_legacy_function_calls_are_not_saved_as_character_dialogue(self):
+        for function_call in ({"name": "run", "arguments": "{}"}, {}):
+            with self.subTest(function_call=function_call):
+                with self.assertRaises(ValueError):
+                    _extract_text({"choices": [{"finish_reason": "stop", "message": {
+                        "role": "assistant", "content": "Calling a function",
+                        "function_call": function_call}}]})
+
     def test_valid_reply_still_works(self):
         self.assertEqual(
             _extract_text({"choices": [{"message": {
