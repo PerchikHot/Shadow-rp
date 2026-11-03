@@ -32,8 +32,8 @@ class MalformedChoicesTests(unittest.TestCase):
             "role": "assistant", "content": dialogue}, "finish_reason": "stop"}]}), dialogue)
 
     def test_imported_history_is_validated_before_network_request(self):
-        bad_contents = ("Сцена\\x00", "Сцена\\x1b[31m", "Сцена\\x7f",
-                        "Сцена\\ud800", "A" * 200001)
+        bad_contents = ("Сцена\x00", "Сцена\x1b[31m", "Сцена\x7f",
+                        "Сцена\ud800", "A" * 200001)
         for content in bad_contents:
             with self.subTest(content=repr(content[:20])):
                 with self.assertRaises(ValueError):
@@ -47,11 +47,11 @@ class MalformedChoicesTests(unittest.TestCase):
         class FakeClient:
             def open(self, request, timeout):
                 payload = json.loads(request.data.decode("utf-8"))
-                assert payload["messages"][0]["content"] == "Строка\\n\\tДиалог"
+                assert payload["messages"][0]["content"] == "Строка\n\tДиалог"
                 return io.BytesIO(b'{"choices":[{"message":{"content":"ok"}}]}')
 
         result = chat_completion("https://api.openai.com/v1", "", "test-model",
-                                 [{"role": "user", "content": "Строка\\n\\tДиалог"}],
+                                 [{"role": "user", "content": "Строка\n\tДиалог"}],
                                  opener=FakeClient(), attempts=1)
         self.assertEqual(result, "ok")
 
