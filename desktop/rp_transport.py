@@ -66,6 +66,16 @@ def _extract_text(result: dict) -> str:
     # player turn available for retry instead of saving a partial reply.
     if len(answer) > 20000:
         raise ValueError("Ответ модели слишком длинный; сократи контекст или лимит ответа")
+    # A syntactically valid JSON string may still contain lone surrogates or
+    # NUL/control characters that break UTF-8 backup export and chat rendering.
+    # Keep tabs and line breaks for multiline RP dialogue.
+    if any((ord(char) < 32 and char not in "\n\r\t") or ord(char) == 127
+           for char in answer):
+        raise ValueError("Ответ модели содержит недопустимые управляющие символы")
+    try:
+        answer.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        raise ValueError("Ответ модели содержит повреждённый Unicode") from None
     return answer
 
 
