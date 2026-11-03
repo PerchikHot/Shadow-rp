@@ -1,6 +1,6 @@
 """Regression: malformed HTTP 200 model replies must not crash the chat worker."""
 import unittest
-from rp_transport import _extract_text
+from rp_transport import _extract_text, chat_completion
 
 
 class MalformedChoicesTests(unittest.TestCase):
@@ -30,6 +30,30 @@ class MalformedChoicesTests(unittest.TestCase):
         dialogue = "Первая строка\n\tВторая строка"
         self.assertEqual(_extract_text({"choices": [{"message": {
             "role": "assistant", "content": dialogue}, "finish_reason": "stop"}]}), dialogue)
+
+    def test_imported_history_is_validated_before_network_request(self):
+        bad_contents = ("Сцена\\x00", "Сцена\\x1b[31m", "Сцена\\x7f",
+                        "Сцена\\ud800", "A" * 200001)
+        for content in bad_contents:
+            with self.subTest(content=repr(content[:20])):
+                with self.assertRaises(ValueError):
+                    chat_completion("https://api.openai.com/v1", "", "test-model",
+                                    [{"role": "user", "content": content}], attempts=1)
+
+    def test_valid_multiline_imported_history_can_be_sent(self):
+        import io
+        import json
+
+        class FakeClient:
+            def open(self, request, timeout):
+                payload = json.loads(request.data.decode("utf-8"))
+                assert payload["messages"][0]["content"] == "Строка\\n\\tДиалог"
+                return io.BytesIO(b'{"choices":[{"message":{"content":"ok"}}]}')
+
+        result = chat_completion("https://api.openai.com/v1", "", "test-model",
+                                 [{"role": "user", "content": "Строка\\n\\tДиалог"}],
+                                 opener=FakeClient(), attempts=1)
+        self.assertEqual(result, "ok")
 
     def test_valid_reply_still_works(self):
         self.assertEqual(
