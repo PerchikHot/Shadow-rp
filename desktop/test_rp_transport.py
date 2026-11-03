@@ -128,6 +128,21 @@ class TransportTests(unittest.TestCase):
                 chat_completion("https://example.test/v1", "", "model", [],
                                 opener=Client(body), sleep=lambda _: None)
 
+    def test_multiline_history_is_accepted_and_controls_rejected(self):
+        body = json.dumps({"choices": [{"message": {"content": "OK"}}]}).encode()
+        client = Client(body)
+        self.assertEqual(chat_completion("https://example.test/v1", "", "model",
+                         [{"role": "user", "content": "Первая строка\\nВторая\\tстрока"}],
+                         opener=client, sleep=lambda _: None), "OK")
+        self.assertEqual(len(client.requests), 1)
+        for bad in ("текст\\x00", "текст\\x1b", "текст\\x7f"):
+            client = Client(body)
+            with self.subTest(bad=repr(bad)), self.assertRaises(ValueError):
+                chat_completion("https://example.test/v1", "", "model",
+                                [{"role": "user", "content": bad}],
+                                opener=client, sleep=lambda _: None)
+            self.assertEqual(len(client.requests), 0)
+
     def test_transport_enforces_https_and_bounded_request_before_network(self):
         for endpoint in ("http://example.test/v1",
                          "https://user:secret@example.test/v1",
@@ -137,7 +152,7 @@ class TransportTests(unittest.TestCase):
                                 opener=Client(), sleep=lambda _: None)
         with self.assertRaisesRegex(ValueError, "2 МБ"):
             chat_completion("https://example.test/v1", "", "model",
-                            [{"role": "user", "content": "x" * (3 * 1024 * 1024)}],
+                            [{"role": "user", "content": "x" * 180000} for _ in range(16)],
                             opener=Client(), sleep=lambda _: None)
         with self.assertRaises(ValueError):
             chat_completion("https://example.test/v1", "key\nX-Evil: yes",
