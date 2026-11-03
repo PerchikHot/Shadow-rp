@@ -132,10 +132,10 @@ class TransportTests(unittest.TestCase):
         body = json.dumps({"choices": [{"message": {"content": "OK"}}]}).encode()
         client = Client(body)
         self.assertEqual(chat_completion("https://example.test/v1", "", "model",
-                         [{"role": "user", "content": "Первая строка\\nВторая\\tстрока"}],
+                         [{"role": "user", "content": "Первая строка\nВторая\tстрока"}],
                          opener=client, sleep=lambda _: None), "OK")
         self.assertEqual(len(client.requests), 1)
-        for bad in ("текст\\x00", "текст\\x1b", "текст\\x7f"):
+        for bad in ("текст\x00", "текст\x1b", "текст\x7f"):
             client = Client(body)
             with self.subTest(bad=repr(bad)), self.assertRaises(ValueError):
                 chat_completion("https://example.test/v1", "", "model",
