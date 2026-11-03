@@ -112,7 +112,9 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
     if not isinstance(model, str) or not model.strip() or len(model) > 120:
         raise ValueError("Укажи корректное имя модели")
     if (not isinstance(api_key, str) or len(api_key) > 8192 or
-            # HTTP Authorization headers require printable ASCII without whitespace.\n            # Reject imported Unicode/space keys here instead of crashing urllib.\n            any(ord(char) < 33 or ord(char) > 126 for char in api_key)):
+            # HTTP Authorization headers require printable ASCII without whitespace.
+            # Reject imported Unicode/space keys here instead of crashing urllib.
+            any(ord(char) < 33 or ord(char) > 126 for char in api_key)):
         raise ValueError("Некорректный API-ключ")
     # Enforce endpoint safety even if a new caller bypasses the UI wrapper.
     url = validate_endpoint(base) + "/chat/completions"
