@@ -58,7 +58,7 @@ class MalformedChoicesTests(unittest.TestCase):
     def test_invalid_authorization_header_is_rejected_before_network(self):
         # urllib cannot encode non-ASCII header values. Imported credentials
         # must fail as a friendly validation error, not a worker traceback.
-        for key in ("clé", "token with space", " token", "token\\nnext", "🔑"):
+        for key in ("clé", "token with space", " token", "token\nnext", "🔑"):
             with self.subTest(key=repr(key)), self.assertRaises(ValueError):
                 chat_completion("https://api.openai.com/v1", key, "test-model",
                                 [{"role": "user", "content": "Привет"}],
