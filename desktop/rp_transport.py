@@ -44,6 +44,7 @@ def _extract_text(result: dict) -> str:
     if (not isinstance(message, dict) or
             message.get("role", "assistant") != "assistant" or
             message.get("tool_calls") is not None or
+            message.get("function_call") is not None or
             message.get("refusal") is not None):
         raise ValueError("Модель вернула не текстовую реплику персонажа")
     if isinstance(content, str):
