@@ -31,8 +31,14 @@ def _extract_text(result: dict) -> str:
     # Never append a partial scene as though the character finished speaking.
     choice = result["choices"][0]
     finish_reason = choice.get("finish_reason")
-    if finish_reason in ("length", "content_filter"):
+    if finish_reason not in (None, "stop"):
         raise ValueError("Модель не завершила ответ; сократи контекст или проверь настройки")
+    message = choice.get("message")
+    if (not isinstance(message, dict) or
+            message.get("role", "assistant") != "assistant" or
+            message.get("tool_calls") is not None or
+            message.get("refusal") is not None):
+        raise ValueError("Модель вернула не текстовую реплику персонажа")
     if isinstance(content, str):
         answer = content
     elif isinstance(content, list) and 0 < len(content) <= 100:

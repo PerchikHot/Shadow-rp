@@ -215,6 +215,30 @@ class TransportTests(unittest.TestCase):
                                 opener=client, sleep=lambda _: None)
             self.assertEqual(len(client.requests), 1)
 
+    def test_tool_calls_refusals_and_unfinished_scenes_are_not_saved(self):
+        for reason in ("tool_calls", "function_call", "unknown"):
+            body = json.dumps({"choices": [{"finish_reason": reason,
+                "message": {"role": "assistant", "content": "частичная сцена"}}]}).encode()
+            with self.subTest(reason=reason), self.assertRaisesRegex(
+                    ValueError, "не завершила ответ"):
+                chat_completion("https://example.test/v1", "", "model", [],
+                                opener=Client(body), sleep=lambda _: None)
+        for message in (
+            {"role": "assistant", "content": "частично",
+             "tool_calls": [{"id": "call_1"}]},
+            {"role": "assistant", "content": "частично", "refusal": "blocked"},
+            {"role": "tool", "content": "untrusted"},
+        ):
+            body = json.dumps({"choices": [{"finish_reason": "stop",
+                "message": message}]}).encode()
+            with self.subTest(message=message), self.assertRaises(ValueError):
+                chat_completion("https://example.test/v1", "", "model", [],
+                                opener=Client(body), sleep=lambda _: None)
+        complete = json.dumps({"choices": [{"finish_reason": "stop",
+            "message": {"role": "assistant", "content": "Глава завершена"}}]}).encode()
+        self.assertEqual(chat_completion("https://example.test/v1", "", "model", [],
+                                         opener=Client(complete)), "Глава завершена")
+
     def test_response_length_is_bounded_without_silent_truncation(self):
         client = Client(ok("a" * 25000))
         with self.assertRaisesRegex(ValueError, "слишком длинный"):

@@ -35,9 +35,40 @@ class RpReplySafetyTest {
         }
     }
 
+    @Test fun rejectsUnfinishedOrToolCallRepliesAcrossBothChatModes() {
+        val plain = JSONObject().put("finish_reason", "stop")
+            .put("message", JSONObject().put("role", "assistant")
+                .put("content", "Продолжаем сцену"))
+        assertEquals("Продолжаем сцену", RpReplySafety.extractChoice(plain))
+        assertEquals("Локальная модель", RpReplySafety.extractChoice(
+            JSONObject().put("message", JSONObject().put("content", "Локальная модель"))))
+        for (reason in listOf("length", "content_filter", "tool_calls", "function_call")) {
+            val choice = JSONObject().put("finish_reason", reason)
+                .put("message", JSONObject().put("content", "Обрыв сцены"))
+            try {
+                RpReplySafety.extractChoice(choice)
+                fail("Incomplete model reply must not be stored: $reason")
+            } catch (_: IllegalArgumentException) {}
+        }
+        for (message in listOf(
+            JSONObject().put("content", "частичный ответ")
+                .put("tool_calls", JSONArray().put(JSONObject().put("id", "call_1"))),
+            JSONObject().put("content", "частичный ответ").put("refusal", "blocked"),
+            JSONObject().put("role", "tool").put("content", "untrusted")
+        )) {
+            try {
+                RpReplySafety.extractChoice(JSONObject().put("message", message))
+                fail("Non-character response must be rejected")
+            } catch (_: IllegalArgumentException) {}
+        }
+    }
+
     @Test fun boundsModelOutputAndRejectsEmptyReplies() {
         assertEquals("Привет", RpReplySafety.clean("  Привет  "))
-        assertEquals(20000, RpReplySafety.clean("а".repeat(25000)).length)
+        try {
+            RpReplySafety.clean("а".repeat(25000))
+            fail("Oversized reply must remain retryable, not silently truncated")
+        } catch (_: IllegalArgumentException) {}
         try {
             RpReplySafety.clean(" \n\t ")
             fail("Blank replies must be rejected")
