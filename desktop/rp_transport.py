@@ -23,13 +23,20 @@ TRANSIENT_HTTP = {408, 429, 500, 502, 503, 504, 521, 522, 524}
 
 def _extract_text(result: dict) -> str:
     """Accept plain text or standard OpenAI-compatible typed text parts."""
-    try:
-        content = result["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise ValueError("Неверный формат ответа модели") from exc
+    # Some OpenAI-compatible endpoints return HTTP 200 with malformed
+    # choices. Treat those as retryable user-facing errors, not uncaught
+    # AttributeError/TypeError in the background worker.
+    choices = result.get("choices")
+    if (not isinstance(choices, list) or not choices or
+            not isinstance(choices[0], dict)):
+        raise ValueError("Неверный формат ответа модели")
+    choice = choices[0]
+    message = choice.get("message")
+    if not isinstance(message, dict) or "content" not in message:
+        raise ValueError("Неверный формат ответа модели")
+    content = message["content"]
     # A provider may return HTTP 200 with a cut-off or filtered answer.
     # Never append a partial scene as though the character finished speaking.
-    choice = result["choices"][0]
     finish_reason = choice.get("finish_reason")
     if finish_reason not in (None, "stop"):
         raise ValueError("Модель не завершила ответ; сократи контекст или проверь настройки")
