@@ -111,7 +111,15 @@ def chat_completion(base: str, api_key: str, model: str, messages: list[dict],
         raise ValueError("Invalid retry count")
     if not isinstance(model, str) or not model.strip() or len(model) > 120:
         raise ValueError("Укажи корректное имя модели")
-    # Imported model identifiers must not carry control characters or broken\n    # Unicode into the wire request. Validate before opening a connection.\n    if any(ord(ch) < 32 or ord(ch) == 127 for ch in model):\n        raise ValueError("Имя модели содержит недопустимые символы")\n    try:\n        model.encode("utf-8", errors="strict")\n    except UnicodeEncodeError:\n        raise ValueError("Имя модели содержит повреждённый Unicode") from None\n    if (not isinstance(api_key, str) or len(api_key) > 8192 or
+    # Imported model identifiers must not carry control characters or broken
+    # Unicode into the wire request. Validate before opening a connection.
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in model):
+        raise ValueError("Имя модели содержит недопустимые символы")
+    try:
+        model.encode("utf-8", errors="strict")
+    except UnicodeEncodeError:
+        raise ValueError("Имя модели содержит повреждённый Unicode") from None
+    if (not isinstance(api_key, str) or len(api_key) > 8192 or
             # HTTP Authorization headers require printable ASCII without whitespace.
             # Reject imported Unicode/space keys here instead of crashing urllib.
             any(ord(char) < 33 or ord(char) > 126 for char in api_key)):
