@@ -180,6 +180,15 @@ class TransportTests(unittest.TestCase):
                     chat_completion("https://example.test/v1", key, "model", [],
                                     opener=Client(), sleep=lambda _: None)
 
+    def test_imported_model_identifier_is_validated_before_network(self):
+        for model in ("bad\nmodel", "bad\x00model", "bad\x7fmodel", "bad\ud800model"):
+            with self.subTest(model=repr(model)):
+                client = Client()
+                with self.assertRaisesRegex(ValueError, "модели"):
+                    chat_completion("https://example.test/v1", "", model, [],
+                                    opener=client, sleep=lambda _: None)
+                self.assertEqual(client.requests, [])
+
     def test_imported_history_metadata_is_not_sent_to_model(self):
         client = Client(ok("Продолжаем сцену"))
         messages = [
