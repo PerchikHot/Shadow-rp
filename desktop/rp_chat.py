@@ -445,7 +445,7 @@ class App:
             preview.delete("1.0", "end")
             for turn in chapters[chapter_index]:
                 speaker = "Ты" if turn.get("role") == "user" else name
-                preview.insert("end", f"{speaker}: {turn.get('content', '')}\\n\\n")
+                preview.insert("end", f"{speaker}: {turn.get('content', '')}\n\n")
             preview.config(state="disabled")
 
         def jump():
@@ -458,7 +458,7 @@ class App:
             offset = 0
             for turn in messages[:index]:
                 speaker = "Ты" if turn.get("role") == "user" else name
-                offset += len(f"{speaker}: {turn.get('content', '')}\\n\\n")
+                offset += len(f"{speaker}: {turn.get('content', '')}\n\n")
             if self.active != name:
                 self.active = name
                 self.character_query.set("")
