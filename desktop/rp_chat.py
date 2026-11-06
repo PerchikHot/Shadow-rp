@@ -114,6 +114,7 @@ class App:
         tk.Button(actions_inner, text="▤ Лорбук мира", command=self.edit_lorebook).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
+        tk.Button(actions_inner, text="▦ Главы истории", command=self.story_chapters).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Экспорт персонажа", command=self.export_active_character).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Импорт чатов", command=self.import_chats).pack(fill="x", padx=10, pady=5)
@@ -397,6 +398,82 @@ class App:
         save(self.data)
         self.status.config(text="Сцена закреплена вручную; память сохранена")
 
+
+    def story_chapters(self):
+        """Browse a long RP story in chapters without rewriting any dialogue."""
+        if not self.active:
+            messagebox.showwarning("Главы", "Сначала выбери персонажа.", parent=self.root)
+            return
+        name = self.active
+        messages = self.data["characters"][name].get("messages", [])
+        if not messages:
+            messagebox.showinfo("Главы", "История пока пуста.", parent=self.root)
+            return
+        # Each chapter contains up to twelve turns. The boundaries are
+        # deterministic, so old histories work without a storage migration.
+        chapter_size = 12
+        chapters = [messages[i:i + chapter_size]
+                    for i in range(0, len(messages), chapter_size)]
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Главы истории • " + name)
+        dialog.geometry("780x530")
+        dialog.minsize(570, 370)
+        dialog.configure(bg=BG)
+        tk.Label(dialog, text="ХРОНИКА ИСТОРИИ", bg=BG, fg=BLUE,
+                 font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(14, 3))
+        tk.Label(dialog, text=f"{len(messages)} реплик • {len(chapters)} глав • только просмотр",
+                 bg=BG, fg=FG).pack(anchor="w", padx=16, pady=(0, 10))
+        body = tk.Frame(dialog, bg=BG)
+        body.pack(fill="both", expand=True, padx=14)
+        listing = tk.Listbox(body, width=29, bg=PANEL, fg=FG,
+                             selectbackground="#23539a", font=("Segoe UI", 11))
+        listing.pack(side="left", fill="y", padx=(0, 10))
+        preview = scrolledtext.ScrolledText(body, bg=PANEL, fg=FG, wrap="word",
+                                            state="disabled", font=("Segoe UI", 11))
+        preview.pack(side="left", fill="both", expand=True)
+        for index, chapter in enumerate(chapters):
+            first = index * chapter_size + 1
+            last = first + len(chapter) - 1
+            listing.insert("end", f"Глава {index + 1}  •  #{first}–{last}")
+
+        def show_chapter(_=None):
+            selected = listing.curselection()
+            if not selected:
+                return
+            chapter_index = selected[0]
+            preview.config(state="normal")
+            preview.delete("1.0", "end")
+            for turn in chapters[chapter_index]:
+                speaker = "Ты" if turn.get("role") == "user" else name
+                preview.insert("end", f"{speaker}: {turn.get('content', '')}\\n\\n")
+            preview.config(state="disabled")
+
+        def jump():
+            selected = listing.curselection()
+            if not selected:
+                return
+            # Recalculate text offsets from the exact same render rules as
+            # refresh(), including the optional greeting for empty chats.
+            index = selected[0] * chapter_size
+            offset = 0
+            for turn in messages[:index]:
+                speaker = "Ты" if turn.get("role") == "user" else name
+                offset += len(f"{speaker}: {turn.get('content', '')}\\n\\n")
+            if self.active != name:
+                self.active = name
+                self.character_query.set("")
+                self.refresh()
+            self.history.see(f"1.0+{offset}c")
+            self.history.mark_set("insert", f"1.0+{offset}c")
+            self.history.focus_set()
+            dialog.destroy()
+
+        listing.bind("<<ListboxSelect>>", show_chapter)
+        listing.bind("<Double-Button-1>", lambda _: jump())
+        tk.Button(dialog, text="Перейти к главе в чате", command=jump).pack(
+            fill="x", padx=14, pady=12)
+        listing.selection_set(0)
+        show_chapter()
 
     def history_tools(self):
         """Search all turns; rewind only after explicit confirmation and backup."""
