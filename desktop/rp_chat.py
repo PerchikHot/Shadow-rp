@@ -50,6 +50,7 @@ class App:
         self.root = root
         self.data, self.recovered_backup = load_data(DATA)
         self.pending = 0
+        self.drafts = {}  # Unsent scene drafts, kept only in this session.
         self.active = next(iter(self.data["characters"]), None)
         root.title("Shadow RP — ИИ-ролевой чат")
         root.geometry("1050x700")
@@ -148,11 +149,17 @@ class App:
         tk.Label(main, text="API base URL  |  Model  |  API key (не сохраняется)", bg=BG, fg=BLUE).pack(anchor="w")
         bottom = tk.Frame(main, bg=BG)
         bottom.pack(fill="x", pady=8)
-        self.entry = tk.Entry(bottom, bg=PANEL, fg=FG, insertbackground=FG, font=("Segoe UI", 12))
-        self.entry.pack(side="left", fill="x", expand=True)
-        self.entry.bind("<Return>", lambda _: self.send())
+        # Paragraphs and dialogue belong in a multiline RP composer.
+        self.entry = tk.Text(bottom, bg=PANEL, fg=FG, insertbackground=FG,
+                             font=("Segoe UI", 11), wrap="word", height=4,
+                             undo=True, relief="flat", padx=8, pady=6)
+        self.entry.pack(side="left", fill="both", expand=True)
+        self.entry.bind("<Control-Return>", self._send_shortcut)
+        self.entry.bind("<Control-KP_Enter>", self._send_shortcut)
         self.button = tk.Button(bottom, text="Отправить ИИ", command=self.send)
         self.button.pack(side="left", padx=6)
+        tk.Label(main, text="Ctrl+Enter — отправить  •  Enter — новая строка  •  черновик при смене персонажа",
+                 bg=BG, fg="#9DB8D9", font=("Segoe UI", 9)).pack(anchor="w")
         self.retry_button = tk.Button(bottom, text="Повторить ответ", command=self.retry_last, state="disabled")
         self.retry_button.pack(side="left", padx=3)
         self.status = tk.Label(main, text="Подключи совместимый API или локальную модель", bg=BG, fg=BLUE)
@@ -268,10 +275,21 @@ class App:
         self.retry_button.config(state="normal" if not self.pending and
                                  last and last["role"] == "user" else "disabled")
 
+    def _send_shortcut(self, _event):
+        self.send()
+        return "break"
+
     def select(self, _):
         selection = self.characters.curselection()
         if selection:
-            self.active = self.characters.get(selection[0])
+            new_active = self.characters.get(selection[0])
+            if new_active == self.active:
+                return
+            if self.active:
+                self.drafts[self.active] = self.entry.get("1.0", "end-1c")
+            self.active = new_active
+            self.entry.delete("1.0", "end")
+            self.entry.insert("1.0", self.drafts.get(new_active, ""))
             self.refresh()
 
     def add(self):
@@ -595,14 +613,15 @@ class App:
     def send(self):
         if self.pending:
             return
-        content = self.entry.get().strip()
+        content = self.entry.get("1.0", "end-1c").strip()
         if not content or not self.active:
             return
         name = self.active
         item = self.data["characters"][name]
         item["messages"].append({"role": "user", "content": content})
         save(self.data)
-        self.entry.delete(0, "end")
+        self.entry.delete("1.0", "end")
+        self.drafts.pop(name, None)
         self._request_reply(name, item)
 
     def retry_last(self):
