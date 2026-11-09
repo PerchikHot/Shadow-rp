@@ -486,6 +486,36 @@ class App:
             self.history.focus_set()
             dialog.destroy()
 
+        def export_story():
+            """Export the selected character's complete chaptered RP transcript."""
+            destination = filedialog.asksaveasfilename(
+                parent=dialog, title="Экспорт хроники Shadow RP",
+                defaultextension=".md", initialfile="shadow-rp-story.md",
+                filetypes=[("Markdown", "*.md"), ("Text", "*.txt")])
+            if not destination:
+                return
+            lines = ["# " + name.replace("\n", " "), "",
+                     "Хроника ролевой истории", ""]
+            for chapter_index, chapter in enumerate(chapters, 1):
+                lines.extend([f"## Глава {chapter_index}", ""])
+                for turn in chapter:
+                    speaker = "Ты" if turn.get("role") == "user" else name
+                    content = str(turn.get("content", "")).strip()
+                    lines.extend([f"**{speaker}**", "", content, ""])
+            try:
+                output = Path(destination)
+                temporary = output.with_name(output.name + ".tmp")
+                temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                temporary.replace(output)
+            except OSError as exc:
+                messagebox.showerror("Экспорт хроники", str(exc), parent=dialog)
+                return
+            self.status.config(text=f"Хроника сохранена: {len(chapters)} глав")
+            messagebox.showinfo("Экспорт хроники",
+                                f"Сохранено глав: {len(chapters)}", parent=dialog)
+
+        tk.Button(dialog, text="Экспортировать всю историю по главам (.md)",
+                  command=export_story).pack(fill="x", padx=14, pady=(6, 0))
         listing.bind("<<ListboxSelect>>", show_chapter)
         listing.bind("<Double-Button-1>", lambda _: jump())
         tk.Button(dialog, text="Перейти к главе в чате", command=jump).pack(
