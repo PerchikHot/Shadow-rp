@@ -44,7 +44,7 @@ def search_all_stories(characters, query, limit=150):
             if at < 0:
                 continue
             start = max(0, at - 42)
-            excerpt = content[start:start + 140].replace("\\n", " ")
+            excerpt = content[start:start + 140].replace("\n", " ")
             results.append((name, index, turn.get("role", ""), excerpt))
             if len(results) >= limit:
                 return results
@@ -598,7 +598,7 @@ class App:
             offset = 0
             for turn in card["messages"][:index]:
                 speaker = "Ты" if turn["role"] == "user" else name
-                offset += len(f"{speaker}: {turn['content']}\\n\\n")
+                offset += len(f"{speaker}: {turn['content']}\n\n")
             self.history.see(f"1.0+{offset}c")
             self.history.mark_set("insert", f"1.0+{offset}c")
             self.history.focus_set()
