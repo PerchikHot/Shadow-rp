@@ -27,6 +27,30 @@ def filter_character_names(names, query):
     return [name for name in names if needle in name.casefold()]
 
 
+def search_all_stories(characters, query, limit=150):
+    """Search every saved character story without changing or exporting private data."""
+    if not isinstance(query, str) or not query.strip():
+        return []
+    needle = query.strip().casefold()[:200]
+    results = []
+    for name, card in characters.items():
+        if not isinstance(card, dict):
+            continue
+        for index, turn in enumerate(card.get("messages", [])):
+            if not isinstance(turn, dict) or not isinstance(turn.get("content"), str):
+                continue
+            content = turn["content"]
+            at = content.casefold().find(needle)
+            if at < 0:
+                continue
+            start = max(0, at - 42)
+            excerpt = content[start:start + 140].replace("\\n", " ")
+            results.append((name, index, turn.get("role", ""), excerpt))
+            if len(results) >= limit:
+                return results
+    return results
+
+
 def load():
     return load_data(DATA)[0]
 
@@ -115,6 +139,7 @@ class App:
         tk.Button(actions_inner, text="▤ Лорбук мира", command=self.edit_lorebook).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="📌 Запомнить сцену", command=self.pin_scene).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Поиск и откат диалога", command=self.history_tools).pack(fill="x", padx=10, pady=5)
+        tk.Button(actions_inner, text="⌕ Поиск по всем историям", command=self.global_history_search).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="▦ Главы истории", command=self.story_chapters).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Экспорт персонажа", command=self.export_active_character).pack(fill="x", padx=10, pady=5)
         tk.Button(actions_inner, text="Экспорт чатов", command=self.export_chats).pack(fill="x", padx=10, pady=5)
@@ -522,6 +547,68 @@ class App:
             fill="x", padx=14, pady=12)
         listing.selection_set(0)
         show_chapter()
+
+    def global_history_search(self):
+        """Find a scene across characters and jump to the exact saved turn."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Shadow RP • Все истории")
+        dialog.geometry("790x530")
+        dialog.configure(bg=BG)
+        tk.Label(dialog, text="ПОИСК ПО ВСЕМ ИСТОРИЯМ", bg=BG, fg=BLUE,
+                 font=("Segoe UI", 16, "bold")).pack(anchor="w", padx=16, pady=(16, 4))
+        tk.Label(dialog, text="Локальный поиск • до 150 результатов • истории не изменяются",
+                 bg=BG, fg=FG).pack(anchor="w", padx=16)
+        query = tk.StringVar()
+        entry = tk.Entry(dialog, textvariable=query, bg=PANEL, fg=FG,
+                         insertbackground=FG, font=("Segoe UI", 12))
+        entry.pack(fill="x", padx=16, pady=10, ipady=5)
+        count = tk.Label(dialog, bg=BG, fg=BLUE)
+        count.pack(anchor="w", padx=16)
+        listing = tk.Listbox(dialog, bg=PANEL, fg=FG, selectbackground="#23539a",
+                             font=("Segoe UI", 11), highlightthickness=0)
+        listing.pack(fill="both", expand=True, padx=16, pady=8)
+        matches = []
+
+        def populate(*_):
+            nonlocal matches
+            matches = search_all_stories(self.data["characters"], query.get())
+            listing.delete(0, "end")
+            for name, index, role, excerpt in matches:
+                speaker = "Ты" if role == "user" else name
+                listing.insert("end", f"{name} • #{index + 1} • {speaker}: {excerpt}")
+            count.config(text=f"Найдено: {len(matches)}" +
+                         (" (первые 150)" if len(matches) == 150 else ""))
+
+        def jump(_=None):
+            selection = listing.curselection()
+            if not selection:
+                return
+            name, index, _, _ = matches[selection[0]]
+            card = self.data["characters"].get(name)
+            if card is None or index >= len(card.get("messages", [])):
+                populate()
+                return
+            if self.active and self.active != name:
+                self.drafts[self.active] = self.entry.get("1.0", "end-1c")
+            self.active = name
+            self.character_query.set("")
+            self.entry.delete("1.0", "end")
+            self.entry.insert("1.0", self.drafts.get(name, ""))
+            self.refresh()
+            offset = 0
+            for turn in card["messages"][:index]:
+                speaker = "Ты" if turn["role"] == "user" else name
+                offset += len(f"{speaker}: {turn['content']}\\n\\n")
+            self.history.see(f"1.0+{offset}c")
+            self.history.mark_set("insert", f"1.0+{offset}c")
+            self.history.focus_set()
+            dialog.destroy()
+
+        query.trace_add("write", populate)
+        listing.bind("<Double-Button-1>", jump)
+        tk.Button(dialog, text="Перейти к реплике", command=jump).pack(
+            fill="x", padx=16, pady=(0, 14))
+        entry.focus_set()
 
     def history_tools(self):
         """Search all turns; rewind only after explicit confirmation and backup."""
