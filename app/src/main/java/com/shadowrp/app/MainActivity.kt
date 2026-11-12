@@ -1254,6 +1254,7 @@ class MainActivity : Activity() {
   profileRow.addView(button("⋮"){characterDetail(name)})
   b.addView(profileRow)
   b.addView(button("📌 Запомнить сцену") { pinScene(name) })
+  b.addView(button("▤ Главы и сюжетные ветки") { storyChapters(name) })
   b.addView(button("▤ Лорбук мира") { editLorebook(name) })
   b.addView(button("⌕ Поиск и откат переписки") { searchRpHistory(name) })
   if (rpRewindCheckpoint(name).baseFile.exists()) {
@@ -1313,6 +1314,90 @@ class MainActivity : Activity() {
    (v as? ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
   }
  }
+
+ private fun storyArchive(name:String): android.util.AtomicFile {
+  val digest=java.security.MessageDigest.getInstance("SHA-256")
+   .digest(name.toByteArray(Charsets.UTF_8)).joinToString(""){"%02x".format(it.toInt() and 255)}
+  return android.util.AtomicFile(File(filesDir,"rp-stories-$digest.json"))
+ }
+ private fun readStoryArchive(name:String): JSONArray {
+  val file=storyArchive(name)
+  if(!file.baseFile.exists())return JSONArray()
+  val bytes=file.openRead().use { it.readBytes() }
+  require(bytes.size<=4*1024*1024){"Архив историй слишком большой"}
+  return JSONObject(String(bytes,Charsets.UTF_8)).getJSONArray("chapters")
+ }
+ private fun writeStoryArchive(name:String, chapters:JSONArray) {
+  val bytes=JSONObject().put("format",1).put("chapters",chapters)
+   .toString().toByteArray(Charsets.UTF_8)
+  require(bytes.size<=4*1024*1024){"Архив историй переполнен"}
+  val file=storyArchive(name)
+  val stream=file.startWrite()
+  try {stream.write(bytes);file.finishWrite(stream)}
+  catch(e:Exception){file.failWrite(stream);throw e}
+ }
+ private fun storyChapters(name:String) {
+  if(localPending.contains(name)){alert("Дождись ответа ИИ.");return}
+  val chapters=try{readStoryArchive(name)}catch(e:Exception){alert("Не удалось открыть главы: "+e.message);return}
+  val container=LinearLayout(this).apply{orientation=1;setPadding(dp(12),dp(8),dp(12),dp(8))}
+  val title=EditText(this).apply{
+   hint="Название главы";setSingleLine(true);setTextColor(Color.WHITE);setHintTextColor(muted)
+   background=shape(panel);setPadding(dp(12),dp(12),dp(12),dp(12))
+  }
+  container.addView(text("Сохраняй отдельные сюжетные ветки. Главы хранятся локально и не меняют текущую переписку до восстановления.",14f,muted))
+  container.addView(title)
+  container.addView(button("＋ Сохранить текущую главу"){
+   val label=title.text.toString().trim()
+   if(label.isBlank()||label.length>80){alert("Укажи название до 80 символов.");return@button}
+   val card=rpCards()[name]
+   if(card==null||card.messages.isEmpty()){alert("Для главы нужна переписка.");return@button}
+   try {
+    val fresh=readStoryArchive(name)
+    if(fresh.length()>=20){alert("Максимум 20 глав. Удали ненужную.");return@button}
+    val snapshot=RpBackup.encode(mapOf(name to card))
+    fresh.put(JSONObject().put("title",label).put("created",System.currentTimeMillis())
+     .put("snapshot",android.util.Base64.encodeToString(snapshot,android.util.Base64.NO_WRAP)))
+    writeStoryArchive(name,fresh)
+    storyChapters(name)
+   }catch(e:Exception){alert("Не удалось сохранить главу: "+e.message)}
+  })
+  for(i in chapters.length()-1 downTo 0){
+   val entry=chapters.getJSONObject(i)
+   val label=entry.optString("title","Глава")
+   val whenSaved=java.text.SimpleDateFormat("dd.MM.yyyy HH:mm",java.util.Locale.getDefault())
+    .format(java.util.Date(entry.optLong("created",0L)))
+   container.addView(text("$label • $whenSaved",16f,Color.WHITE,true))
+   container.addView(button("Открыть главу"){
+    val card=try{
+     val raw=android.util.Base64.decode(entry.getString("snapshot"),android.util.Base64.DEFAULT)
+     RpBackup.decode(raw)[name]?:error("Персонаж отсутствует")
+    }catch(e:Exception){alert("Глава повреждена: "+e.message);return@button}
+    AlertDialog.Builder(this).setTitle("Восстановить «$label»?")
+     .setMessage("Текущая переписка будет заменена сохранённой главой. Перед продолжением сохрани текущую ветку как отдельную главу.")
+     .setPositiveButton("Восстановить"){_,_->
+      if(localPending.isNotEmpty()){alert("Дождись ответа ИИ.");return@setPositiveButton}
+      try{applyRpImport(mapOf(name to card));chat(name)}
+      catch(e:Exception){alert("Ошибка восстановления: "+e.message)}
+     }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+   })
+   container.addView(button("Удалить эту главу"){
+    AlertDialog.Builder(this).setTitle("Удалить «$label»?")
+     .setPositiveButton("Удалить"){_,_->
+      try{
+       val current=readStoryArchive(name)
+       val updated=JSONArray()
+       for(j in 0 until current.length())if(j!=i)updated.put(current.getJSONObject(j))
+       writeStoryArchive(name,updated);storyChapters(name)
+      }catch(e:Exception){alert("Ошибка удаления: "+e.message)}
+     }.setNegativeButton("Отмена",null).show().also{styleDialog(it)}
+   })
+  }
+  val dialog=AlertDialog.Builder(this).setTitle("▤ Главы истории • $name")
+   .setView(ScrollView(this).apply{addView(container)})
+   .setNegativeButton("Закрыть",null).show()
+  styleDialog(dialog)
+ }
+
  private fun rpRewindCheckpoint(name:String): android.util.AtomicFile {
   // A hash avoids using arbitrary character names as filesystem paths.
   val digest=java.security.MessageDigest.getInstance("SHA-256")
